@@ -122,3 +122,13 @@ h3.folder { cursor: pointer; user-select: none; }
 .secmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .secmain .seclocbig { color: #d02b2b; font-weight: bold; font-size: 15px; }
 .secmain .secname { font-size: 13px; color: #444; }
+
+.navcount { color: #c62828; font-weight: bold; font-size: 13px; }
+.linkbtn { flex: 1; text-align: left; padding: 10px 12px; font-size: 15px; border: 1px solid #ccc;
+  border-radius: 8px; background: #eef; color: #1a4a8f; text-decoration: underline; }
+.sitable { width: 100%; border-collapse: collapse; }
+.sitable th, .sitable td { padding: 5px 6px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+.sitable th { color: #888; font-weight: normal; white-space: nowrap; }
+.sitable td.siname { min-width: 120px; }
+.sitable tr[data-row] { cursor: pointer; }
+.sitable tr[data-row]:active { background: #f0ecf5; }
