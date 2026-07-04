@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>倉儲系統</title>
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<header id="topbar">
+  <button id="menuBtn" aria-label="選單">☰</button>
+  <h1 id="pageTitle">儲位查詢</h1>
+  <span id="topTime"></span>
+  <span id="userBadge" role="button"></span>
+</header>
+
+<nav id="drawer" class="hidden">
+  <a href="#/home">🏠 首頁</a>
+  <a href="#/storage">🔍 儲位查詢</a>
+  <a href="#/orders">📦 一般點貨(訂貨表)</a>
+  <a href="#/pick346">📦 346點貨</a>
+  <a href="#/bigcount">📋 盤點作業</a>
+  <a href="#/shortage">❗ 缺貨單</a>
+  <a href="#/second-list">🏬 第二庫存清單</a>
+  <a href="#/records?type=count">🗒️ 盤點紀錄</a>
+  <a href="#/records?type=reloc">🗒️ 改儲位紀錄</a>
+  <a href="https://bestx0114-dev.github.io/label-print/" target="_blank">🏷️ 標籤列印</a>
+  <a href="https://bestx0114-dev.github.io/second-storage-del/" target="_blank">🗑️ 刪除第二庫存</a>
+  <a href="#/settings">⚙️ 設定(切換人員)</a>
+  <div id="syncInfo"></div>
+  <button id="syncNowBtn">🔄 手動同步</button>
+</nav>
+<div id="overlay" class="hidden"></div>
+
+<main id="app"></main>
+
+<div id="scanBox" class="hidden">
+  <div id="scanReader"></div>
+  <button id="scanClose">✕ 關閉掃描</button>
+</div>
+
+<div id="toast" class="hidden"></div>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="app.js?v=4"></script>
+</body>
+</html>
