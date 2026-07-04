@@ -366,6 +366,18 @@ function renderList() {
   box.innerHTML = items.length ? items.map(function (p) { return productCard(p, true); }).join('') : '<div class="empty">' + (store.products.length ? '沒有符合的品項' : '資料載入中…') + '</div>';
 }
 
+/* 加到盤點表(共用):寫入 條碼查詢.點貨表 A 欄 */
+function addToBigcount(sku, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '加入中…'; }
+  var p = findProduct(sku);
+  if (store.bigcount && !store.bigcount.some(function (r) { return r.sku === sku; }))
+    store.bigcount.push({ sku: sku, name: p ? p.name : sku, barcode: p ? p.barcode : '', stock: p ? p.qty : 0, doneQty: null, user: '', loc: p ? p.loc : '', status: '未點' });
+  apiPost({ action: 'bigcountAdd', sku: sku }).then(function (d) {
+    if (d.ok || d.dup) { if (btn) btn.textContent = '已在盤點表 ✓'; toast('已加到盤點表:' + sku, 'ok'); loadData('bigcount', true); apiGet('meta').then(applyMeta); }
+    else { if (btn) { btn.disabled = false; btn.textContent = '＋加到盤點表'; } toast('⚠ ' + (d.error || '加入失敗'), 'err', 4000); }
+  }).catch(function () { if (btn) { btn.disabled = false; btn.textContent = '＋加到盤點表'; } toast('⚠ 網路失敗', 'err'); });
+}
+
 /* ===================== 商品明細(全預載,即時) ===================== */
 function pageDetail(params) {
   var p = findProduct(params.sku || '');
@@ -381,7 +393,9 @@ function pageDetail(params) {
     '<div class="detail"><h3>第二庫存登記</h3><div id="secondBox"></div></div>' +
     '<div class="detail"><h3>改儲位紀錄(點擊可修改)</h3><div id="relocBox"></div></div>' +
     '<div class="detail"><h3>盤點紀錄(點擊可修改)</h3><div id="countBox"></div></div>' +
-    '<div class="detail"><h3>進貨明細(近 15 筆)</h3><div class="scrollx" id="purchaseBox"></div></div>';
+    '<div class="detail"><h3>進貨明細(近 15 筆)</h3><div class="scrollx" id="purchaseBox"></div></div>' +
+    '<div class="actions"><button class="primary" id="toBigBtn">＋加到盤點表</button></div>';
+  $('#toBigBtn').onclick = function () { addToBigcount(p.sku, this); };
   function renderRel() {
     var rel = store.rel || { relocs: [], seconds: [], counts: [] };
     var sec = rel.seconds.filter(function (r) { return r['貨號'] === p.sku; });
@@ -624,6 +638,7 @@ function pickForm(opts) {
     '<div id="existBox"></div>' +
     (showBox ? '<label>本次箱數(與數量連動)</label><div class="stepper"><button id="bminus">−</button><input id="boxQty" type="number" inputmode="numeric" value="' + (it.boxQty || 0) + '"><button id="bplus">＋</button></div>' : '') +
     '<label>本次' + (existKind === 'bigcount' ? '盤點量' : '數量') + ' *</label><div class="stepper"><button id="minus">−</button><input id="qty" type="number" inputmode="numeric" value="' + opts.defaultQty + '"><button id="plus">＋</button></div>' +
+    (opts.dims ? '<label>尺寸/重量(選填,不填免)</label><div class="dimrow"><input id="d0" type="number" inputmode="decimal" placeholder="長cm"><input id="d1" type="number" inputmode="decimal" placeholder="寬cm"><input id="d2" type="number" inputmode="decimal" placeholder="高cm"><input id="d3" type="number" inputmode="decimal" placeholder="重量g"></div>' : '') +
     '<label>備註(瑕疵、規格送錯、多送等寫這裡)</label><input id="note"><div class="err" id="formErr"></div>' +
     '<div class="actions"><button onclick="history.back()">取消</button><button class="primary" id="saveBtn">儲存(新增一筆)</button></div></div>';
   var qtyEl = $('#qty');
@@ -639,7 +654,11 @@ function pickForm(opts) {
     boxEl.addEventListener('input', fromBox);
   }
   var editRecId = null;
-  $('#saveBtn').onclick = function () { var qty = Number(qtyEl.value); if (isNaN(qty) || qty < 0) { $('#formErr').textContent = '請輸入正確數量'; return; } opts.onSave(qty, $('#note').value, editRecId); };
+  $('#saveBtn').onclick = function () {
+    var qty = Number(qtyEl.value); if (isNaN(qty) || qty < 0) { $('#formErr').textContent = '請輸入正確數量'; return; }
+    var dims = opts.dims ? ['d0', 'd1', 'd2', 'd3'].map(function (id) { var v = $('#' + id).value.trim(); return v === '' ? '' : Number(v); }) : null;
+    opts.onSave(qty, $('#note').value, editRecId, dims);
+  };
   var recs = (store.recCache[existKind] || {})[existKey];
   function renderExist() {
     var list = (store.recCache[existKind] || {})[existKey] || [];
@@ -753,18 +772,39 @@ function pagePick346Form(params) {
 }
 
 /* ===================== 盤點作業(盤點表) ===================== */
-var bigTab = '待點', bigSort = { key: 'loc', asc: true };
+var bigTab = '待點', bigSort = { key: 'loc', asc: true }, bigDelMode = false, bigDelSel = {};
 function pageBigcount() {
   $('#pageTitle').textContent = '盤點作業';
   $('#app').innerHTML = searchBarHtml('bc',
     tabBarHtml('bc', [['待點', '待點清單'], ['已點', '已點清單']], bigTab) +
-    '<div class="filterbar"><button class="chip" id="bcScan">📷 連續掃描加入</button></div>' +
+    '<div class="filterbar"><button class="chip" id="bcScan">📷 連續掃描加入</button>' +
+    '<button class="chip' + (bigDelMode ? ' on' : '') + '" id="bcDelMode">🗑 刪除模式</button>' +
+    '<button class="chip" id="bcDelDo" style="display:none">刪除已選</button></div>' +
     sortBarHtml('bc', [['loc', '儲位'], ['stock', '庫存'], ['name', '品名'], ['sku', '貨號']], bigSort)) + '<div id="list"></div>';
   var term = '';
   bindSearch('bc', function (v) { term = v.toUpperCase(); render(); });
   bindTabBar('bc', function (t) { bigTab = t; render(); });
   bindSortBar('bc', bigSort, render);
   $('#bcScan').onclick = startBigScan;
+  $('#bcDelMode').onclick = function () {
+    bigDelMode = !bigDelMode; bigDelSel = {};
+    this.classList.toggle('on', bigDelMode);
+    $('#bcDelDo').style.display = bigDelMode ? '' : 'none';
+    render();
+  };
+  $('#bcDelDo').onclick = function () {
+    var skus = Object.keys(bigDelSel).filter(function (k) { return bigDelSel[k]; });
+    if (!skus.length) { toast('請先勾選要刪除的品項', 'err'); return; }
+    if (!confirm('確定從盤點表刪除這 ' + skus.length + ' 筆?')) return;
+    if (store.bigcount) store.bigcount = store.bigcount.filter(function (r) { return skus.indexOf(r.sku) < 0; });
+    bigDelSel = {}; render();
+    store.pending++; updateSyncInfo();
+    apiPost({ action: 'bigcountDelete', skus: skus }).then(function (d) {
+      store.pending--; updateSyncInfo();
+      if (d.ok) { toast('已刪除 ' + d.deleted + ' 筆', 'ok'); loadData('bigcount', true).then(rerenderActive); apiGet('meta').then(applyMeta); }
+      else toast('⚠ 刪除失敗:' + (d.error || ''), 'err', 5000);
+    }).catch(function () { store.pending--; updateSyncInfo(); toast('⚠ 網路失敗', 'err'); });
+  };
   function render() {
     var box = $('#list'); if (!box) return;
     var rows = store.bigcount; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
@@ -772,7 +812,20 @@ function pageBigcount() {
       .filter(function (r) { return bigTab === '待點' ? r.status !== '已點' : r.status === '已點'; });
     if (term) mapped = mapped.filter(function (r) { return r.sku.toUpperCase().indexOf(term) >= 0 || r.name.toUpperCase().indexOf(term) >= 0 || r.loc.toUpperCase().indexOf(term) >= 0 || (r.barcode || '').indexOf(term) >= 0; });
     mapped = sortItems(mapped, bigSort.key, bigSort.asc);
-    box.innerHTML = mapped.length ? mapped.map(function (it) { var c = Object.assign({}, it); c.subline = it.sku + (it.loc ? ' · ' + it.loc : ''); return pickCard(c, 'data-nav="/bigcountform?sku=' + encodeURIComponent(it.sku) + '"'); }).join('') : '<div class="empty">此分頁沒有品項</div>';
+    if (!mapped.length) { box.innerHTML = '<div class="empty">此分頁沒有品項</div>'; return; }
+    box.innerHTML = mapped.map(function (it) {
+      var c = Object.assign({}, it); c.subline = it.sku + (it.loc ? ' · ' + it.loc : '');
+      if (bigDelMode) {
+        var chk = bigDelSel[it.sku] ? '☑' : '☐';
+        return '<div class="card delrow' + (bigDelSel[it.sku] ? ' sel' : '') + '" data-delsku="' + esc(it.sku) + '">' +
+          '<div class="locline"><span class="name" style="color:' + statusColor(it.status) + ';font-weight:bold">' + chk + ' ' + esc(it.name) + '</span><span class="sku">' + esc(it.loc) + '</span></div>' +
+          '<div class="sku">' + esc(it.sku) + '</div><div class="sales">庫存: ' + it.stock + ' / 盤點量: ' + (it.doneQty == null ? '' : it.doneQty) + '</div></div>';
+      }
+      return pickCard(c, 'data-nav="/bigcountform?sku=' + encodeURIComponent(it.sku) + '"');
+    }).join('');
+    if (bigDelMode) box.querySelectorAll('.delrow').forEach(function (el) {
+      el.onclick = function () { var sku = this.getAttribute('data-delsku'); bigDelSel[sku] = !bigDelSel[sku]; render(); };
+    });
   }
   currentRender = render; render();
   loadData('bigcount').then(render);
@@ -794,8 +847,8 @@ function startBigScan() {
 function pageBigcountForm(params) {
   var it = (store.bigcount || []).find(function (r) { return r.sku === params.sku; });
   if (!it) { toast('找不到品項', 'err'); history.back(); return; }
-  pickForm({ title: '盤點作業', it: it, defaultQty: it.doneQty != null ? it.doneQty : it.stock, kind: 'bigcount', key: it.sku,
-    onSave: function (qty, note, recId) { submitBg({ action: 'bigcountSave', sku: it.sku, qty: qty, note: note, recId: recId }, (recId ? '已修改盤點紀錄:' : '盤點已送出:') + it.sku + ' × ' + qty, function () { it.doneQty = qty; it.user = mergeUser(it.user, store.user); it.status = '已點'; }); } });
+  pickForm({ title: '盤點作業', it: it, defaultQty: it.doneQty != null ? it.doneQty : it.stock, kind: 'bigcount', key: it.sku, dims: true,
+    onSave: function (qty, note, recId, dims) { submitBg({ action: 'bigcountSave', sku: it.sku, qty: qty, note: note, recId: recId, dims: dims }, (recId ? '已修改盤點紀錄:' : '盤點已送出:') + it.sku + ' × ' + qty, function () { it.doneQty = qty; it.user = mergeUser(it.user, store.user); it.status = '已點'; }); } });
 }
 
 /* ===================== 缺貨單 ===================== */
@@ -914,15 +967,25 @@ function pageShortageEdit(params) {
 }
 
 /* ===================== 缺貨登記(短庫存 po 清單) ===================== */
-var shortInvState = { term: '', font: 13 };
+var shortInvState = { term: '', font: Number(localStorage.getItem('si_font') || 11) };
+/* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
+function siColor(field, r) {
+  if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
+  if (field === 'sale3') { if (r.sale3 > r.sale1 * 2) return '#e69999'; if (r.sale3 < r.sale1 * 0.3) return '#99ffff'; }
+  return '';
+}
 function pageShortInv() {
   $('#pageTitle').textContent = '缺貨登記';
-  $('#app').innerHTML = searchBarHtml('si',
-    '<div class="filterbar">字級 <button class="chip" id="fontMinus">A−</button><button class="chip" id="fontPlus">A＋</button></div>') + '<div id="siList"></div>';
-  bindSearch('si', function (v) { shortInvState.term = v; renderShortInv(); });
-  $('#q_si').value = shortInvState.term;
-  $('#fontMinus').onclick = function () { shortInvState.font = Math.max(9, shortInvState.font - 1); renderShortInv(); };
-  $('#fontPlus').onclick = function () { shortInvState.font = Math.min(20, shortInvState.font + 1); renderShortInv(); };
+  $('#app').innerHTML =
+    '<div class="sibar"><input id="q_si" placeholder="輸入或掃描…" autocomplete="off"><button id="scan_si">📷</button><button id="clear_si">✕</button>' +
+    '<button class="chip" id="fontMinus">A−</button><button class="chip" id="fontPlus">A＋</button></div>' +
+    '<div id="siList" class="siwrap"></div>';
+  var q = $('#q_si'); q.value = shortInvState.term;
+  q.addEventListener('input', function () { shortInvState.term = q.value; renderShortInv(); });
+  $('#clear_si').onclick = function () { q.value = ''; shortInvState.term = ''; renderShortInv(); };
+  $('#scan_si').onclick = function () { openScanner(function (t) { q.value = t; shortInvState.term = t; renderShortInv(); }); };
+  $('#fontMinus').onclick = function () { shortInvState.font = Math.max(8, shortInvState.font - 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
+  $('#fontPlus').onclick = function () { shortInvState.font = Math.min(22, shortInvState.font + 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
   currentRender = renderShortInv; renderShortInv();
   loadData('shortInv').then(renderShortInv);
 }
@@ -932,11 +995,14 @@ function renderShortInv() {
   var term = shortInvState.term.trim().toUpperCase();
   if (term) rows = rows.filter(function (r) { return r.sku.toUpperCase().indexOf(term) >= 0 || r.name.toUpperCase().indexOf(term) >= 0 || (r.barcode || '').indexOf(term) >= 0; });
   var f = shortInvState.font;
-  var html = '<table class="sitable" style="font-size:' + f + 'px"><tr><th>產品名稱</th><th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr>';
-  html += rows.map(function (r) {
+  var html = '<table class="sitable" style="font-size:' + f + 'px"><thead><tr><th>產品名稱</th><th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
+  html += rows.map(function (r, i) {
     var mark = r.mark ? ' <span style="color:' + (r.mark === '廠商缺貨' ? '#c62828' : '#e68a00') + '">[' + esc(r.mark) + ']</span>' : '';
-    return '<tr data-row="' + r.row + '"><td class="siname">' + esc(r.name) + mark + '</td><td>' + esc(r.barcode) + '</td><td>' + r.totalStock + '</td><td>' + r.sale1 + '</td><td>' + r.sale3 + '</td><td>' + esc(r.note) + '</td></tr>';
-  }).join('') + '</table>';
+    var c1 = siColor('sale1', r), c3 = siColor('sale3', r);
+    return '<tr data-row="' + r.row + '" class="' + (i % 2 ? 'zd' : 'zl') + '"><td class="siname">' + esc(r.name) + mark + '</td><td>' + esc(r.barcode) + '</td><td>' + r.totalStock + '</td>' +
+      '<td' + (c1 ? ' style="background:' + c1 + '"' : '') + '>' + r.sale1 + '</td>' +
+      '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td>' + esc(r.note) + '</td></tr>';
+  }).join('') + '</tbody></table>';
   box.innerHTML = rows.length ? html : '<div class="empty">沒有符合的缺貨登記</div>';
   box.querySelectorAll('tr[data-row]').forEach(function (tr) { tr.onclick = function () { go('/short-inv-detail', 'row=' + tr.getAttribute('data-row')); }; });
 }
@@ -1006,7 +1072,15 @@ function pageSettings() {
       '<label>主管密碼</label><input id="setupPw" type="password"><div class="err" id="setupErr"></div>' +
       '<div class="actions"><button id="setupBtn">建立設定</button></div></div>';
   }
+  if (isAdmin && store.configured) {
+    html += '<div class="form" style="margin-top:10px"><h2>公司 IP 管理(僅 0107)</h2>' +
+      '<div style="font-size:13px;color:#666;margin-bottom:8px">你目前的 IP:<b>' + esc(store.ip || '偵測中') + '</b></div>' +
+      '<div id="ipList" class="empty" style="padding:6px 0">載入中…</div>' +
+      '<div class="actions"><button id="ipAddCur">＋ 把目前 IP 加入</button></div>' +
+      '<div class="inputrow" style="margin-top:8px"><input id="ipManual" placeholder="手動輸入 IP"><button id="ipAddManual" class="chip">加入</button></div></div>';
+  }
   $('#app').innerHTML = html;
+  if (isAdmin && store.configured) initIpManage();
   $('#syncDetail').textContent = $('#syncInfo').textContent;
   $('#syncBtn').onclick = manualSync;
   $('#grid').addEventListener('click', function (e) { var name = e.target.getAttribute && e.target.getAttribute('data-name'); if (name) selectUser(name); });
@@ -1017,6 +1091,25 @@ function pageSettings() {
     if (!ip || pw.length < 4) { $('#setupErr').textContent = 'IP 或密碼格式不正確(密碼至少 4 碼)'; return; }
     apiPost({ action: 'setup', companyIp: ip, password: pw }).then(function (d) { if (d.ok) { toast('設定完成', 'ok'); store.configured = true; pageSettings(); } else $('#setupErr').textContent = d.error || '設定失敗'; }).catch(function () { $('#setupErr').textContent = '無法連線後端'; });
   };
+}
+function initIpManage() {
+  function refresh(ips) {
+    var box = $('#ipList'); if (!box) return;
+    box.className = '';
+    box.innerHTML = ips.length ? ips.map(function (ip) {
+      return '<div class="reccard"><div class="recmain">' + esc(ip) + (ip === store.ip ? ' <span style="color:#2e7d32">(目前)</span>' : '') + '</div><button class="delbtn" data-ip="' + esc(ip) + '">移除</button></div>';
+    }).join('') : '<div class="empty" style="padding:6px 0">尚無 IP,請把目前 IP 加入</div>';
+    box.querySelectorAll('button[data-ip]').forEach(function (b) {
+      b.onclick = function () {
+        var ip = b.getAttribute('data-ip');
+        if (!confirm('確定移除 IP:' + ip + '?移除後該網段將無法免密碼使用')) return;
+        apiPost({ action: 'ipManage', op: 'remove', value: ip }).then(function (d) { if (d.ok) { toast('已移除', 'ok'); refresh(d.ips); } else toast(d.error || '失敗', 'err'); });
+      };
+    });
+  }
+  apiPost({ action: 'ipManage', op: 'list' }).then(function (d) { if (d.ok) refresh(d.ips); else { var b = $('#ipList'); if (b) b.textContent = d.error || '載入失敗'; } });
+  $('#ipAddCur').onclick = function () { apiPost({ action: 'ipManage', op: 'addCurrent' }).then(function (d) { if (d.ok) { toast('已加入目前 IP', 'ok'); refresh(d.ips); } else toast(d.error || '失敗', 'err'); }); };
+  $('#ipAddManual').onclick = function () { var ip = $('#ipManual').value.trim(); if (!ip) return; apiPost({ action: 'ipManage', op: 'add', value: ip }).then(function (d) { if (d.ok) { toast('已加入', 'ok'); $('#ipManual').value = ''; refresh(d.ips); } else toast(d.error || '失敗', 'err'); }); };
 }
 function selectUser(name) {
   apiPost({ action: 'authcheck', name: name }).then(function (d) {

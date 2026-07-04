@@ -126,9 +126,21 @@ h3.folder { cursor: pointer; user-select: none; }
 .navcount { color: #c62828; font-weight: bold; font-size: 13px; }
 .linkbtn { flex: 1; text-align: left; padding: 10px 12px; font-size: 15px; border: 1px solid #ccc;
   border-radius: 8px; background: #eef; color: #1a4a8f; text-decoration: underline; }
+.dimrow { display: flex; gap: 6px; }
+.dimrow input { width: 25%; padding: 9px 6px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; }
+.delrow { cursor: pointer; }
+.delrow.sel { background: #efe4f2; border: 1px solid #b59cc4; }
+
+/* 缺貨登記:滿版對齊頂端條、標題凍結、斑馬紋、可縮放 */
+.sibar { display: flex; gap: 6px; align-items: center; padding: 8px 0; flex-wrap: wrap; }
+.sibar input { flex: 1; min-width: 120px; padding: 9px 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; }
+.sibar button { padding: 8px 11px; font-size: 14px; border: 1px solid #ccc; border-radius: 8px; background: #fff; }
+.siwrap { margin: 0 -10px; }
 .sitable { width: 100%; border-collapse: collapse; }
-.sitable th, .sitable td { padding: 5px 6px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
-.sitable th { color: #888; font-weight: normal; white-space: nowrap; }
-.sitable td.siname { min-width: 120px; }
+.sitable th, .sitable td { padding: 4px 5px; border-bottom: 1px solid #e4e4e4; text-align: left; vertical-align: top; word-break: break-all; }
+.sitable thead th { position: sticky; top: 46px; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; white-space: nowrap; }
+.sitable td.siname { min-width: 90px; }
+.sitable tr.zl td { background-color: #ffffff; }
+.sitable tr.zd td { background-color: #f0edf4; }
 .sitable tr[data-row] { cursor: pointer; }
-.sitable tr[data-row]:active { background: #f0ecf5; }
+.sitable tr[data-row]:active td { background: #e0d5ea !important; }
