@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v9 */
+/* 倉儲系統前端 SPA v10 */
 'use strict';
 
 var CONFIG = {
@@ -1021,7 +1021,7 @@ function pageShortageEdit(params) {
 }
 
 /* ===================== 缺貨登記(短庫存 po 清單) ===================== */
-var shortInvState = { font: Number(localStorage.getItem('si_font') || 13) };
+var shortInvState = { font: Number(localStorage.getItem('si_font') || 18) };
 /* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
 function siColor(field, r) {
   if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
