@@ -146,6 +146,17 @@ h3.folder { cursor: pointer; user-select: none; }
 .sitable tr[data-row] { cursor: pointer; }
 .sitable tr[data-row]:active td { background: #e0d5ea !important; }
 
+/* 商品明細:進貨明細壓縮版型(不用左右滑) */
+#purchaseBox .rectable { font-size: 12px; }
+#purchaseBox .rectable th, #purchaseBox .rectable td { padding: 5px 3px; }
+#purchaseBox .rectable th:nth-child(5), #purchaseBox .rectable td:nth-child(5),
+#purchaseBox .rectable th:nth-child(6), #purchaseBox .rectable td:nth-child(6) { white-space: normal; word-break: break-all; }
+
+/* 缺貨登記:往下滑隱藏頂端紫條與公告列,最大化內容 */
+body.si-full #topbar { display: none; }
+body.si-full .sibar { display: none; }
+body.si-full .siwrap { max-height: 100vh; }
+
 /* 第二庫存:櫃位總覽 */
 .cabgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cabgrid button { padding: 12px 4px; border: 1px solid #ccc; border-radius: 10px; background: #fff;

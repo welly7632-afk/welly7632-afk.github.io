@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v8 */
+/* 倉儲系統前端 SPA v9 */
 'use strict';
 
 var CONFIG = {
@@ -220,6 +220,7 @@ var routes = {}, currentRender = null;
 function rerenderActive() { if (currentRender) currentRender(); }
 function router() {
   closeDrawer(); closeScanner();
+  document.body.classList.remove('si-full');
   var hash = location.hash.slice(1) || '/storage';
   var path = hash.split('?')[0], params = {};
   (hash.split('?')[1] || '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) params[p[0]] = decodeURIComponent(p[1] || ''); });
@@ -418,14 +419,22 @@ function pageDetail(params) {
   }
   renderRel();
   if (!store.rel) loadData('rel').then(renderRel);
-  var PUR_COLS = ['進貨日期', '進貨單號', '數量', '單價', '廠商', '點貨人'];
+  var PUR_COLS = ['日期', '單號', '數量', '單價', '廠商', '點貨人'];
+  /* 壓縮欄位讓表格不用左右滑:日期去年份(跨年才留2位年)、單價取2位 */
+  function purRow(x) {
+    var d = String(x['進貨日期'] || ''), m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) d = (m[1] === String(new Date().getFullYear()) ? '' : m[1].slice(2) + '/') + Number(m[2]) + '/' + Number(m[3]);
+    var price = Number(x['單價']);
+    return { '日期': d, '單號': x['進貨單號'], '數量': x['數量'], '單價': isNaN(price) ? (x['單價'] == null ? '' : x['單價']) : Math.round(price * 100) / 100, '廠商': x['廠商'], '點貨人': x['點貨人'] || '' };
+  }
+  function purTable(rows) { return recTable((rows || []).map(purRow), PUR_COLS); }
   var pur = store.purchaseIdx[p.sku];
-  if (pur) { $('#purchaseBox').innerHTML = recTable(pur, PUR_COLS); }
+  if (pur) { $('#purchaseBox').innerHTML = purTable(pur); }
   else {
     $('#purchaseBox').innerHTML = '<div class="empty" style="padding:10px 0">載入中…</div>';
     apiGet('detail&sku=' + encodeURIComponent(p.sku)).then(function (d) {
       if (!d.ok) return; store.purchaseIdx[p.sku] = d.purchases;
-      var el = $('#purchaseBox'); if (el) el.innerHTML = recTable(d.purchases, PUR_COLS);
+      var el = $('#purchaseBox'); if (el) el.innerHTML = purTable(d.purchases);
     }).catch(function () { var el = $('#purchaseBox'); if (el) el.textContent = '無法連線後端'; });
   }
 }
@@ -555,7 +564,7 @@ function handleSecondDelete(sku) {
 }
 
 /* ===================== 第二庫存清單 ===================== */
-var secondState = { term: '', sort: { key: 'secondLoc', asc: true }, mode: 'cab', cabLoc: '' };
+var secondState = { term: '', sort: { key: 'secondLoc', asc: true }, mode: 'list', cabLoc: '' };
 var secondScan = { items: [] };
 function secondCard(p) {
   return '<div class="card seccard" data-sku="' + esc(p.sku) + '" data-nav="/detail?sku=' + encodeURIComponent(p.sku) + '"><div class="secrow">' +
@@ -564,7 +573,7 @@ function secondCard(p) {
 }
 function pageSecondList() {
   $('#pageTitle').textContent = '第二庫存清單';
-  $('#app').innerHTML = tabBarHtml('slmode', [['cab', '🗄 櫃位總覽'], ['list', '📋 清單/掃描']], secondState.mode) + '<div id="slBody"></div>';
+  $('#app').innerHTML = tabBarHtml('slmode', [['list', '📋 清單/掃描'], ['cab', '🗄 櫃位總覽']], secondState.mode) + '<div id="slBody"></div>';
   bindTabBar('slmode', function (t) { secondState.mode = t; secondState.cabLoc = ''; renderSlBody(); });
   renderSlBody();
 }
@@ -1012,7 +1021,7 @@ function pageShortageEdit(params) {
 }
 
 /* ===================== 缺貨登記(短庫存 po 清單) ===================== */
-var shortInvState = { font: Number(localStorage.getItem('si_font') || 11) };
+var shortInvState = { font: Number(localStorage.getItem('si_font') || 13) };
 /* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
 function siColor(field, r) {
   if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
@@ -1027,6 +1036,15 @@ function pageShortInv() {
     '<div id="siList" class="siwrap"></div>';
   $('#fontMinus').onclick = function () { shortInvState.font = Math.max(8, shortInvState.font - 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
   $('#fontPlus').onclick = function () { shortInvState.font = Math.min(22, shortInvState.font + 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
+  /* 往下滑隱藏頂端紫條+公告列(最大化內容),往上滑或回到頂端就出現 */
+  var wrap = $('#siList'), lastY = 0;
+  wrap.addEventListener('scroll', function () {
+    var y = Math.max(0, wrap.scrollTop);
+    var atEnd = y + wrap.clientHeight >= wrap.scrollHeight - 4;
+    if (y > lastY + 6 && y > 46) document.body.classList.add('si-full');
+    else if ((y < lastY - 6 && !atEnd) || y <= 10) document.body.classList.remove('si-full');
+    lastY = y;
+  });
   currentRender = renderShortInv; renderShortInv();
   loadData('shortInv').then(renderShortInv);
 }
