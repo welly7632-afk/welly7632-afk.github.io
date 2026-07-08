@@ -131,16 +131,25 @@ h3.folder { cursor: pointer; user-select: none; }
 .delrow { cursor: pointer; }
 .delrow.sel { background: #efe4f2; border: 1px solid #b59cc4; }
 
-/* 缺貨登記:滿版對齊頂端條、標題凍結、斑馬紋、可縮放 */
-.sibar { display: flex; gap: 6px; align-items: center; padding: 8px 0; flex-wrap: wrap; }
-.sibar input { flex: 1; min-width: 120px; padding: 9px 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; }
-.sibar button { padding: 8px 11px; font-size: 14px; border: 1px solid #ccc; border-radius: 8px; background: #fff; }
-.siwrap { margin: 0 -10px; }
+/* 缺貨登記:公告列、標題凍結、斑馬紋、可縮放、放大時左右滑(不換行) */
+.sibar { display: flex; gap: 6px; align-items: center; padding: 8px 0; flex-wrap: nowrap; }
+.sibar button { padding: 8px 11px; font-size: 14px; border: 1px solid #ccc; border-radius: 8px; background: #fff; flex-shrink: 0; }
+.siannounce { background: #fff8dc; border: 1px solid #e6d9a0; color: #6b5900; border-radius: 8px;
+  padding: 7px 10px; font-size: 14px; white-space: pre-wrap; word-break: break-all; }
+.siwrap { margin: 0 -10px; overflow: auto; max-height: calc(100vh - 118px); }
 .sitable { width: 100%; border-collapse: collapse; }
-.sitable th, .sitable td { padding: 4px 5px; border-bottom: 1px solid #e4e4e4; text-align: left; vertical-align: top; word-break: break-all; }
-.sitable thead th { position: sticky; top: 46px; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; white-space: nowrap; }
+.sitable th, .sitable td { padding: 4px 5px; border-bottom: 1px solid #e4e4e4; text-align: left; vertical-align: top; white-space: nowrap; }
+.sitable thead th { position: sticky; top: 0; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; white-space: nowrap; }
 .sitable td.siname { min-width: 90px; }
 .sitable tr.zl td { background-color: #ffffff; }
 .sitable tr.zd td { background-color: #f0edf4; }
 .sitable tr[data-row] { cursor: pointer; }
 .sitable tr[data-row]:active td { background: #e0d5ea !important; }
+
+/* 第二庫存:櫃位總覽 */
+.cabgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cabgrid button { padding: 12px 4px; border: 1px solid #ccc; border-radius: 10px; background: #fff;
+  display: flex; flex-direction: column; gap: 3px; align-items: center; cursor: pointer; }
+.cabgrid .cabloc { color: #d02b2b; font-weight: bold; font-size: 17px; word-break: break-all; }
+.cabgrid .cabcount { color: #666; font-size: 12px; }
+.cabtitle { font-size: 15px; color: #5b4a72; margin: 2px 0 8px; }
