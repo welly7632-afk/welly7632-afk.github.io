@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v12 */
+/* 倉儲系統前端 SPA v13 */
 'use strict';
 
 var CONFIG = {
@@ -48,9 +48,17 @@ function loadCache() {
 
 /* ===================== API ===================== */
 function apiGet(query) { return fetch(CONFIG.API_URL + '?action=' + query).then(function (r) { return r.json(); }); }
-function apiPost(body) {
+function apiPost(body, _try) {
   body.user = store.user; body.ip = store.ip; body.token = store.token;
-  return fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); });
+  return fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }).then(function (d) {
+    /* 後端 busy = 寫入排隊逾時且保證沒寫入 → 自動重送最多 3 次(3/6/9 秒後) */
+    var n = _try || 0;
+    if (d && d.busy && n < 3) {
+      toast('寫入排隊中,自動重試(' + (n + 1) + '/3)…', '', 2200);
+      return new Promise(function (res) { setTimeout(res, 3000 * (n + 1)); }).then(function () { return apiPost(body, n + 1); });
+    }
+    return d;
+  });
 }
 function refreshProducts(silent, force) {
   var q = 'products' + (store.v && !force ? '&v=' + encodeURIComponent(store.v) : '');
@@ -220,7 +228,7 @@ var routes = {}, currentRender = null;
 function rerenderActive() { if (currentRender) currentRender(); }
 function router() {
   closeDrawer(); closeScanner();
-  document.body.classList.remove('si-full');
+  document.body.classList.remove('si-full'); document.body.classList.remove('si-wide');
   var hash = location.hash.slice(1) || '/storage';
   var path = hash.split('?')[0], params = {};
   (hash.split('?')[1] || '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) params[p[0]] = decodeURIComponent(p[1] || ''); });
@@ -1041,7 +1049,24 @@ function pageShortageEdit(params) {
 }
 
 /* ===================== 缺貨登記(短庫存 po 清單) ===================== */
-var shortInvState = { font: Number(localStorage.getItem('si_font') || 13) };
+/* 版面預設(0107 於 2026-07-09 用調整器選定):單列、總寬固定各欄按比例分配;調整存 localStorage si_set 成為該裝置預設 */
+var SI_DEF = { mode: 'single', padV: 4, wide: false,
+  f: { name: 16, barcode: 13, stock: 15, s1: 15, s3: 15, note: 13 },
+  w: { name: 298, barcode: 77, stock: 40, s1: 40, s3: 40, note: 64 } };
+var SI_KEYS = ['name', 'barcode', 'stock', 's1', 's3', 'note'];
+var SI_LABEL = { name: '品名', barcode: '條碼', stock: '總庫存', s1: '單月', s3: '三月', note: '備註' };
+var siSet = (function () {
+  var d = JSON.parse(JSON.stringify(SI_DEF)), s = lsGet('si_set');
+  if (s && s.f && s.w) {
+    d.mode = s.mode === 'double' ? 'double' : 'single';
+    if (s.padV != null) d.padV = Number(s.padV);
+    d.wide = !!s.wide;
+    SI_KEYS.forEach(function (k) { if (s.f[k]) d.f[k] = Number(s.f[k]); if (s.w[k]) d.w[k] = Number(s.w[k]); });
+  }
+  return d;
+})();
+var siPanelOpen = false;
+function siSave() { lsSet('si_set', siSet); }
 /* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
 function siColor(field, r) {
   if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
@@ -1050,12 +1075,13 @@ function siColor(field, r) {
 }
 function pageShortInv() {
   $('#pageTitle').textContent = '缺貨登記';
+  siPanelOpen = false;   /* 版面設定面板每次進頁面都預設收合 */
   $('#app').innerHTML =
     '<div class="sibar"><div id="siAnnBox" style="flex:1;min-width:0"></div>' +
     '<button class="chip" id="fontMinus">A−</button><button class="chip" id="fontPlus">A＋</button></div>' +
     '<div id="siList" class="siwrap"></div>';
-  $('#fontMinus').onclick = function () { shortInvState.font = Math.max(8, shortInvState.font - 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
-  $('#fontPlus').onclick = function () { shortInvState.font = Math.min(22, shortInvState.font + 2); localStorage.setItem('si_font', shortInvState.font); renderShortInv(); };
+  $('#fontMinus').onclick = function () { SI_KEYS.forEach(function (k) { siSet.f[k] = Math.max(8, siSet.f[k] - 2); }); siSave(); renderShortInv(); };
+  $('#fontPlus').onclick = function () { SI_KEYS.forEach(function (k) { siSet.f[k] = Math.min(28, siSet.f[k] + 2); }); siSave(); renderShortInv(); };
   /* 往下滑隱藏頂端紫條+公告列(最大化內容),往上滑或回到頂端就出現 */
   var wrap = $('#siList'), lastY = 0;
   wrap.addEventListener('scroll', function () {
@@ -1072,24 +1098,83 @@ function renderShortInv() {
   /* 公告 = 缺貨登記分頁 W1,沒內容就不顯示 */
   var ab = $('#siAnnBox');
   if (ab) ab.innerHTML = store.siAnnounce ? '<div class="siannounce">📢 ' + esc(store.siAnnounce) + '</div>' : '';
+  document.body.classList.toggle('si-wide', !!siSet.wide);
   var box = $('#siList'); if (!box) return;
   var rows = store.shortInv; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
-  var f = shortInvState.font;
-  /* 每品項兩列:品名獨佔一列(可換行),數據第二列 → 預設大小不用左右滑,列高也比較高 */
-  var html = '<table class="sitable" style="font-size:' + f + 'px"><thead><tr><th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
+  var single = siSet.mode === 'single';
+  var cols = single ? SI_KEYS : SI_KEYS.slice(1);
+  var colg = '<colgroup>' + cols.map(function (k) { return '<col class="sic_' + k + '">'; }).join('') + '</colgroup>';
+  var html = '<table class="sitable' + (single ? ' single' : '') + '">' + colg + '<thead><tr>' +
+    (single ? '<th>產品名稱</th>' : '') + '<th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
   html += rows.map(function (r, i) {
     var z = i % 2 ? 'zd' : 'zl';
     var mark = r.mark ? ' <span style="color:' + (r.mark === '廠商缺貨' ? '#c62828' : '#e68a00') + '">[' + esc(r.mark) + ']</span>' : '';
     var c1 = siColor('sale1', r), c3 = siColor('sale3', r);
     /* 總庫存:0/負數=深紅底白字,其餘藍底粗體 → 跟單月/三月的洋紅/粉紅/青色明顯區隔 */
     var tsStyle = r.totalStock <= 0 ? 'background:#c62828;color:#fff;font-weight:bold' : 'background:#dce9ff;color:#0d47a1;font-weight:bold';
-    return '<tr data-row="' + r.row + '" class="namerow ' + z + '"><td class="siname" colspan="5">' + esc(r.name) + mark + '</td></tr>' +
-      '<tr data-row="' + r.row + '" class="datarow ' + z + '"><td>' + esc(r.barcode) + '</td><td style="' + tsStyle + '">' + r.totalStock + '</td>' +
+    var dataCells = '<td>' + esc(r.barcode) + '</td><td style="' + tsStyle + '">' + r.totalStock + '</td>' +
       '<td' + (c1 ? ' style="background:' + c1 + '"' : '') + '>' + r.sale1 + '</td>' +
-      '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td class="sinote">' + esc(r.note) + '</td></tr>';
+      '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td class="sinote">' + esc(r.note) + '</td>';
+    if (single) return '<tr data-row="' + r.row + '" class="dr ' + z + '"><td class="siname">' + esc(r.name) + mark + '</td>' + dataCells + '</tr>';
+    return '<tr data-row="' + r.row + '" class="namerow ' + z + '"><td class="siname" colspan="5">' + esc(r.name) + mark + '</td></tr>' +
+      '<tr data-row="' + r.row + '" class="datarow dr ' + z + '">' + dataCells + '</tr>';
   }).join('') + '</tbody></table>';
-  box.innerHTML = rows.length ? html : '<div class="empty">沒有缺貨登記資料</div>';
+  box.innerHTML = rows.length ? (html + siPanelHtml()) : '<div class="empty">沒有缺貨登記資料</div>';
   box.querySelectorAll('tr[data-row]').forEach(function (tr) { tr.onclick = function () { go('/short-inv-detail', 'row=' + tr.getAttribute('data-row')); }; });
+  bindSiPanel();
+  siApplyStyle();
+}
+/* 版面設定面板(表格最下面,調完即存為此裝置預設) */
+function siPanelHtml() {
+  if (!siPanelOpen) return '<div class="sipanel"><button class="chip" id="siPanelBtn">⚙ 版面設定</button></div>';
+  var h = '<div class="sipanel open"><div class="sirow"><button class="chip on" id="siPanelBtn">▼ 收合</button>' +
+    '<button class="chip' + (siSet.mode === 'single' ? ' on' : '') + '" id="siModeS">單列</button>' +
+    '<button class="chip' + (siSet.mode === 'double' ? ' on' : '') + '" id="siModeD">兩列</button>' +
+    '<button class="chip' + (siSet.wide ? ' on' : '') + '" id="siWideBtn">滿版寬</button>' +
+    '<button class="chip" id="siResetBtn">重設回預設</button></div>' +
+    '<div class="sirow"><span class="silab">行高</span><input type="range" id="si_padV" min="0" max="24" value="' + siSet.padV + '"><span class="sival" id="v_si_padV">' + siSet.padV + '</span></div>';
+  SI_KEYS.forEach(function (k) {
+    h += '<div class="sirow"><span class="silab">' + SI_LABEL[k] + '</span>' +
+      '<span class="simini">字</span><input type="range" id="si_f_' + k + '" min="9" max="28" value="' + siSet.f[k] + '"><span class="sival" id="v_si_f_' + k + '">' + siSet.f[k] + '</span>' +
+      '<span class="simini">寬</span><input type="range" id="si_w_' + k + '" min="20" max="420" value="' + siSet.w[k] + '"><span class="sival" id="v_si_w_' + k + '">' + siSet.w[k] + '</span></div>';
+  });
+  return h + '<div class="sihint">寬度是比例分配:一欄變小,其他欄自動變大(總寬固定)。設定會記住在這台裝置。</div></div>';
+}
+function bindSiPanel() {
+  var pb = $('#siPanelBtn'); if (!pb) return;
+  pb.onclick = function () { siPanelOpen = !siPanelOpen; renderShortInv(); };
+  if (!siPanelOpen) return;
+  $('#siModeS').onclick = function () { siSet.mode = 'single'; siSave(); renderShortInv(); };
+  $('#siModeD').onclick = function () { siSet.mode = 'double'; siSave(); renderShortInv(); };
+  $('#siWideBtn').onclick = function () { siSet.wide = !siSet.wide; siSave(); renderShortInv(); };
+  $('#siResetBtn').onclick = function () { siSet = JSON.parse(JSON.stringify(SI_DEF)); siSave(); renderShortInv(); };
+  $('#si_padV').addEventListener('input', function () { siSet.padV = Number(this.value); $('#v_si_padV').textContent = this.value; siSave(); siApplyStyle(); });
+  SI_KEYS.forEach(function (k) {
+    $('#si_f_' + k).addEventListener('input', function () { siSet.f[k] = Number(this.value); $('#v_si_f_' + k).textContent = this.value; siSave(); siApplyStyle(); });
+    $('#si_w_' + k).addEventListener('input', function () { siSet.w[k] = Number(this.value); $('#v_si_w_' + k).textContent = this.value; siSave(); siApplyStyle(); });
+  });
+}
+/* 只改樣式不重建表格(拉桿拖曳中即時反映) */
+function siApplyStyle() {
+  var dyn = document.getElementById('siDyn');
+  if (!dyn) { dyn = document.createElement('style'); dyn.id = 'siDyn'; document.head.appendChild(dyn); }
+  var single = siSet.mode === 'single';
+  var cols = single ? SI_KEYS : SI_KEYS.slice(1);
+  var sum = cols.reduce(function (a, k) { return a + siSet.w[k]; }, 0);
+  cols.forEach(function (k) {
+    var col = document.querySelector('#siList .sic_' + k);
+    if (col) col.style.width = (siSet.w[k] / sum * 100).toFixed(2) + '%';
+  });
+  var css =
+    '#siList .sitable { table-layout: fixed; width: 100%; }' +
+    '#siList .sitable th, #siList .sitable td { padding: ' + siSet.padV + 'px 4px; }';
+  cols.forEach(function (k, i) {
+    css += '#siList .sitable thead th:nth-child(' + (i + 1) + '), #siList .sitable tr.dr td:nth-child(' + (i + 1) + ') { font-size: ' + siSet.f[k] + 'px; }';
+  });
+  if (!single) css +=
+    '#siList .sitable tr.namerow td { font-size: ' + siSet.f.name + 'px; border-bottom: none; padding-bottom: 2px; }' +
+    '#siList .sitable tr.datarow td { border-bottom: 1px solid #d9d9de; padding-bottom: ' + (siSet.padV + 6) + 'px; }';
+  dyn.textContent = css;
 }
 function pageShortInvDetail(params) {
   var r = (store.shortInv || []).find(function (x) { return String(x.row) === String(params.row); });

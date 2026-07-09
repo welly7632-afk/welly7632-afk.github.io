@@ -138,11 +138,20 @@ h3.folder { cursor: pointer; user-select: none; }
   padding: 7px 10px; font-size: 14px; white-space: pre-wrap; word-break: break-all; }
 .siwrap { margin: 0 -10px; overflow: auto; max-height: calc(100vh - 118px); }
 .sitable { width: 100%; border-collapse: collapse; }
-.sitable th, .sitable td { padding: 6px 5px; text-align: left; vertical-align: top; white-space: nowrap; }
-.sitable thead th { position: sticky; top: 0; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; white-space: nowrap; }
-.sitable td.siname { white-space: normal; word-break: break-all; padding: 10px 6px 2px; color: #111; }
-.sitable td.sinote { white-space: normal; word-break: break-all; }
-.sitable tr.datarow td { border-bottom: 1px solid #d9d9de; padding-bottom: 10px; }
+.sitable th, .sitable td { padding: 6px 4px; text-align: left; vertical-align: top; word-break: break-all; }
+.sitable thead th { position: sticky; top: 0; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; }
+.sitable td.siname { color: #111; }
+
+/* 缺貨登記:表格底部版面設定面板 */
+.sipanel { padding: 12px 10px 24px; }
+.sipanel.open { background: #efeaf5; margin: 10px; border-radius: 10px; padding: 10px 12px 14px; }
+.sipanel .sirow { display: flex; align-items: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.sipanel .silab { width: 48px; font-size: 13px; color: #555; flex-shrink: 0; }
+.sipanel .simini { font-size: 12px; color: #888; flex-shrink: 0; }
+.sipanel input[type=range] { flex: 1; min-width: 60px; }
+.sipanel .sival { width: 28px; text-align: right; font-size: 13px; font-weight: bold; flex-shrink: 0; }
+.sihint { font-size: 12px; color: #777; margin-top: 8px; }
+body.si-wide #app { max-width: none; }
 .sitable tr.zl td { background-color: #ffffff; }
 .sitable tr.zd td { background-color: #f0edf4; }
 .sitable tr[data-row] { cursor: pointer; }
