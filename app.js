@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v10 */
+/* 倉儲系統前端 SPA v12 */
 'use strict';
 
 var CONFIG = {
@@ -325,8 +325,11 @@ function pageHome() {
 var searchState = { term: '', field: 'all', onlySecond: false, onlyAA: false, sort: { key: 'loc', asc: true } };
 var FIELD_OPTIONS = [['all', '全部欄位'], ['sku', '貨號'], ['name', '品名'], ['loc', '動態儲位'], ['secondLoc', '第二儲位'], ['barcode', '條碼'], ['vendor', '廠商']];
 var SORT_OPTIONS = [['loc', '動態儲位'], ['qty', '庫存量'], ['name', '品名'], ['vendor', '廠商'], ['sku', '貨號']];
+var listLimit = 50;
+function resetList() { listLimit = 50; renderList(); }
 function pageStorage() {
   $('#pageTitle').textContent = '儲位查詢';
+  listLimit = 50;
   $('#app').innerHTML =
     '<div class="searchbar"><input id="q" placeholder="輸入或掃描…" value="' + esc(searchState.term) + '" autocomplete="off">' +
     '<button id="scanBtn" aria-label="掃描">📷</button><button id="clearBtn" aria-label="清除">✕</button></div>' +
@@ -335,13 +338,13 @@ function pageStorage() {
     '<button class="chip' + (searchState.onlyAA ? ' on' : '') + '" id="chipAA">AA新儲位</button></div>' +
     sortBarHtml('st', SORT_OPTIONS, searchState.sort) + '<div id="list"></div>';
   var q = $('#q');
-  q.addEventListener('input', function () { searchState.term = q.value; renderList(); });
-  $('#clearBtn').onclick = function () { searchState.term = ''; q.value = ''; renderList(); q.focus(); };
-  $('#scanBtn').onclick = function () { openScanner(function (text) { searchState.term = text; q.value = text; renderList(); }); };
-  $('#field').onchange = function () { searchState.field = this.value; renderList(); };
-  $('#chipSecond').onclick = function () { searchState.onlySecond = !searchState.onlySecond; this.classList.toggle('on', searchState.onlySecond); renderList(); };
-  $('#chipAA').onclick = function () { searchState.onlyAA = !searchState.onlyAA; this.classList.toggle('on', searchState.onlyAA); renderList(); };
-  bindSortBar('st', searchState.sort, renderList);
+  q.addEventListener('input', function () { searchState.term = q.value; resetList(); });
+  $('#clearBtn').onclick = function () { searchState.term = ''; q.value = ''; resetList(); q.focus(); };
+  $('#scanBtn').onclick = function () { openScanner(function (text) { searchState.term = text; q.value = text; resetList(); }); };
+  $('#field').onchange = function () { searchState.field = this.value; resetList(); };
+  $('#chipSecond').onclick = function () { searchState.onlySecond = !searchState.onlySecond; this.classList.toggle('on', searchState.onlySecond); resetList(); };
+  $('#chipAA').onclick = function () { searchState.onlyAA = !searchState.onlyAA; this.classList.toggle('on', searchState.onlyAA); resetList(); };
+  bindSortBar('st', searchState.sort, resetList);
   currentRender = renderList; renderList();
 }
 function matchProduct(p, term, field) {
@@ -362,15 +365,32 @@ function productCard(p, withBtns) {
 function renderList() {
   var box = $('#list'); if (!box) return;
   var termU = searchState.term.trim().toUpperCase(), termRaw = searchState.term.trim();
+  var aaCount = 0;
   var items = store.products.filter(function (p) {
+    if (String(p.loc || '').toUpperCase().indexOf('AA') === 0) aaCount++;
     if (searchState.onlySecond && !p.secondLoc) return false;
     if (searchState.onlyAA && String(p.loc || '').toUpperCase().indexOf('AA') !== 0) return false;
     return matchProduct(p, termU, searchState.field) || matchProduct(p, termRaw, searchState.field);
   });
+  var aaBtn = $('#chipAA'); if (aaBtn) aaBtn.textContent = 'AA新儲位(' + aaCount + ')';
   if (searchState.sort.key) items = sortItems(items.slice(), searchState.sort.key, searchState.sort.asc);
-  items = items.slice(0, 50);
-  box.innerHTML = items.length ? items.map(function (p) { return productCard(p, true); }).join('') : '<div class="empty">' + (store.products.length ? '沒有符合的品項' : '資料載入中…') + '</div>';
+  var shown = items.slice(0, listLimit);
+  /* 超過上限顯示「更多」按鈕,滑到底自動載入(IntersectionObserver) */
+  box.innerHTML = (shown.length ? shown.map(function (p) { return productCard(p, true); }).join('') : '<div class="empty">' + (store.products.length ? '沒有符合的品項' : '資料載入中…') + '</div>') +
+    (items.length > listLimit ? '<button class="morebtn" id="moreBtn">▼ 顯示更多(還有 ' + (items.length - listLimit) + ' 項,共 ' + items.length + ' 項)</button>' : '');
+  var mb = $('#moreBtn');
+  if (mb) {
+    mb.onclick = function () { listLimit += 150; renderList(); };
+    if (window.IntersectionObserver) new IntersectionObserver(function (es, obs) { if (es[0].isIntersecting) { obs.disconnect(); listLimit += 150; renderList(); } }).observe(mb);
+  }
 }
+/* 滑近底部就自動載入更多(scroll 保險,涵蓋 IO 沒觸發的情況) */
+window.addEventListener('scroll', function () {
+  var mb = document.getElementById('moreBtn');
+  if (!mb) return;
+  var rct = mb.getBoundingClientRect();
+  if (rct.top < window.innerHeight + 300) mb.onclick();
+}, { passive: true });
 
 /* 加到盤點表(共用):寫入 條碼查詢.點貨表 A 欄 */
 function addToBigcount(sku, btn) {
@@ -1021,7 +1041,7 @@ function pageShortageEdit(params) {
 }
 
 /* ===================== 缺貨登記(短庫存 po 清單) ===================== */
-var shortInvState = { font: Number(localStorage.getItem('si_font') || 18) };
+var shortInvState = { font: Number(localStorage.getItem('si_font') || 13) };
 /* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
 function siColor(field, r) {
   if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
@@ -1055,15 +1075,18 @@ function renderShortInv() {
   var box = $('#siList'); if (!box) return;
   var rows = store.shortInv; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
   var f = shortInvState.font;
-  var html = '<table class="sitable" style="font-size:' + f + 'px"><thead><tr><th>產品名稱</th><th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
+  /* 每品項兩列:品名獨佔一列(可換行),數據第二列 → 預設大小不用左右滑,列高也比較高 */
+  var html = '<table class="sitable" style="font-size:' + f + 'px"><thead><tr><th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
   html += rows.map(function (r, i) {
+    var z = i % 2 ? 'zd' : 'zl';
     var mark = r.mark ? ' <span style="color:' + (r.mark === '廠商缺貨' ? '#c62828' : '#e68a00') + '">[' + esc(r.mark) + ']</span>' : '';
     var c1 = siColor('sale1', r), c3 = siColor('sale3', r);
     /* 總庫存:0/負數=深紅底白字,其餘藍底粗體 → 跟單月/三月的洋紅/粉紅/青色明顯區隔 */
     var tsStyle = r.totalStock <= 0 ? 'background:#c62828;color:#fff;font-weight:bold' : 'background:#dce9ff;color:#0d47a1;font-weight:bold';
-    return '<tr data-row="' + r.row + '" class="' + (i % 2 ? 'zd' : 'zl') + '"><td class="siname">' + esc(r.name) + mark + '</td><td>' + esc(r.barcode) + '</td><td style="' + tsStyle + '">' + r.totalStock + '</td>' +
+    return '<tr data-row="' + r.row + '" class="namerow ' + z + '"><td class="siname" colspan="5">' + esc(r.name) + mark + '</td></tr>' +
+      '<tr data-row="' + r.row + '" class="datarow ' + z + '"><td>' + esc(r.barcode) + '</td><td style="' + tsStyle + '">' + r.totalStock + '</td>' +
       '<td' + (c1 ? ' style="background:' + c1 + '"' : '') + '>' + r.sale1 + '</td>' +
-      '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td>' + esc(r.note) + '</td></tr>';
+      '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td class="sinote">' + esc(r.note) + '</td></tr>';
   }).join('') + '</tbody></table>';
   box.innerHTML = rows.length ? html : '<div class="empty">沒有缺貨登記資料</div>';
   box.querySelectorAll('tr[data-row]').forEach(function (tr) { tr.onclick = function () { go('/short-inv-detail', 'row=' + tr.getAttribute('data-row')); }; });
@@ -1072,20 +1095,22 @@ function pageShortInvDetail(params) {
   var r = (store.shortInv || []).find(function (x) { return String(x.row) === String(params.row); });
   if (!r) { toast('找不到', 'err'); history.back(); return; }
   $('#pageTitle').textContent = '缺貨登記明細';
-  var kv = [['日期', r.date], ['廠代', r.vendorCode], ['產品代號', r.sku], ['產品名稱', r.name], ['規格1', r.spec1],
-    ['條碼', r.barcode], ['龍宮庫存', r.lgStock], ['儲位1', r.loc1], ['儲位2', r.loc2], ['總庫存', r.totalStock],
-    ['單月銷量', r.sale1], ['三月銷量', r.sale3], ['配貨數量', r.allocQty], ['儲位', r.loc], ['備註', r.note], ['處理方式', r.handle], ['目前標記', r.mark]];
+  /* 只顯示四個欄位、大字 */
+  var kv = [['日期', r.date], ['配貨數量', r.allocQty], ['處理方式', r.handle]];
   $('#app').innerHTML =
     '<div class="backrow"><button onclick="history.back()">← 返回</button></div>' +
-    '<div class="detail"><h3>' + esc(r.name) + '</h3>' +
-    '<div class="toggle" style="margin-bottom:10px"><button id="mkVendor"' + (r.mark === '廠商缺貨' ? ' class="on"' : '') + '>廠商缺貨</button><button id="mkHold"' + (r.mark === '先不拿' ? ' class="on"' : '') + '>先不拿</button></div>' +
-    (findProduct(r.sku) ? '<button class="linkbtn" id="toProduct" style="margin-bottom:10px">看商品明細 →</button>' : '') +
-    '<div class="kv">' + kv.map(function (x) { return '<div class="k">' + esc(x[0]) + '</div><div class="v">' + esc(x[1]) + '</div>'; }).join('') + '</div></div>';
+    '<div class="detail"><h3 class="sibig-name">' + esc(r.name) + '</h3>' +
+    '<div class="toggle" style="margin-bottom:12px"><button id="mkVendor"' + (r.mark === '廠商缺貨' ? ' class="on"' : '') + '>廠商缺貨</button><button id="mkHold"' + (r.mark === '先不拿' ? ' class="on"' : '') + '>先不拿</button></div>' +
+    (findProduct(r.sku) ? '<button class="linkbtn" id="toProduct" style="margin-bottom:12px">看商品明細 →</button>' : '') +
+    '<div class="kv sibigkv">' + kv.map(function (x) { return '<div class="k">' + esc(x[0]) + '</div><div class="v">' + esc(x[1] === '' || x[1] == null ? '—' : x[1]) + '</div>'; }).join('') +
+    '<div class="k">目前標記</div><div class="v" id="mkVal">' + esc(r.mark || '—') + '</div>' +
+    '</div></div>';
   var tp = $('#toProduct'); if (tp) tp.onclick = function () { go('/detail', 'sku=' + encodeURIComponent(r.sku)); };
   function mark(val) {
     r.mark = r.mark === val ? '' : val;
     $('#mkVendor').classList.toggle('on', r.mark === '廠商缺貨');
     $('#mkHold').classList.toggle('on', r.mark === '先不拿');
+    $('#mkVal').textContent = r.mark || '—';
     store.pending++; updateSyncInfo();
     apiPost({ action: 'shortInvMark', row: r.row, mark: r.mark }).then(function (d) {
       store.pending--; updateSyncInfo();
