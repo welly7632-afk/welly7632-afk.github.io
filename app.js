@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v13 */
+/* 倉儲系統前端 SPA v15 */
 'use strict';
 
 var CONFIG = {
@@ -1067,9 +1067,8 @@ var siSet = (function () {
 })();
 var siPanelOpen = false;
 function siSave() { lsSet('si_set', siSet); }
-/* 條件式格式(照抄缺貨登記分頁):單月>300洋紅/<5紅;三月>單月×2紅/<單月×0.3青 */
+/* 條件式格式:三月>單月×2紅/<單月×0.3青(單月不上色,2026-07-09 拿掉) */
 function siColor(field, r) {
-  if (field === 'sale1') { if (r.sale1 > 300) return '#ff66ff'; if (r.sale1 < 5) return '#e69999'; }
   if (field === 'sale3') { if (r.sale3 > r.sale1 * 2) return '#e69999'; if (r.sale3 < r.sale1 * 0.3) return '#99ffff'; }
   return '';
 }
@@ -1105,15 +1104,15 @@ function renderShortInv() {
   var cols = single ? SI_KEYS : SI_KEYS.slice(1);
   var colg = '<colgroup>' + cols.map(function (k) { return '<col class="sic_' + k + '">'; }).join('') + '</colgroup>';
   var html = '<table class="sitable' + (single ? ' single' : '') + '">' + colg + '<thead><tr>' +
-    (single ? '<th>產品名稱</th>' : '') + '<th>條碼</th><th>總庫存</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
+    (single ? '<th>產品名稱</th>' : '') + '<th>條碼</th><th>庫</th><th>單月</th><th>三月</th><th>備註</th></tr></thead><tbody>';
   html += rows.map(function (r, i) {
     var z = i % 2 ? 'zd' : 'zl';
     var mark = r.mark ? ' <span style="color:' + (r.mark === '廠商缺貨' ? '#c62828' : '#e68a00') + '">[' + esc(r.mark) + ']</span>' : '';
-    var c1 = siColor('sale1', r), c3 = siColor('sale3', r);
-    /* 總庫存:0/負數=深紅底白字,其餘藍底粗體 → 跟單月/三月的洋紅/粉紅/青色明顯區隔 */
+    var c3 = siColor('sale3', r);
+    /* 總庫存:0/負數=深紅底白字,其餘藍底粗體 */
     var tsStyle = r.totalStock <= 0 ? 'background:#c62828;color:#fff;font-weight:bold' : 'background:#dce9ff;color:#0d47a1;font-weight:bold';
     var dataCells = '<td>' + esc(r.barcode) + '</td><td style="' + tsStyle + '">' + r.totalStock + '</td>' +
-      '<td' + (c1 ? ' style="background:' + c1 + '"' : '') + '>' + r.sale1 + '</td>' +
+      '<td>' + r.sale1 + '</td>' +
       '<td' + (c3 ? ' style="background:' + c3 + '"' : '') + '>' + r.sale3 + '</td><td class="sinote">' + esc(r.note) + '</td>';
     if (single) return '<tr data-row="' + r.row + '" class="dr ' + z + '"><td class="siname">' + esc(r.name) + mark + '</td>' + dataCells + '</tr>';
     return '<tr data-row="' + r.row + '" class="namerow ' + z + '"><td class="siname" colspan="5">' + esc(r.name) + mark + '</td></tr>' +
@@ -1175,6 +1174,15 @@ function siApplyStyle() {
     '#siList .sitable tr.namerow td { font-size: ' + siSet.f.name + 'px; border-bottom: none; padding-bottom: 2px; }' +
     '#siList .sitable tr.datarow td { border-bottom: 1px solid #d9d9de; padding-bottom: ' + (siSet.padV + 6) + 'px; }';
   dyn.textContent = css;
+  siFitHeads();
+}
+/* 標題自動縮小到一行放得下(標題分兩行太浪費空間) */
+function siFitHeads() {
+  document.querySelectorAll('#siList .sitable thead th').forEach(function (th) {
+    th.style.fontSize = '';
+    var f = parseFloat(getComputedStyle(th).fontSize) || 13;
+    while (f > 9 && th.scrollWidth > th.clientWidth) { f -= 1; th.style.fontSize = f + 'px'; }
+  });
 }
 function pageShortInvDetail(params) {
   var r = (store.shortInv || []).find(function (x) { return String(x.row) === String(params.row); });

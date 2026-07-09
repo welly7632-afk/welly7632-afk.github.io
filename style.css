@@ -139,7 +139,7 @@ h3.folder { cursor: pointer; user-select: none; }
 .siwrap { margin: 0 -10px; overflow: auto; max-height: calc(100vh - 118px); }
 .sitable { width: 100%; border-collapse: collapse; }
 .sitable th, .sitable td { padding: 6px 4px; text-align: left; vertical-align: top; word-break: break-all; }
-.sitable thead th { position: sticky; top: 0; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; }
+.sitable thead th { position: sticky; top: 0; z-index: 5; background: #5b4a72; color: #fff; font-weight: normal; white-space: nowrap; overflow: hidden; }
 .sitable td.siname { color: #111; }
 
 /* 缺貨登記:表格底部版面設定面板 */
