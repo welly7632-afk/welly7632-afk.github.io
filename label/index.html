@@ -567,6 +567,7 @@
     // ==========================================
     function toggleAutoPrint() {
         state.autoPrint = document.getElementById('auto-print-toggle').checked;
+        localStorage.setItem('label_autoprint', state.autoPrint ? '1' : '');
         var el = document.getElementById('auto-print-status');
         if (state.autoPrint) {
             el.innerText = '自動列印:已開啟';
@@ -770,7 +771,12 @@
     // 啟動
     // ==========================================
     loadCachedProducts();
-    switchTab('mobile');
+    // 列印電腦可用 .../label/#pc 直接開在電腦列印端;自動列印開關會記住,重開機自動恢復
+    switchTab(location.hash === '#pc' ? 'pc' : 'mobile');
+    if (localStorage.getItem('label_autoprint') === '1') {
+        document.getElementById('auto-print-toggle').checked = true;
+        toggleAutoPrint();
+    }
     fetchIp();
     syncProducts(true);
     setInterval(function () { syncProducts(true); }, 3600000); // 每小時背景更新產品
