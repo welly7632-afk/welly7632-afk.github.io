@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v16 */
+/* 倉儲系統前端 SPA v17 — 標籤列印整併(連結改指向主站 /label/) */
 'use strict';
 
 var CONFIG = {
@@ -7,7 +7,7 @@ var CONFIG = {
   AUTH_RECHECK_MS: 3600000,
   BULK_TTL: 21600000,
   LINKS: {
-    labelPrint: 'https://bestx0114-dev.github.io/label-print/',
+    labelPrint: 'https://welly7632-afk.github.io/label/',
     secondDel: 'https://bestx0114-dev.github.io/second-storage-del/'
   }
 };
