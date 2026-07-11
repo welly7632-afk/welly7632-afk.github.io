@@ -9,7 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        /* 列印樣式:直式大標籤 100mm x 150mm */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -23,6 +22,12 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 拖曳版面編輯器的分隔線握把 */
+        .ed-h { position: absolute; z-index: 10; background: rgba(79,70,229,.45); box-shadow: 0 0 0 1px rgba(255,255,255,.6); }
+        .ed-h:hover { background: rgba(79,70,229,.95); }
+        .ed-h.vert { width: 12px; margin-left: -6px; cursor: ew-resize; }
+        .ed-h.horz { height: 12px; margin-top: -6px; cursor: ns-resize; }
+        .ed-h::after { content: ''; position: absolute; inset: 0; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
@@ -44,7 +49,7 @@
             </div>
             <nav class="flex border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-1">
                 <button id="tab-btn-mobile" onclick="switchTab('mobile')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-mobile-screen"></i> 手機輸入端
+                    <i class="fa-solid fa-keyboard"></i> 電腦輸入端
                 </button>
                 <button id="tab-btn-pc" onclick="switchTab('pc')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-desktop"></i> 電腦列印端
@@ -58,106 +63,115 @@
 
     <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full no-print">
 
-        <!-- ============ 手機輸入端 ============ -->
+        <!-- ============ 電腦輸入端 ============ -->
         <section id="mobile-view" class="space-y-6">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-lg mx-auto">
-                <div class="text-center mb-6">
-                    <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">輸入流程</span>
-                    <h2 class="text-lg font-bold text-slate-800 mt-2">1. 選擇或搜尋產品</h2>
-                    <p class="text-sm text-slate-500 mt-1">「輸入品名搜尋」、「掃描條碼」或「輸入產品貨號」</p>
-                </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                <div class="mb-4 relative">
-                    <label class="block text-xs font-bold text-slate-500 mb-1.5"><i class="fa-solid fa-magnifying-glass text-indigo-600 mr-1"></i>快捷品名關鍵字搜尋 (例如: 藥盒、口罩)</label>
-                    <input id="mobile-keyword-input" type="text" oninput="filterProductsByKeyword()" placeholder="直接輸入產品關鍵字名稱..." class="w-full border-2 border-indigo-100 rounded-lg px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400">
-                    <div id="search-suggest-panel" class="hidden absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto no-scrollbar">
-                        <div id="search-suggest-list" class="flex flex-col"></div>
+                <!-- 單筆輸入 -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4">
+                        <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">單筆輸入</span>
+                        <h2 class="text-lg font-bold text-slate-800 mt-2">輸入 / 掃描單一產品</h2>
+                        <p class="text-xs text-slate-500 mt-1">用 USB 條碼掃描槍直接掃到下面欄位、打字，或關鍵字找品名</p>
                     </div>
-                </div>
 
-                <div class="flex items-center justify-between my-3">
-                    <hr class="w-[42%] border-slate-200"><span class="text-xs text-slate-400 font-bold">或</span><hr class="w-[42%] border-slate-200">
-                </div>
+                    <div class="mb-4 relative">
+                        <label class="block text-xs font-bold text-slate-500 mb-1.5"><i class="fa-solid fa-magnifying-glass text-indigo-600 mr-1"></i>品名關鍵字搜尋 (例如: 藥盒、口罩)</label>
+                        <input id="mobile-keyword-input" type="text" oninput="filterProductsByKeyword()" placeholder="輸入產品關鍵字名稱..." class="w-full border-2 border-indigo-100 rounded-lg px-4 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400">
+                        <div id="search-suggest-panel" class="hidden absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto no-scrollbar">
+                            <div id="search-suggest-list" class="flex flex-col"></div>
+                        </div>
+                    </div>
 
-                <div id="scanner-container" class="hidden mb-4 overflow-hidden rounded-lg border border-slate-200 bg-black relative">
-                    <div id="interactive-scanner" class="w-full bg-slate-900" style="min-height: 250px;"></div>
-                </div>
+                    <div class="flex items-center justify-between my-3">
+                        <hr class="w-[42%] border-slate-200"><span class="text-xs text-slate-400 font-bold">或</span><hr class="w-[42%] border-slate-200">
+                    </div>
 
-                <div class="flex gap-2">
-                    <button id="scan-btn" onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg font-semibold transition flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-camera mr-2"></i>掃描條碼
-                    </button>
-                    <div class="relative flex-grow">
-                        <input id="mobile-sku-input" type="text" placeholder="手動輸入精確貨號 (如 319-1361)..." class="w-full border border-slate-300 rounded-lg pl-4 pr-10 py-3 font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <button onclick="searchProductAndPreview()" class="absolute right-2 top-2 text-slate-400 hover:text-indigo-600 p-1.5 transition">
-                            <i class="fa-solid fa-magnifying-glass"></i>
+                    <div id="scanner-container" class="hidden mb-4 overflow-hidden rounded-lg border border-slate-200 bg-black relative">
+                        <div id="interactive-scanner" class="w-full bg-slate-900" style="min-height: 250px;"></div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="scan-btn" onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-lg font-semibold transition flex items-center justify-center shrink-0 text-sm">
+                            <i class="fa-solid fa-camera mr-1"></i>相機掃描
+                        </button>
+                        <div class="relative flex-grow">
+                            <input id="mobile-sku-input" type="text" placeholder="貨號 (如 319-1361)，掃描槍可直接掃這裡" onkeydown="if(event.key==='Enter')searchProductAndPreview()" class="w-full border border-slate-300 rounded-lg pl-4 pr-10 py-2.5 font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button onclick="searchProductAndPreview()" class="absolute right-2 top-2 text-slate-400 hover:text-indigo-600 p-1.5 transition">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="mobile-no-product-area" class="hidden text-center py-4 bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mb-2"></i>
+                        <p class="text-sm font-semibold text-slate-700">找不到貨號 "<span id="missing-sku-text" class="font-mono text-indigo-600"></span>" 的產品</p>
+                        <p class="text-xs text-slate-500 mt-1">請至「設定與同步」按「立即同步」更新產品資料後再試</p>
+                    </div>
+
+                    <div id="mobile-preview-area" class="hidden mt-4">
+                        <h3 class="text-sm font-semibold text-slate-600 flex items-center gap-1.5 mb-2"><i class="fa-solid fa-eye"></i> 即時標籤預覽:</h3>
+                        <div id="mini-preview" class="mx-auto overflow-hidden"></div>
+                    </div>
+
+                    <div id="mobile-print-form" class="hidden mt-5 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">列印張數</label>
+                                <input id="print-copies" type="number" min="1" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">上架人員</label>
+                                <input id="print-operator" type="text" placeholder="例: 小張" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">備註</label>
+                            <input id="print-remark" type="text" placeholder="例: 包裝稍有破損" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <button onclick="sendToPrintQueue()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold text-lg shadow-lg shadow-indigo-100 transition duration-150 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> 發送到列印佇列
                         </button>
                     </div>
                 </div>
 
-                <hr class="my-6 border-slate-100">
+                <!-- 批次貼上 -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4">
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">批次貼上</span>
+                        <h2 class="text-lg font-bold text-slate-800 mt-2">從 Excel 複製一整排貨號</h2>
+                        <p class="text-xs text-slate-500 mt-1">直接貼上一欄貨號（換行、逗號、空格都能分隔），一次全部排入列印</p>
+                    </div>
 
-                <div id="mobile-no-product-area" class="hidden text-center py-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mb-2"></i>
-                    <p class="text-sm font-semibold text-slate-700">找不到貨號為 "<span id="missing-sku-text" class="font-mono text-indigo-600"></span>" 的產品</p>
-                    <p class="text-xs text-slate-500 mt-1">請至「設定與同步」按「立即同步」更新產品資料後再試</p>
-                </div>
+                    <textarea id="batch-input" rows="6" placeholder="319-1361&#10;328-002&#10;PIHG002-B02&#10;..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
 
-                <!-- 標籤即時預覽 (直式縮小版) -->
-                <div id="mobile-preview-area" class="hidden space-y-3">
-                    <h3 class="text-sm font-semibold text-slate-600 flex items-center gap-1.5"><i class="fa-solid fa-eye"></i> 即時標籤預覽:</h3>
-                    <div class="border-4 border-black rounded-xl bg-white p-0 mx-auto text-black relative select-none flex flex-col justify-between shadow-md" style="width: 48mm; height: 78mm; box-sizing: border-box; padding: 6px;">
-                        <div class="flex border-b border-black" style="height: 12%;">
-                            <div class="w-[22%] border-r border-black flex flex-col items-center justify-center text-[7px] font-black leading-tight"><span>規</span><span>格</span><span>二</span></div>
-                            <div id="prev-spec" class="w-[78%] flex items-center justify-center font-extrabold text-[10px] px-2 font-mono truncate text-center">無</div>
+                    <div class="flex items-center gap-3 mt-3 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-slate-500">每筆張數</label>
+                            <input id="batch-copies" type="number" min="1" value="1" class="w-16 border border-slate-300 rounded-lg px-2 py-1.5 text-center font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
-                        <div class="flex border-b border-black" style="height: 38%;">
-                            <div class="w-[22%] border-r border-black flex flex-col items-center justify-center text-[8px] font-black leading-normal"><span>品</span><span class="mt-0.5">名</span></div>
-                            <div id="prev-name" class="w-[78%] flex items-center justify-start text-[13px] font-extrabold px-1.5 leading-snug line-clamp-3 font-sans break-all">產品品名</div>
+                        <button onclick="parseBatch()" class="bg-slate-700 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check"></i> 解析並預覽
+                        </button>
+                    </div>
+
+                    <div id="batch-result" class="hidden mt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-slate-600">找到 <b id="batch-found-count" class="text-emerald-600">0</b> 筆，共 <b id="batch-total-copies" class="text-indigo-600">0</b> 張</div>
+                            <button onclick="submitBatch()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-paper-plane"></i> 全部送出列印
+                            </button>
                         </div>
-                        <div class="flex border-b border-black" style="height: 18%;">
-                            <div class="w-[22%] border-r border-black flex flex-col items-center justify-center text-[8px] font-black leading-tight"><span>貨</span><span class="mt-0.5">號</span></div>
-                            <div id="prev-sku" class="w-[78%] flex items-center justify-center text-[14px] font-black px-1 font-mono tracking-tighter text-center"></div>
-                        </div>
-                        <div class="flex items-stretch pt-1 pb-1" style="height: 32%;">
-                            <div class="w-[35%] flex flex-col justify-between items-center h-full">
-                                <div id="prev-qrcode" class="w-[56px] h-[56px] flex items-center justify-center bg-white"></div>
-                                <div class="text-[7px] font-bold text-slate-800 leading-tight text-left scale-[0.8] origin-bottom-left w-[125%] pl-1 mt-0.5">
-                                    人員: <span id="prev-operator-text"></span><br>時間: <span id="prev-time-text"></span>
-                                </div>
-                            </div>
-                            <div class="w-[65%] flex flex-col justify-between h-full pl-1">
-                                <div id="prev-loc" class="text-[16px] font-black font-sans text-center whitespace-nowrap overflow-visible leading-none"></div>
-                                <table class="w-full border border-black border-collapse mt-0.5" style="height: 44.4px;">
-                                    <tbody>
-                                        <tr class="border-b border-black"><td id="prev-sec" class="border-r border-black text-center align-middle font-black text-[9px] leading-none" style="height: 14.8px; width: 50%;"></td><td style="width: 50%;"></td></tr>
-                                        <tr class="border-b border-black"><td class="border-r border-black" style="height: 14.8px;"></td><td></td></tr>
-                                        <tr><td class="border-r border-black" style="height: 14.8px;"></td><td></td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div id="batch-notfound" class="hidden bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-lg px-3 py-2"></div>
+                        <div class="border border-slate-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase sticky top-0">
+                                    <tr><th class="px-3 py-2">貨號</th><th class="px-3 py-2">品名 / 儲位</th><th class="px-3 py-2 text-center">張數</th><th class="px-3 py-2"></th></tr>
+                                </thead>
+                                <tbody id="batch-tbody"></tbody>
+                            </table>
                         </div>
                     </div>
-                </div>
-
-                <div id="mobile-print-form" class="hidden mt-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">列印張數</label>
-                            <input id="print-copies" type="number" min="1" max="100" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">上架人員</label>
-                            <input id="print-operator" type="text" placeholder="例: 小張" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">備註</label>
-                        <input id="print-remark" type="text" placeholder="例: 包裝稍有破損" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <button onclick="sendToPrintQueue()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-lg font-bold text-lg shadow-lg shadow-indigo-100 transition duration-150 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> 發送到列印佇列
-                    </button>
                 </div>
             </div>
         </section>
@@ -180,10 +194,10 @@
                         <i class="fa-solid fa-clock-rotate-left"></i> 載入已列印歷史(可重印)
                     </button>
                 </div>
-                <!-- 自動列印來源篩選 -->
                 <div class="flex items-center gap-4 flex-wrap text-sm border-t border-slate-100 pt-3">
                     <span class="text-xs font-bold text-slate-400">自動列印的來源:</span>
-                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="手機" checked> 手機發送</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="電腦" checked> 電腦輸入</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="批次" checked> 批次貼上</label>
                     <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="盤點" checked> 盤點</label>
                     <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="第二庫存" checked> 第二庫存</label>
                     <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" class="src-filter accent-indigo-600" value="改儲位" checked> 改儲位</label>
@@ -193,7 +207,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                     <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-rectangle-list text-indigo-600"></i> 待列印佇列</h3>
-                    <span class="text-xs text-slate-400">改儲位 / 盤點(勾要印) / 第二庫存登記 / 手機發送 都會自動出現在這裡</span>
+                    <span class="text-xs text-slate-400">改儲位 / 盤點(勾要印) / 第二庫存 / 電腦輸入 / 批次貼上 都會自動出現在這裡</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -276,43 +290,65 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4 max-w-lg">
-                <h3 class="font-bold text-slate-800">預設上架人員</h3>
-                <div class="flex gap-2">
-                    <input id="settings-operator" type="text" placeholder="例: 小張" class="flex-grow border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button onclick="saveOperator()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition">儲存</button>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 預設人員 -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="font-bold text-slate-800">預設上架人員</h3>
+                    <div class="flex gap-2">
+                        <input id="settings-operator" type="text" placeholder="例: 小張" class="flex-grow border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="saveOperator()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition">儲存</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">此名稱會登記在標籤佇列與標籤上。</p>
                 </div>
-                <p class="text-[11px] text-slate-400">此名稱會登記在標籤佇列與標籤上。手機輸入端每次發送也可另外填。</p>
+                <!-- 張數上限 -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-amber-500"></i> 列印張數上限(防浪費)</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">單筆最多張數</label>
+                            <input id="limit-maxcopies" type="number" min="1" max="99" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">單次列印最多張數</label>
+                            <input id="limit-maxperprint" type="number" min="1" max="500" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold">
+                        </div>
+                    </div>
+                    <button onclick="saveLimits()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition">儲存上限</button>
+                    <p class="text-[11px] text-slate-400">單筆超過會自動壓到上限;單次列印超過會先跳確認(自動列印則分批印,不會一次噴完整捲紙)。</p>
+                </div>
             </div>
 
-            <!-- 標籤版面調整 -->
+            <!-- 標籤版面調整(拖曳式) -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div>
                     <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-indigo-500"></i> 標籤版面調整(存在這台電腦)</h3>
-                    <p class="text-[11px] text-slate-400 mt-1">改數字右邊預覽會立刻跟著變;確定後按「儲存並套用」。每台列印電腦可各自調整。</p>
+                    <p class="text-[11px] text-slate-400 mt-1">像 Excel 一樣：把滑鼠移到預覽上的<strong class="text-indigo-500">藍色分隔線</strong>，直接拖曳就能改欄寬、列高、格子大小；字體大小用下方數字調。改完按「儲存並套用」。</p>
                 </div>
                 <div class="flex flex-col lg:flex-row gap-6">
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 flex-grow content-start" id="layout-inputs">
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤寬 (mm)</label><input data-lay="w" type="number" min="30" max="200" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤高 (mm)</label><input data-lay="h" type="number" min="30" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">QR 大小 (px)</label><input data-lay="qr" type="number" min="40" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">規格二字級</label><input data-lay="specFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">品名字級</label><input data-lay="nameFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">貨號字級</label><input data-lay="skuFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">儲位字級</label><input data-lay="locFs" type="number" min="8" max="90" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">第二儲位字級</label><input data-lay="secFs" type="number" min="8" max="60" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">備註表高 (px)</label><input data-lay="gridH" type="number" min="40" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
-                        <div class="col-span-2 md:col-span-3 flex gap-2 flex-wrap pt-1">
+                    <div class="flex-grow space-y-4">
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="layout-inputs">
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤寬 (mm)</label><input data-lay="w" type="number" min="30" max="200" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤高 (mm)</label><input data-lay="h" type="number" min="30" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">QR 大小 (px)</label><input data-lay="qr" type="number" min="40" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">規格二字級</label><input data-lay="specFs" type="number" min="8" max="90" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">品名字級</label><input data-lay="nameFs" type="number" min="8" max="90" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">貨號字級</label><input data-lay="skuFs" type="number" min="8" max="90" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">儲位字級</label><input data-lay="locFs" type="number" min="8" max="100" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">第二儲位字級</label><input data-lay="secFs" type="number" min="8" max="60" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
                             <button onclick="saveLayout()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-floppy-disk mr-1"></i>儲存並套用</button>
                             <button onclick="resetLayout()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-rotate-left mr-1"></i>恢復預設</button>
                             <button onclick="printTestLabel()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-vial mr-1"></i>列印測試標籤</button>
                         </div>
+                        <div class="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 leading-relaxed">
+                            <b>可拖曳的分隔線：</b>橫線＝調整規格二/品名/貨號/底部四段的<strong>列高</strong>；左側直線＝規/品/貨<strong>欄寬</strong>；底部中間直線＝QR 與儲位的<strong>左右比例</strong>；儲位下方橫線＝儲位與 6 格表的<strong>高度</strong>；6 格表內的直線與橫線＝每一格的<strong>欄寬與列高</strong>。
+                        </div>
                     </div>
                     <div class="shrink-0">
-                        <div class="text-[11px] font-bold text-slate-400 mb-1">即時預覽 (45% 縮放)</div>
-                        <div id="layout-preview-wrap" class="overflow-hidden border border-dashed border-slate-300 rounded-lg bg-slate-50 p-2">
-                            <div id="layout-preview" style="transform: scale(0.45); transform-origin: top left;"></div>
-                        </div>
+                        <div class="text-[11px] font-bold text-slate-400 mb-1">拖曳預覽</div>
+                        <div id="layout-editor" class="relative border border-dashed border-slate-300 rounded-lg bg-slate-100" style="overflow: visible;"></div>
                     </div>
                 </div>
             </div>
@@ -325,7 +361,7 @@
 
     <script>
     // ==========================================
-    // 設定:與儲位查詢網站(倉儲網頁)共用同一個後端 API
+    // 設定:與儲位查詢網站共用同一個後端 API
     // ==========================================
     var CONFIG = {
         API_URL: 'https://script.google.com/macros/s/AKfycbxYHC2d-kraHlPhvJQPe6PG04GuTUWZ3xjKuDEE2tn8a-hlnqIpxDk34UxM_H_kIHJO/exec',
@@ -333,7 +369,7 @@
     };
 
     var state = {
-        products: [],            // {sku, name, spec2, loc, secondLoc}
+        products: [],
         productsV: '',
         operator: localStorage.getItem('label_operator') || '',
         ip: '',
@@ -343,7 +379,9 @@
         currentTab: 'mobile',
         selectedProduct: null,
         pollFails: 0,
-        pendingSince: 0
+        pendingSince: 0,
+        batchItems: [],
+        limits: null
     };
 
     function esc(s) {
@@ -351,6 +389,9 @@
             return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
         });
     }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function cum(arr) { var o = [], s = 0; for (var i = 0; i < arr.length; i++) { s += arr[i]; o.push(s); } return o; }
+    function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
     function showNotification(msg, type) {
         var toast = document.createElement('div');
@@ -374,7 +415,6 @@
     function apiGet(query) {
         return fetch(CONFIG.API_URL + '?' + query).then(function (r) { return r.json(); });
     }
-    // 寫入:帶 ip 供公司網路驗證;busy 時自動重送最多 3 次 (3/6/9 秒)
     function apiPost(body, attempt) {
         attempt = attempt || 1;
         body.user = body.user || state.operator;
@@ -389,9 +429,7 @@
                     setTimeout(function () { res(apiPost(body, attempt + 1)); }, attempt * 3000);
                 });
             }
-            if (d && !d.ok && d.error === 'auth') {
-                showNotification('驗證失敗:此頁面需在公司網路使用', 'error');
-            }
+            if (d && !d.ok && d.error === 'auth') showNotification('驗證失敗:此頁面需在公司網路使用', 'error');
             return d;
         });
     }
@@ -401,7 +439,32 @@
     }
 
     // ==========================================
-    // 產品資料 (與儲位查詢同源:動態儲位)
+    // 列印張數上限
+    // ==========================================
+    var LIMIT_DEF = { maxCopies: 30, maxPerPrint: 60 };
+    function loadLimits() {
+        state.limits = Object.assign({}, LIMIT_DEF);
+        try {
+            var s = JSON.parse(localStorage.getItem('label_limits') || '{}');
+            if (Number(s.maxCopies) > 0) state.limits.maxCopies = Number(s.maxCopies);
+            if (Number(s.maxPerPrint) > 0) state.limits.maxPerPrint = Number(s.maxPerPrint);
+        } catch (e) {}
+    }
+    function fillLimitInputs() {
+        document.getElementById('limit-maxcopies').value = state.limits.maxCopies;
+        document.getElementById('limit-maxperprint').value = state.limits.maxPerPrint;
+    }
+    function saveLimits() {
+        var mc = clamp(Number(document.getElementById('limit-maxcopies').value) || 30, 1, 99);
+        var mp = clamp(Number(document.getElementById('limit-maxperprint').value) || 60, 1, 500);
+        state.limits = { maxCopies: mc, maxPerPrint: mp };
+        localStorage.setItem('label_limits', JSON.stringify(state.limits));
+        fillLimitInputs();
+        showNotification('已儲存列印上限', 'success');
+    }
+
+    // ==========================================
+    // 產品資料 (與儲位查詢同源)
     // ==========================================
     function applyProducts(list, v) {
         state.products = list.map(function (p) {
@@ -418,19 +481,14 @@
                     if (!isBackground) showNotification('產品資料已是最新', 'success');
                 } else if (d.ok && d.products) {
                     applyProducts(d.products, d.v);
-                    try {
-                        localStorage.setItem('label_products', JSON.stringify({ v: d.v, ts: Date.now(), products: state.products }));
-                    } catch (e) {}
+                    try { localStorage.setItem('label_products', JSON.stringify({ v: d.v, ts: Date.now(), products: state.products })); } catch (e) {}
                     if (!isBackground) showNotification('同步成功!已載入 ' + d.products.length + ' 筆產品', 'success');
                 }
                 var nowStr = new Date().toLocaleString();
                 localStorage.setItem('label_sync_time', nowStr);
                 document.getElementById('cache-sync-time').innerText = nowStr;
             })
-            .catch(function (e) {
-                console.error('同步失敗', e);
-                if (!isBackground) showNotification('同步失敗,請檢查網路', 'error');
-            });
+            .catch(function (e) { if (!isBackground) showNotification('同步失敗,請檢查網路', 'error'); });
     }
     function loadCachedProducts() {
         try {
@@ -469,16 +527,14 @@
         if (tab === 'db') {
             document.getElementById('settings-operator').value = state.operator;
             fillLayoutInputs();
-            renderLayoutPreview(layout);
+            fillLimitInputs();
+            renderEditor();
         }
-        if (tab === 'pc') {
-            updateLastPrintTime();
-            pollQueue();
-        }
+        if (tab === 'pc') { updateLastPrintTime(); pollQueue(); }
     }
 
     // ==========================================
-    // 手機輸入端
+    // 單筆輸入
     // ==========================================
     var html5QrcodeScanner = null;
     function toggleScanner() {
@@ -487,13 +543,11 @@
         if (!scannerDiv || !scanBtn) return;
         if (scannerDiv.classList.contains('hidden')) {
             scannerDiv.classList.remove('hidden');
-            scanBtn.innerHTML = '<i class="fa-solid fa-stop mr-2"></i>停止掃描';
+            scanBtn.innerHTML = '<i class="fa-solid fa-stop mr-1"></i>停止';
             scanBtn.classList.replace('bg-indigo-600', 'bg-red-600');
             scanBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-red-700');
             setTimeout(startScanner, 150);
-        } else {
-            stopScanner();
-        }
+        } else { stopScanner(); }
     }
     function startScanner() {
         html5QrcodeScanner = new Html5Qrcode('interactive-scanner');
@@ -507,23 +561,18 @@
                 searchProductAndPreview();
             },
             function () {}
-        ).catch(function () {
-            showNotification('無法啟動相機,請檢查權限', 'error');
-            stopScanner();
-        });
+        ).catch(function () { showNotification('無法啟動相機,請檢查權限', 'error'); stopScanner(); });
     }
     function stopScanner() {
         var scannerDiv = document.getElementById('scanner-container');
         var scanBtn = document.getElementById('scan-btn');
         if (scannerDiv) scannerDiv.classList.add('hidden');
         if (scanBtn) {
-            scanBtn.innerHTML = '<i class="fa-solid fa-camera mr-2"></i>掃描條碼';
+            scanBtn.innerHTML = '<i class="fa-solid fa-camera mr-1"></i>相機掃描';
             scanBtn.classList.replace('bg-red-600', 'bg-indigo-600');
             scanBtn.classList.replace('hover:bg-red-700', 'hover:bg-indigo-700');
         }
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.stop().then(function () { html5QrcodeScanner = null; }).catch(function () {});
-        }
+        if (html5QrcodeScanner) html5QrcodeScanner.stop().then(function () { html5QrcodeScanner = null; }).catch(function () {});
     }
 
     function filterProductsByKeyword() {
@@ -564,19 +613,8 @@
             noProductArea.classList.add('hidden');
             previewArea.classList.remove('hidden');
             inputForm.classList.remove('hidden');
-            document.getElementById('prev-name').innerText = product.name;
-            document.getElementById('prev-sku').innerText = product.sku;
-            document.getElementById('prev-spec').innerText = product.spec2 || '無';
-            document.getElementById('prev-loc').innerText = product.loc || '無儲位';
-            document.getElementById('prev-sec').innerText = product.secondLoc || '';
-            document.getElementById('prev-operator-text').innerText = document.getElementById('print-operator').value.trim() || state.operator || '上架人員';
-            document.getElementById('prev-time-text').innerText = formatTime(new Date());
-            try {
-                var qrC = document.getElementById('prev-qrcode');
-                qrC.innerHTML = '';
-                new QRCode(qrC, { text: product.sku, width: 42, height: 42, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
-            } catch (e) {}
             state.selectedProduct = product;
+            renderMiniPreview(product);
             document.getElementById('search-suggest-panel').classList.add('hidden');
         } else {
             previewArea.classList.add('hidden');
@@ -586,32 +624,117 @@
             state.selectedProduct = null;
         }
     }
+    function renderMiniPreview(p) {
+        var box = document.getElementById('mini-preview');
+        if (!box) return;
+        box.innerHTML = '';
+        var SCALE = 0.34;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'transform:scale(' + SCALE + ');transform-origin:top left;';
+        var job = { id: 'mini', ts: '', source: '', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc, secondLoc: p.secondLoc, copies: 1, user: document.getElementById('print-operator').value.trim() || state.operator || '上架人員' };
+        wrap.appendChild(buildLabelEl(job, 'mini-qr', 0, layout, false));
+        box.appendChild(wrap);
+        var MM = 3.7795;
+        box.style.width = Math.ceil(layout.w * MM * SCALE) + 'px';
+        box.style.height = Math.ceil(layout.h * MM * SCALE) + 'px';
+    }
 
     function sendToPrintQueue() {
         if (!state.selectedProduct) return;
         var p = state.selectedProduct;
         var copies = parseInt(document.getElementById('print-copies').value) || 1;
+        if (copies > state.limits.maxCopies) {
+            copies = state.limits.maxCopies;
+            showNotification('單筆最多 ' + copies + ' 張,已自動壓到上限', 'warning');
+        }
         var remark = document.getElementById('print-remark').value.trim();
         var operator = document.getElementById('print-operator').value.trim() || state.operator;
-        if (operator && operator !== state.operator) {
-            state.operator = operator;
-            localStorage.setItem('label_operator', operator);
-        }
+        if (operator && operator !== state.operator) { state.operator = operator; localStorage.setItem('label_operator', operator); }
         showNotification('發送列印請求中...', 'info');
-        apiPost({
-            action: 'labelAdd', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc, secondLoc: p.secondLoc,
-            copies: copies, note: remark, user: operator
-        }).then(function (d) {
+        apiPost({ action: 'labelAdd', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc, secondLoc: p.secondLoc, copies: copies, note: remark, user: operator })
+            .then(function (d) {
+                if (d.ok) {
+                    showNotification('已送出!列印電腦將自動出紙 ' + copies + ' 張', 'success');
+                    document.getElementById('mobile-sku-input').value = '';
+                    document.getElementById('mobile-preview-area').classList.add('hidden');
+                    document.getElementById('mobile-print-form').classList.add('hidden');
+                    state.selectedProduct = null;
+                } else if (!d.busy) { showNotification('發送失敗:' + (d.error || '請重試'), 'error'); }
+            }).catch(function () { showNotification('傳送失敗,請重試', 'error'); });
+    }
+
+    // ==========================================
+    // 批次貼上
+    // ==========================================
+    function parseBatch() {
+        var raw = document.getElementById('batch-input').value;
+        var defCopies = clamp(parseInt(document.getElementById('batch-copies').value) || 1, 1, state.limits.maxCopies);
+        var tokens = raw.split(/[\r\n\t,;，、；\s]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        var seen = {}, items = [], notFound = [];
+        tokens.forEach(function (tk) {
+            var key = tk.toUpperCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            var p = findProduct(tk);
+            if (p) items.push({ sku: p.sku, product: p, copies: defCopies });
+            else notFound.push(tk);
+        });
+        state.batchItems = items;
+        renderBatch(notFound);
+    }
+    function renderBatch(notFound) {
+        var box = document.getElementById('batch-result');
+        var tbody = document.getElementById('batch-tbody');
+        box.classList.remove('hidden');
+        if (!state.batchItems.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-slate-400">沒有比對到任何貨號</td></tr>';
+        } else {
+            tbody.innerHTML = state.batchItems.map(function (it, i) {
+                return '<tr class="border-b border-slate-100">' +
+                    '<td class="px-3 py-2 font-mono font-semibold text-indigo-600">' + esc(it.sku) + '</td>' +
+                    '<td class="px-3 py-2"><div class="text-slate-800 text-xs font-medium truncate max-w-[220px]">' + esc(it.product.name) + '</div>' +
+                    '<div class="text-[10px] text-slate-400">' + esc(it.product.loc || '無儲位') + (it.product.secondLoc ? ' (庫:' + esc(it.product.secondLoc) + ')' : '') + '</div></td>' +
+                    '<td class="px-3 py-2 text-center"><input type="number" min="1" value="' + it.copies + '" onchange="updateBatchCopies(' + i + ', this.value)" class="w-14 border border-slate-300 rounded px-1 py-1 text-center text-sm"></td>' +
+                    '<td class="px-3 py-2 text-right"><button onclick="removeBatchItem(' + i + ')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-xmark"></i></button></td>' +
+                    '</tr>';
+            }).join('');
+        }
+        var nf = document.getElementById('batch-notfound');
+        if (notFound && notFound.length) {
+            nf.classList.remove('hidden');
+            nf.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>有 ' + notFound.length + ' 筆找不到(不會列印):' + notFound.map(esc).join('、');
+        } else { nf.classList.add('hidden'); }
+        updateBatchTotals();
+    }
+    function updateBatchCopies(i, val) {
+        var v = clamp(parseInt(val) || 1, 1, state.limits.maxCopies);
+        state.batchItems[i].copies = v;
+        updateBatchTotals();
+    }
+    function removeBatchItem(i) {
+        state.batchItems.splice(i, 1);
+        renderBatch(null);
+    }
+    function updateBatchTotals() {
+        var total = state.batchItems.reduce(function (s, it) { return s + it.copies; }, 0);
+        document.getElementById('batch-found-count').innerText = state.batchItems.length;
+        document.getElementById('batch-total-copies').innerText = total;
+    }
+    function submitBatch() {
+        if (!state.batchItems.length) { showNotification('沒有可送出的項目', 'warning'); return; }
+        var total = state.batchItems.reduce(function (s, it) { return s + it.copies; }, 0);
+        if (!confirm('確定要送出 ' + state.batchItems.length + ' 個品項、共 ' + total + ' 張到列印佇列嗎?')) return;
+        var operator = document.getElementById('print-operator').value.trim() || state.operator;
+        var items = state.batchItems.map(function (it) { return { sku: it.sku, copies: it.copies }; });
+        showNotification('批次送出中...', 'info');
+        apiPost({ action: 'labelAddBatch', items: items, user: operator }).then(function (d) {
             if (d.ok) {
-                showNotification('已送出!列印電腦將自動出紙 ' + copies + ' 張', 'success');
-                document.getElementById('mobile-sku-input').value = '';
-                document.getElementById('mobile-preview-area').classList.add('hidden');
-                document.getElementById('mobile-print-form').classList.add('hidden');
-                state.selectedProduct = null;
-            } else if (!d.busy) {
-                showNotification('發送失敗:' + (d.error || '請重試'), 'error');
-            }
-        }).catch(function () { showNotification('傳送失敗,請重試', 'error'); });
+                showNotification('批次成功!已排入 ' + d.added + ' 筆' + (d.notFound && d.notFound.length ? ',' + d.notFound.length + ' 筆查無' : ''), 'success');
+                document.getElementById('batch-input').value = '';
+                document.getElementById('batch-result').classList.add('hidden');
+                state.batchItems = [];
+            } else if (!d.busy) { showNotification('批次失敗:' + (d.error || '請重試'), 'error'); }
+        }).catch(function () { showNotification('批次送出失敗,請重試', 'error'); });
     }
 
     // ==========================================
@@ -635,7 +758,6 @@
         document.querySelectorAll('.src-filter').forEach(function (c) { if (c.checked) arr.push(c.value); });
         return arr;
     }
-
     function pollQueue() {
         if (state.currentTab !== 'pc') return;
         apiGet('action=labelQueue').then(function (d) {
@@ -643,11 +765,10 @@
             state.pollFails = 0;
             state.pendingJobs = d.jobs || [];
             renderQueue();
-            var el = document.getElementById('poll-status');
-            el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>雲端連線正常 (' + new Date().toLocaleTimeString() + ')';
+            document.getElementById('poll-status').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>雲端連線正常 (' + new Date().toLocaleTimeString() + ')';
             if (state.autoPrint) autoPrintCheck();
             checkPrinterHealth();
-        }).catch(function (e) {
+        }).catch(function () {
             state.pollFails++;
             document.getElementById('poll-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>連線失敗,3 秒後重試';
             checkPrinterHealth();
@@ -656,10 +777,9 @@
     setInterval(pollQueue, CONFIG.POLL_MS);
 
     function sourceBadge(src) {
-        var color = { '手機': 'bg-indigo-50 text-indigo-700 border-indigo-100', '盤點': 'bg-amber-50 text-amber-700 border-amber-100', '第二庫存': 'bg-emerald-50 text-emerald-700 border-emerald-100', '改儲位': 'bg-sky-50 text-sky-700 border-sky-100' }[src] || 'bg-slate-50 text-slate-600 border-slate-200';
+        var color = { '電腦': 'bg-indigo-50 text-indigo-700 border-indigo-100', '批次': 'bg-teal-50 text-teal-700 border-teal-100', '盤點': 'bg-amber-50 text-amber-700 border-amber-100', '第二庫存': 'bg-emerald-50 text-emerald-700 border-emerald-100', '改儲位': 'bg-sky-50 text-sky-700 border-sky-100', '手機': 'bg-indigo-50 text-indigo-700 border-indigo-100' }[src] || 'bg-slate-50 text-slate-600 border-slate-200';
         return '<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full border ' + color + '">' + esc(src || '?') + '</span>';
     }
-
     function jobRowHtml(job, isHistory) {
         var t = isHistory ? (job.printedAt || job.ts) : job.ts;
         var timeStr = t ? new Date(t).toLocaleString() : '';
@@ -676,7 +796,6 @@
             '<td class="px-4 py-3 text-center font-bold text-slate-700">' + job.copies + '</td>' +
             '<td class="px-4 py-3 text-right">' + btn + '</td></tr>';
     }
-
     function renderQueue() {
         var tbody = document.getElementById('queue-tbody');
         if (!state.pendingJobs.length) {
@@ -692,21 +811,34 @@
         apiGet('action=labelQueue&all=1').then(function (d) {
             if (!d.ok) { showNotification('讀取歷史失敗', 'error'); return; }
             historyJobs = (d.jobs || []).filter(function (j) { return j.status === '已列印'; });
-            var card = document.getElementById('history-card');
-            card.classList.remove('hidden');
+            document.getElementById('history-card').classList.remove('hidden');
             var tbody = document.getElementById('history-tbody');
-            if (!historyJobs.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-slate-400">尚無已列印紀錄</td></tr>';
-                return;
-            }
+            if (!historyJobs.length) { tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-6 text-center text-slate-400">尚無已列印紀錄</td></tr>'; return; }
             var sorted = historyJobs.slice().sort(function (a, b) { return new Date(b.printedAt || b.ts) - new Date(a.printedAt || a.ts); });
             tbody.innerHTML = sorted.map(function (j) { return jobRowHtml(j, true); }).join('');
         });
     }
 
-    /** 核心防重複:先向後端認領(狀態改已列印),只印認領成功的 */
-    function claimAndPrint(jobs) {
+    function totalCopies(jobs) { return jobs.reduce(function (s, j) { return s + (Number(j.copies) || 1); }, 0); }
+
+    /** 核心防重複 + 張數上限:先向後端認領,只印認領成功的 */
+    function claimAndPrint(jobs, manual) {
         if (!jobs.length || state.printing) return;
+        var lim = state.limits.maxPerPrint;
+        var total = totalCopies(jobs);
+        if (total > lim) {
+            if (manual) {
+                if (!confirm('這次會列印 ' + total + ' 張,超過單次上限 ' + lim + ' 張。確定要全部列印嗎?')) return;
+            } else {
+                var subset = [], acc = 0;
+                for (var i = 0; i < jobs.length; i++) {
+                    if (acc + (jobs[i].copies || 1) > lim && subset.length > 0) break;
+                    subset.push(jobs[i]); acc += (jobs[i].copies || 1);
+                }
+                jobs = subset;
+                showNotification('待印張數超過上限,本次先印 ' + acc + ' 張,其餘下一輪繼續', 'warning');
+            }
+        }
         state.printing = true;
         apiPost({ action: 'labelPrinted', ids: jobs.map(function (j) { return j.id; }) })
             .then(function (d) {
@@ -725,146 +857,249 @@
         var targets = state.pendingJobs.filter(function (j) { return srcs.indexOf(j.source) >= 0; });
         if (targets.length) {
             showNotification('偵測到 ' + targets.length + ' 筆新任務,自動列印中', 'info');
-            claimAndPrint(targets);
+            claimAndPrint(targets, false);
         }
     }
     function printAllPending() {
         if (!state.pendingJobs.length) { showNotification('目前無待列印的任務!', 'warning'); return; }
-        claimAndPrint(state.pendingJobs.slice());
+        claimAndPrint(state.pendingJobs.slice(), true);
     }
     function printOne(id) {
         var job = null;
         state.pendingJobs.forEach(function (j) { if (j.id === id) job = j; });
-        if (job) claimAndPrint([job]);
+        if (job) claimAndPrint([job], true);
     }
     function reprintJob(id) {
         var job = null;
         historyJobs.forEach(function (j) { if (j.id === id) job = j; });
         if (!job) return;
         if (!confirm('確定要重印「' + job.name + '」x' + job.copies + ' 張嗎?')) return;
+        if (state.printing) { showNotification('列印中,請稍候', 'warning'); return; }
         state.printing = true;
         doPrint([job]);
     }
 
     // ==========================================
-    // 標籤版面設定 (存在此電腦 localStorage,可在「設定與同步」調整)
+    // 標籤版面設定 (拖曳式,存在此電腦)
     // ==========================================
-    var LAYOUT_DEF = { w: 96, h: 146, qr: 120, specFs: 28, nameFs: 32, skuFs: 32, locFs: 38, secFs: 22, gridH: 111 };
-    var layout = {};
+    var LAYOUT_DEF = {
+        w: 96, h: 146, qr: 120,
+        specFs: 28, nameFs: 32, skuFs: 32, locFs: 38, secFs: 22,
+        rowH: [12, 38, 18, 32], labelColW: 20, botLeftW: 40, locBandH: 30, gridColW: 50, gridRowH: [34, 33, 33]
+    };
+    var layout = deepCopy(LAYOUT_DEF);
     function loadLayout() {
-        layout = Object.assign({}, LAYOUT_DEF);
+        layout = deepCopy(LAYOUT_DEF);
         try {
-            var saved = JSON.parse(localStorage.getItem('label_layout') || '{}');
+            var s = JSON.parse(localStorage.getItem('label_layout') || '{}');
             Object.keys(LAYOUT_DEF).forEach(function (k) {
-                var v = Number(saved[k]);
-                if (v > 0) layout[k] = v;
+                if (Array.isArray(LAYOUT_DEF[k])) {
+                    if (Array.isArray(s[k]) && s[k].length === LAYOUT_DEF[k].length && s[k].every(function (x) { return typeof x === 'number' && x > 0; })) layout[k] = s[k].slice();
+                } else { var v = Number(s[k]); if (v > 0) layout[k] = v; }
             });
         } catch (e) {}
     }
-    function layoutFromInputs() {
-        var l = Object.assign({}, layout);
-        document.querySelectorAll('.lay-input').forEach(function (inp) {
-            var v = Number(inp.value);
-            if (v > 0) l[inp.getAttribute('data-lay')] = v;
-        });
-        return l;
-    }
     function fillLayoutInputs() {
         document.querySelectorAll('.lay-input').forEach(function (inp) {
-            inp.value = layout[inp.getAttribute('data-lay')];
+            var k = inp.getAttribute('data-lay');
+            if (layout[k] != null && !Array.isArray(layout[k])) inp.value = layout[k];
         });
     }
     function saveLayout() {
-        layout = layoutFromInputs();
         localStorage.setItem('label_layout', JSON.stringify(layout));
-        renderLayoutPreview(layout);
         showNotification('標籤版面已儲存並套用(此電腦)', 'success');
     }
     function resetLayout() {
-        layout = Object.assign({}, LAYOUT_DEF);
+        layout = deepCopy(LAYOUT_DEF);
         localStorage.removeItem('label_layout');
         fillLayoutInputs();
-        renderLayoutPreview(layout);
+        renderEditor();
         showNotification('已恢復預設版面', 'info');
     }
-    function renderLayoutPreview(l) {
-        var box = document.getElementById('layout-preview');
-        if (!box) return;
-        box.innerHTML = '';
-        var sample = state.selectedProduct
-            ? { id: 'preview', ts: '', source: '預覽', sku: state.selectedProduct.sku, name: state.selectedProduct.name, spec2: state.selectedProduct.spec2, loc: state.selectedProduct.loc, secondLoc: state.selectedProduct.secondLoc, copies: 1, user: state.operator || '上架人員' }
-            : { id: 'preview', ts: '', source: '預覽', sku: '319-1361', name: '15C2-加大4格藥盒(3884)', spec2: '8845', loc: '7A-12-E01', secondLoc: '4C22B', copies: 1, user: state.operator || '上架人員' };
-        box.appendChild(buildLabelEl(sample, 'layout-preview-qr', 0, l));
-        var MM = 3.7795; // 1mm ≈ 3.78px
-        var wrap = document.getElementById('layout-preview-wrap');
-        wrap.style.width = Math.ceil(l.w * MM * 0.45 + 30) + 'px';
-        wrap.style.height = Math.ceil(l.h * MM * 0.45 + 30) + 'px';
-    }
+    // 字級數字輸入 → 即時更新
     document.addEventListener('input', function (e) {
-        if (e.target.classList && e.target.classList.contains('lay-input')) renderLayoutPreview(layoutFromInputs());
+        if (!(e.target.classList && e.target.classList.contains('lay-input'))) return;
+        var k = e.target.getAttribute('data-lay');
+        var v = Number(e.target.value);
+        if (v > 0) layout[k] = v;
+        if (k === 'w' || k === 'h' || k === 'qr') renderEditor();
+        else if (editorRoot) { updateEditorSizes(editorRoot, layout); }
     });
 
     // ==========================================
-    // 標籤輸出 (直式,預設 100mm x 150mm)
+    // 拖曳式版面編輯器
+    // ==========================================
+    var EDITOR_SCALE = 0.62;
+    var editorRoot = null, editorHandles = [];
+    function sampleJob() {
+        var p = state.selectedProduct;
+        return p
+            ? { id: 'prev', ts: '', source: '預覽', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc, secondLoc: p.secondLoc || '4C22B', copies: 1, user: state.operator || '上架人員' }
+            : { id: 'prev', ts: '', source: '預覽', sku: '319-1361', name: '15C2-加大4格藥盒(3884)', spec2: '8845', loc: '7A-12-E01', secondLoc: '4C22B', copies: 1, user: state.operator || '上架人員' };
+    }
+    function renderEditor() {
+        var box = document.getElementById('layout-editor');
+        if (!box) return;
+        box.innerHTML = '';
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'transform:scale(' + EDITOR_SCALE + ');transform-origin:top left;position:relative;';
+        editorRoot = buildLabelEl(sampleJob(), 'ed-qr', 0, layout, true);
+        editorRoot.style.position = 'relative';
+        wrap.appendChild(editorRoot);
+        buildHandles(editorRoot);
+        positionHandles();
+        box.appendChild(wrap);
+        var MM = 3.7795;
+        box.style.width = Math.ceil(layout.w * MM * EDITOR_SCALE) + 'px';
+        box.style.height = Math.ceil(layout.h * MM * EDITOR_SCALE) + 'px';
+    }
+    function buildHandles(root) {
+        editorHandles = [];
+        function mk(kind, i, orient) {
+            var h = document.createElement('div');
+            h.className = 'ed-h ' + (orient === 'v' ? 'vert' : 'horz');
+            attachDrag(h, kind, i);
+            root.appendChild(h);
+            editorHandles.push({ el: h, kind: kind, i: i });
+        }
+        mk('row', 0, 'h'); mk('row', 1, 'h'); mk('row', 2, 'h');
+        mk('labelcol', null, 'v');
+        mk('botleft', null, 'v');
+        mk('locband', null, 'h');
+        mk('gridcol', null, 'v');
+        mk('gridrow', 0, 'h'); mk('gridrow', 1, 'h');
+    }
+    function positionHandles() {
+        var l = layout, rc = cum(l.rowH);
+        var locY = rc[2] + l.rowH[3] * l.locBandH / 100;
+        var gridTop = locY, gridH = 100 - locY;
+        var grc = cum(l.gridRowH);
+        var gx = l.botLeftW + (100 - l.botLeftW) * l.gridColW / 100;
+        editorHandles.forEach(function (H) {
+            var s = H.el.style;
+            s.left = s.top = s.width = s.height = '';
+            if (H.kind === 'row') { s.left = '0'; s.width = '100%'; s.top = rc[H.i] + '%'; }
+            else if (H.kind === 'labelcol') { s.top = '0'; s.height = rc[2] + '%'; s.left = l.labelColW + '%'; }
+            else if (H.kind === 'botleft') { s.top = rc[2] + '%'; s.height = l.rowH[3] + '%'; s.left = l.botLeftW + '%'; }
+            else if (H.kind === 'locband') { s.left = l.botLeftW + '%'; s.width = (100 - l.botLeftW) + '%'; s.top = locY + '%'; }
+            else if (H.kind === 'gridcol') { s.top = locY + '%'; s.height = gridH + '%'; s.left = gx + '%'; }
+            else if (H.kind === 'gridrow') { s.left = l.botLeftW + '%'; s.width = (100 - l.botLeftW) + '%'; s.top = (gridTop + gridH * grc[H.i] / 100) + '%'; }
+        });
+    }
+    function attachDrag(h, kind, i) {
+        h.addEventListener('pointerdown', function (ev) {
+            ev.preventDefault();
+            var rect = editorRoot.getBoundingClientRect();
+            function move(e) {
+                var fx = clamp((e.clientX - rect.left) / rect.width * 100, 0, 100);
+                var fy = clamp((e.clientY - rect.top) / rect.height * 100, 0, 100);
+                applyDrag(kind, i, fx, fy);
+                updateEditorSizes(editorRoot, layout);
+                positionHandles();
+            }
+            function up() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); }
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        });
+    }
+    var MIN_SEG = 5;
+    function applyDrag(kind, i, fx, fy) {
+        var l = layout, rc = cum(l.rowH);
+        if (kind === 'row') {
+            var prev = i > 0 ? rc[i - 1] : 0, next = rc[i + 1];
+            var b = clamp(fy, prev + MIN_SEG, next - MIN_SEG);
+            l.rowH[i] = Math.round(b - prev); l.rowH[i + 1] = Math.round(next - b);
+        } else if (kind === 'labelcol') { l.labelColW = Math.round(clamp(fx, 8, 45)); }
+        else if (kind === 'botleft') { l.botLeftW = Math.round(clamp(fx, 20, 75)); }
+        else if (kind === 'locband') { l.locBandH = Math.round(clamp((fy - rc[2]) / l.rowH[3] * 100, 10, 90)); }
+        else if (kind === 'gridcol') { l.gridColW = Math.round(clamp((fx - l.botLeftW) / (100 - l.botLeftW) * 100, 15, 85)); }
+        else if (kind === 'gridrow') {
+            var locY = rc[2] + l.rowH[3] * l.locBandH / 100, gridH = 100 - locY;
+            var grc = cum(l.gridRowH);
+            var localB = (fy - locY) / gridH * 100;
+            var prevG = i > 0 ? grc[i - 1] : 0, nextG = grc[i + 1];
+            var bb = clamp(localB, prevG + MIN_SEG, nextG - MIN_SEG);
+            l.gridRowH[i] = Math.round(bb - prevG); l.gridRowH[i + 1] = Math.round(nextG - bb);
+        }
+    }
+    function setFs(root, sel, px) { var e = root.querySelector(sel); if (e) e.style.fontSize = px + 'px'; }
+    function updateEditorSizes(root, l) {
+        var rows = root.querySelectorAll('.ed-row');
+        for (var i = 0; i < rows.length; i++) rows[i].style.height = l.rowH[i] + '%';
+        root.querySelectorAll('.ed-labelcol').forEach(function (e) { e.style.width = l.labelColW + '%'; });
+        root.querySelectorAll('.ed-content').forEach(function (e) { e.style.width = (100 - l.labelColW) + '%'; });
+        var bl = root.querySelector('.ed-botleft'); if (bl) bl.style.width = l.botLeftW + '%';
+        var br = root.querySelector('.ed-botright'); if (br) br.style.width = (100 - l.botLeftW) + '%';
+        var lb = root.querySelector('.ed-locband'); if (lb) lb.style.height = l.locBandH + '%';
+        var gw = root.querySelector('.ed-gridwrap'); if (gw) gw.style.height = (100 - l.locBandH) + '%';
+        var grows = root.querySelectorAll('.ed-grow');
+        for (var j = 0; j < grows.length; j++) grows[j].style.height = l.gridRowH[j] + '%';
+        root.querySelectorAll('.ed-gcell-left').forEach(function (e) { e.style.width = l.gridColW + '%'; });
+        setFs(root, '.ed-spec', l.specFs); setFs(root, '.ed-name', l.nameFs); setFs(root, '.ed-sku', l.skuFs); setFs(root, '.ed-loc', l.locFs); setFs(root, '.ed-sec', l.secFs);
+    }
+
+    // ==========================================
+    // 標籤輸出 (直式,可調版面;第二儲位印在6格左上角)
     // ==========================================
     function formatTime(d) {
         function p2(n) { return String(n).padStart(2, '0'); }
         return d.getFullYear() + '/' + p2(d.getMonth() + 1) + '/' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
     }
-    /** 產生一張標籤元素;doPrint 與版面預覽共用。第二儲位印在手寫6格的左上角格子。 */
-    function buildLabelEl(job, qrIdPrefix, idx, l) {
+    function buildLabelEl(job, qrIdPrefix, idx, l, editor) {
         l = l || layout;
+        var rh = l.rowH, gr = l.gridRowH;
         var timeStr = formatTime(job.ts ? new Date(job.ts) : new Date());
         var label = document.createElement('div');
-        label.className = 'inline-block bg-white border-4 border-black text-black text-left relative overflow-hidden p-0 m-2';
+        label.className = 'bg-white border-4 border-black text-black text-left relative overflow-hidden';
         label.style.width = l.w + 'mm';
         label.style.height = l.h + 'mm';
-        label.style.pageBreakAfter = 'always';
+        label.style.boxSizing = 'border-box';
+        if (editor) { label.style.margin = '0'; }
+        else { label.style.display = 'inline-block'; label.style.margin = '8px'; label.style.pageBreakAfter = 'always'; }
         var qrId = qrIdPrefix + '-' + job.id + '-' + idx;
-        var cellH = Math.round(l.gridH / 3);
+        var pad = editor ? '0' : '12px';
         label.innerHTML =
-            '<div class="flex flex-col h-full w-full justify-between p-3 relative" style="font-family: \'Microsoft JhengHei\', sans-serif; box-sizing: border-box;">' +
-            '<div class="flex border-b-4 border-black py-1" style="height: 12%;">' +
-                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[18px] font-black leading-tight"><span>規</span><span>格</span><span>二</span></div>' +
-                '<div class="w-[80%] flex items-center justify-center font-extrabold px-2 font-mono tracking-widest text-center truncate" style="font-size:' + l.specFs + 'px">' + esc(job.spec2 || '無') + '</div>' +
-            '</div>' +
-            '<div class="flex border-b-4 border-black py-2" style="height: 38%;">' +
-                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[20px] font-black leading-normal"><span>品</span><span class="mt-2">名</span></div>' +
-                '<div class="w-[80%] flex items-center justify-start font-black px-4 leading-snug break-all overflow-hidden line-clamp-3" style="font-size:' + l.nameFs + 'px">' + esc(job.name) + '</div>' +
-            '</div>' +
-            '<div class="flex border-b-4 border-black py-1" style="height: 18%;">' +
-                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[16px] font-black leading-tight"><span>貨</span><span>號</span></div>' +
-                '<div class="w-[80%] flex items-center justify-center font-black px-2 font-mono tracking-wide text-center" style="font-size:' + l.skuFs + 'px">' + esc(job.sku) + '</div>' +
-            '</div>' +
-            '<div class="flex items-stretch pt-2" style="height: 32%;">' +
-                '<div class="w-[40%] flex flex-col justify-between items-center h-full">' +
-                    '<div id="' + qrId + '" class="flex items-center justify-center bg-white" style="width:' + l.qr + 'px;height:' + l.qr + 'px"></div>' +
-                    '<div class="text-[10px] font-bold text-slate-800 text-left leading-tight tracking-tight select-none mt-1 w-full pl-2">人員: ' + esc(job.user || '上架人員') + '<br>時間: ' + esc(timeStr) + '</div>' +
+            '<div class="flex flex-col h-full w-full" style="box-sizing:border-box; padding:' + pad + '; font-family:\'Microsoft JhengHei\',sans-serif;">' +
+                '<div class="ed-row flex border-b-4 border-black" style="height:' + rh[0] + '%;">' +
+                    '<div class="ed-labelcol border-r-4 border-black flex flex-col items-center justify-center font-black leading-tight" style="width:' + l.labelColW + '%; font-size:14px;"><span>規</span><span>格</span><span>二</span></div>' +
+                    '<div class="ed-content flex items-center justify-center overflow-hidden" style="width:' + (100 - l.labelColW) + '%;"><span class="ed-spec font-extrabold font-mono tracking-widest text-center truncate px-1" style="font-size:' + l.specFs + 'px;">' + esc(job.spec2 || '無') + '</span></div>' +
                 '</div>' +
-                '<div class="w-[60%] flex flex-col justify-between h-full pl-2">' +
-                    '<div class="font-black font-sans text-center tracking-tighter whitespace-nowrap overflow-visible leading-none" style="font-size:' + l.locFs + 'px">' + esc(job.loc || '無儲位') + '</div>' +
-                    '<table class="w-full border-2 border-black border-collapse mt-2" style="height: ' + l.gridH + 'px;"><tbody>' +
-                        '<tr class="border-b-2 border-black"><td class="border-r-2 border-black text-center align-middle font-black leading-none" style="height: ' + cellH + 'px; width: 50%; font-size:' + l.secFs + 'px">' + esc(job.secondLoc || '') + '</td><td style="width: 50%;"></td></tr>' +
-                        '<tr class="border-b-2 border-black"><td class="border-r-2 border-black" style="height: ' + cellH + 'px;"></td><td></td></tr>' +
-                        '<tr><td class="border-r-2 border-black" style="height: ' + cellH + 'px;"></td><td></td></tr>' +
-                    '</tbody></table>' +
+                '<div class="ed-row flex border-b-4 border-black" style="height:' + rh[1] + '%;">' +
+                    '<div class="ed-labelcol border-r-4 border-black flex flex-col items-center justify-center font-black" style="width:' + l.labelColW + '%; font-size:16px;"><span>品</span><span class="mt-1">名</span></div>' +
+                    '<div class="ed-content flex items-center justify-start overflow-hidden" style="width:' + (100 - l.labelColW) + '%;"><span class="ed-name font-black break-all line-clamp-3 px-2" style="font-size:' + l.nameFs + 'px; line-height:1.15;">' + esc(job.name) + '</span></div>' +
                 '</div>' +
-            '</div>' +
+                '<div class="ed-row flex border-b-4 border-black" style="height:' + rh[2] + '%;">' +
+                    '<div class="ed-labelcol border-r-4 border-black flex flex-col items-center justify-center font-black" style="width:' + l.labelColW + '%; font-size:13px;"><span>貨</span><span>號</span></div>' +
+                    '<div class="ed-content flex items-center justify-center overflow-hidden" style="width:' + (100 - l.labelColW) + '%;"><span class="ed-sku font-black font-mono tracking-wide text-center px-1" style="font-size:' + l.skuFs + 'px;">' + esc(job.sku) + '</span></div>' +
+                '</div>' +
+                '<div class="ed-row flex" style="height:' + rh[3] + '%;">' +
+                    '<div class="ed-botleft flex flex-col justify-between items-center" style="width:' + l.botLeftW + '%; padding-top:4px;">' +
+                        '<div id="' + qrId + '" class="bg-white flex items-center justify-center" style="width:' + l.qr + 'px;height:' + l.qr + 'px;"></div>' +
+                        '<div class="font-bold text-slate-800 text-left leading-tight w-full" style="font-size:10px; padding-left:4px;">人員: ' + esc(job.user || '上架人員') + '<br>時間: ' + esc(timeStr) + '</div>' +
+                    '</div>' +
+                    '<div class="ed-botright flex flex-col" style="width:' + (100 - l.botLeftW) + '%; padding-left:4px;">' +
+                        '<div class="ed-locband flex items-center justify-center overflow-hidden" style="height:' + l.locBandH + '%;"><span class="ed-loc font-black text-center leading-none" style="font-size:' + l.locFs + 'px; white-space:nowrap;">' + esc(job.loc || '無儲位') + '</span></div>' +
+                        '<div class="ed-gridwrap" style="height:' + (100 - l.locBandH) + '%;">' +
+                            '<table class="border-2 border-black border-collapse" style="width:100%; height:100%; table-layout:fixed;"><tbody>' +
+                                '<tr class="ed-grow border-b-2 border-black" style="height:' + gr[0] + '%;"><td class="ed-gcell-left ed-sec border-r-2 border-black text-center align-middle font-black leading-none" style="width:' + l.gridColW + '%; font-size:' + l.secFs + 'px;">' + esc(job.secondLoc || '') + '</td><td></td></tr>' +
+                                '<tr class="ed-grow border-b-2 border-black" style="height:' + gr[1] + '%;"><td class="ed-gcell-left border-r-2 border-black"></td><td></td></tr>' +
+                                '<tr class="ed-grow" style="height:' + gr[2] + '%;"><td class="ed-gcell-left border-r-2 border-black"></td><td></td></tr>' +
+                            '</tbody></table>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
             '</div>';
         setTimeout(function () {
-            try {
-                new QRCode(document.getElementById(qrId), { text: job.sku, width: l.qr, height: l.qr, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
-            } catch (e) {}
-        }, 50);
+            try { new QRCode(document.getElementById(qrId), { text: job.sku, width: l.qr, height: l.qr, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); } catch (e) {}
+        }, 30);
         return label;
     }
     function doPrint(jobs) {
         var printArea = document.getElementById('print-area');
         printArea.innerHTML = '';
         jobs.forEach(function (job) {
-            for (var i = 0; i < job.copies; i++) printArea.appendChild(buildLabelEl(job, 'print-qr', i));
+            for (var i = 0; i < job.copies; i++) printArea.appendChild(buildLabelEl(job, 'print-qr', i, layout, false));
         });
-        // 等 QR Code 生成後出紙;window.print 會擋住 JS,結束後解鎖並再檢查一次佇列
         setTimeout(function () {
             try { window.print(); } finally {
                 state.printing = false;
@@ -876,7 +1111,7 @@
     }
 
     // ==========================================
-    // 印表機檢測:測試列印 + 任務滯留警示
+    // 印表機檢測
     // ==========================================
     function printTestLabel() {
         if (state.printing) { showNotification('列印中,請稍候', 'warning'); return; }
@@ -892,7 +1127,7 @@
     var lastBeep = 0;
     function beep() {
         var now = Date.now();
-        if (now - lastBeep < 30000) return; // 最多 30 秒響一次
+        if (now - lastBeep < 30000) return;
         lastBeep = now;
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -911,24 +1146,11 @@
         if (state.autoPrint && state.pendingJobs.length && !state.printing) {
             if (!state.pendingSince) state.pendingSince = Date.now();
             var sec = Math.round((Date.now() - state.pendingSince) / 1000);
-            if (sec > 30) {
-                stuck = true;
-                msg = '警告:有 ' + state.pendingJobs.length + ' 筆任務滯留 ' + sec + ' 秒未印出!請檢查印表機電源/紙張,或按「列印測試標籤」確認。';
-            }
-        } else {
-            state.pendingSince = 0;
-        }
-        if (state.pollFails >= 5) {
-            stuck = true;
-            msg = (msg ? msg + ' ' : '') + '雲端連線已失敗 ' + state.pollFails + ' 次,請檢查網路。';
-        }
-        if (stuck) {
-            alertBox.classList.remove('hidden');
-            msgEl.innerText = msg;
-            beep();
-        } else {
-            alertBox.classList.add('hidden');
-        }
+            if (sec > 30) { stuck = true; msg = '警告:有 ' + state.pendingJobs.length + ' 筆任務滯留 ' + sec + ' 秒未印出!請檢查印表機電源/紙張,或按「列印測試標籤」確認。'; }
+        } else { state.pendingSince = 0; }
+        if (state.pollFails >= 5) { stuck = true; msg = (msg ? msg + ' ' : '') + '雲端連線已失敗 ' + state.pollFails + ' 次,請檢查網路。'; }
+        if (stuck) { alertBox.classList.remove('hidden'); msgEl.innerText = msg; beep(); }
+        else { alertBox.classList.add('hidden'); }
         var health = document.getElementById('conn-health');
         if (health) {
             health.innerText = state.pollFails ? ('異常(連續失敗 ' + state.pollFails + ' 次)') : '正常';
@@ -949,9 +1171,9 @@
     // ==========================================
     // 啟動
     // ==========================================
+    loadLimits();
     loadLayout();
     loadCachedProducts();
-    // 列印電腦可用 .../label/#pc 直接開在電腦列印端;自動列印開關會記住,重開機自動恢復
     switchTab(location.hash === '#pc' ? 'pc' : 'mobile');
     if (localStorage.getItem('label_autoprint') === '1') {
         document.getElementById('auto-print-toggle').checked = true;
@@ -959,7 +1181,7 @@
     }
     fetchIp();
     syncProducts(true);
-    setInterval(function () { syncProducts(true); }, 3600000); // 每小時背景更新產品
+    setInterval(function () { syncProducts(true); }, 3600000);
     </script>
 </body>
 </html>
