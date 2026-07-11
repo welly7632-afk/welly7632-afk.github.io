@@ -130,7 +130,7 @@
                                 <div id="prev-loc" class="text-[16px] font-black font-sans text-center whitespace-nowrap overflow-visible leading-none"></div>
                                 <table class="w-full border border-black border-collapse mt-0.5" style="height: 44.4px;">
                                     <tbody>
-                                        <tr class="border-b border-black"><td class="border-r border-black" style="height: 14.8px; width: 50%;"></td><td style="width: 50%;"></td></tr>
+                                        <tr class="border-b border-black"><td id="prev-sec" class="border-r border-black text-center align-middle font-black text-[9px] leading-none" style="height: 14.8px; width: 50%;"></td><td style="width: 50%;"></td></tr>
                                         <tr class="border-b border-black"><td class="border-r border-black" style="height: 14.8px;"></td><td></td></tr>
                                         <tr><td class="border-r border-black" style="height: 14.8px;"></td><td></td></tr>
                                     </tbody>
@@ -233,13 +233,25 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
-                <h4 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-screwdriver-wrench text-amber-500"></i> 直式標籤列印設定說明 (100mm x 150mm)</h4>
-                <ul class="text-xs text-slate-600 space-y-2 list-disc list-inside">
-                    <li><strong>尺寸設定</strong>:標籤印表機紙張大小設為直式 100mm x 150mm。</li>
-                    <li><strong>版面邊距</strong>:瀏覽器列印選項「邊距」設為 <strong class="text-indigo-600">無 (None)</strong>。</li>
-                    <li><strong>頁首頁尾</strong>:取消勾選「頁首和頁尾」。</li>
-                    <li><strong>防重複保證</strong>:每筆標籤列印前會先向雲端「認領」,認領成功才出紙。就算重新整理網頁或電腦重開機,已印過的不會再印。</li>
+            <!-- 印表機檢測 -->
+            <div class="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+                <h4 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-stethoscope text-rose-500"></i> 印表機檢測</h4>
+                <div id="printer-stuck-alert" class="hidden bg-rose-50 border-2 border-rose-300 text-rose-700 rounded-lg px-4 py-3 text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-xl"></i><span id="printer-stuck-msg"></span>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4 md:items-center flex-wrap">
+                    <button onclick="printTestLabel()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg shadow-md transition flex items-center gap-2 w-fit">
+                        <i class="fa-solid fa-vial"></i> 列印測試標籤
+                    </button>
+                    <div class="text-sm text-slate-600">上次出紙: <b id="last-print-time" class="text-slate-800">尚無紀錄</b></div>
+                    <div class="text-sm text-slate-600">雲端連線: <b id="conn-health" class="text-slate-800">檢查中...</b></div>
+                </div>
+                <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside border-t border-slate-100 pt-3">
+                    <li>按「列印測試標籤」會直接出一張測試頁:<strong>有出紙=印表機正常</strong>;沒出紙先看印表機電源/缺紙/夾紙燈號。</li>
+                    <li>開啟自動列印時,若有任務<strong>滯留超過 30 秒沒印出</strong>,上方會出現紅色警告並發出提示音。</li>
+                    <li>紙張設定:直式 100mm x 150mm;邊距設「無」;取消「頁首和頁尾」。</li>
+                    <li>要「全自動不跳列印視窗」,Chrome 捷徑加上 <code class="bg-slate-100 px-1 rounded">--kiosk-printing</code> 啟動參數。</li>
+                    <li>防重複保證:每筆列印前先向雲端「認領」,認領成功才出紙,重新整理/重開機不會重印。</li>
                 </ul>
             </div>
         </section>
@@ -272,6 +284,38 @@
                 </div>
                 <p class="text-[11px] text-slate-400">此名稱會登記在標籤佇列與標籤上。手機輸入端每次發送也可另外填。</p>
             </div>
+
+            <!-- 標籤版面調整 -->
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div>
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-indigo-500"></i> 標籤版面調整(存在這台電腦)</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">改數字右邊預覽會立刻跟著變;確定後按「儲存並套用」。每台列印電腦可各自調整。</p>
+                </div>
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 flex-grow content-start" id="layout-inputs">
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤寬 (mm)</label><input data-lay="w" type="number" min="30" max="200" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">標籤高 (mm)</label><input data-lay="h" type="number" min="30" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">QR 大小 (px)</label><input data-lay="qr" type="number" min="40" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">規格二字級</label><input data-lay="specFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">品名字級</label><input data-lay="nameFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">貨號字級</label><input data-lay="skuFs" type="number" min="8" max="80" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">儲位字級</label><input data-lay="locFs" type="number" min="8" max="90" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">第二儲位字級</label><input data-lay="secFs" type="number" min="8" max="60" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-500 mb-1">備註表高 (px)</label><input data-lay="gridH" type="number" min="40" max="300" class="lay-input w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center font-bold"></div>
+                        <div class="col-span-2 md:col-span-3 flex gap-2 flex-wrap pt-1">
+                            <button onclick="saveLayout()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-floppy-disk mr-1"></i>儲存並套用</button>
+                            <button onclick="resetLayout()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-rotate-left mr-1"></i>恢復預設</button>
+                            <button onclick="printTestLabel()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-vial mr-1"></i>列印測試標籤</button>
+                        </div>
+                    </div>
+                    <div class="shrink-0">
+                        <div class="text-[11px] font-bold text-slate-400 mb-1">即時預覽 (45% 縮放)</div>
+                        <div id="layout-preview-wrap" class="overflow-hidden border border-dashed border-slate-300 rounded-lg bg-slate-50 p-2">
+                            <div id="layout-preview" style="transform: scale(0.45); transform-origin: top left;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -297,7 +341,9 @@
         autoPrint: false,
         printing: false,
         currentTab: 'mobile',
-        selectedProduct: null
+        selectedProduct: null,
+        pollFails: 0,
+        pendingSince: 0
     };
 
     function esc(s) {
@@ -422,8 +468,13 @@
         if (tab !== 'mobile' && html5QrcodeScanner) stopScanner();
         if (tab === 'db') {
             document.getElementById('settings-operator').value = state.operator;
+            fillLayoutInputs();
+            renderLayoutPreview(layout);
         }
-        if (tab === 'pc') pollQueue();
+        if (tab === 'pc') {
+            updateLastPrintTime();
+            pollQueue();
+        }
     }
 
     // ==========================================
@@ -517,6 +568,7 @@
             document.getElementById('prev-sku').innerText = product.sku;
             document.getElementById('prev-spec').innerText = product.spec2 || '無';
             document.getElementById('prev-loc').innerText = product.loc || '無儲位';
+            document.getElementById('prev-sec').innerText = product.secondLoc || '';
             document.getElementById('prev-operator-text').innerText = document.getElementById('print-operator').value.trim() || state.operator || '上架人員';
             document.getElementById('prev-time-text').innerText = formatTime(new Date());
             try {
@@ -547,7 +599,7 @@
         }
         showNotification('發送列印請求中...', 'info');
         apiPost({
-            action: 'labelAdd', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc,
+            action: 'labelAdd', sku: p.sku, name: p.name, spec2: p.spec2, loc: p.loc, secondLoc: p.secondLoc,
             copies: copies, note: remark, user: operator
         }).then(function (d) {
             if (d.ok) {
@@ -588,13 +640,17 @@
         if (state.currentTab !== 'pc') return;
         apiGet('action=labelQueue').then(function (d) {
             if (!d.ok) throw new Error(d.error || 'poll error');
+            state.pollFails = 0;
             state.pendingJobs = d.jobs || [];
             renderQueue();
             var el = document.getElementById('poll-status');
             el.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>雲端連線正常 (' + new Date().toLocaleTimeString() + ')';
             if (state.autoPrint) autoPrintCheck();
+            checkPrinterHealth();
         }).catch(function (e) {
+            state.pollFails++;
             document.getElementById('poll-status').innerHTML = '<i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>連線失敗,3 秒後重試';
+            checkPrinterHealth();
         });
     }
     setInterval(pollQueue, CONFIG.POLL_MS);
@@ -615,7 +671,7 @@
             '<td class="px-4 py-3">' + sourceBadge(job.source) + '</td>' +
             '<td class="px-4 py-3"><div class="font-bold text-slate-800 text-sm">' + esc(job.name) + '</div><div class="text-xs text-slate-400 font-mono">' + esc(job.sku) + '</div></td>' +
             '<td class="px-4 py-3"><div class="text-xs text-slate-700">規格二: ' + esc(job.spec2 || '無') + '</div>' +
-            '<div class="text-xs font-bold text-indigo-600">儲位: ' + esc(job.loc || '無') + '</div>' +
+            '<div class="text-xs font-bold text-indigo-600">儲位: ' + esc(job.loc || '無') + (job.secondLoc ? ' <span class="text-emerald-600">(庫: ' + esc(job.secondLoc) + ')</span>' : '') + '</div>' +
             '<div class="text-[10px] text-slate-400 mt-1">人員: ' + esc(job.user || '未填') + (job.note ? ' | 備註: ' + esc(job.note) : '') + '</div></td>' +
             '<td class="px-4 py-3 text-center font-bold text-slate-700">' + job.copies + '</td>' +
             '<td class="px-4 py-3 text-right">' + btn + '</td></tr>';
@@ -691,70 +747,193 @@
     }
 
     // ==========================================
-    // 標籤輸出 (直式 100mm x 150mm,同 2.4 版版面)
+    // 標籤版面設定 (存在此電腦 localStorage,可在「設定與同步」調整)
+    // ==========================================
+    var LAYOUT_DEF = { w: 96, h: 146, qr: 120, specFs: 28, nameFs: 32, skuFs: 32, locFs: 38, secFs: 22, gridH: 111 };
+    var layout = {};
+    function loadLayout() {
+        layout = Object.assign({}, LAYOUT_DEF);
+        try {
+            var saved = JSON.parse(localStorage.getItem('label_layout') || '{}');
+            Object.keys(LAYOUT_DEF).forEach(function (k) {
+                var v = Number(saved[k]);
+                if (v > 0) layout[k] = v;
+            });
+        } catch (e) {}
+    }
+    function layoutFromInputs() {
+        var l = Object.assign({}, layout);
+        document.querySelectorAll('.lay-input').forEach(function (inp) {
+            var v = Number(inp.value);
+            if (v > 0) l[inp.getAttribute('data-lay')] = v;
+        });
+        return l;
+    }
+    function fillLayoutInputs() {
+        document.querySelectorAll('.lay-input').forEach(function (inp) {
+            inp.value = layout[inp.getAttribute('data-lay')];
+        });
+    }
+    function saveLayout() {
+        layout = layoutFromInputs();
+        localStorage.setItem('label_layout', JSON.stringify(layout));
+        renderLayoutPreview(layout);
+        showNotification('標籤版面已儲存並套用(此電腦)', 'success');
+    }
+    function resetLayout() {
+        layout = Object.assign({}, LAYOUT_DEF);
+        localStorage.removeItem('label_layout');
+        fillLayoutInputs();
+        renderLayoutPreview(layout);
+        showNotification('已恢復預設版面', 'info');
+    }
+    function renderLayoutPreview(l) {
+        var box = document.getElementById('layout-preview');
+        if (!box) return;
+        box.innerHTML = '';
+        var sample = state.selectedProduct
+            ? { id: 'preview', ts: '', source: '預覽', sku: state.selectedProduct.sku, name: state.selectedProduct.name, spec2: state.selectedProduct.spec2, loc: state.selectedProduct.loc, secondLoc: state.selectedProduct.secondLoc, copies: 1, user: state.operator || '上架人員' }
+            : { id: 'preview', ts: '', source: '預覽', sku: '319-1361', name: '15C2-加大4格藥盒(3884)', spec2: '8845', loc: '7A-12-E01', secondLoc: '4C22B', copies: 1, user: state.operator || '上架人員' };
+        box.appendChild(buildLabelEl(sample, 'layout-preview-qr', 0, l));
+        var MM = 3.7795; // 1mm ≈ 3.78px
+        var wrap = document.getElementById('layout-preview-wrap');
+        wrap.style.width = Math.ceil(l.w * MM * 0.45 + 30) + 'px';
+        wrap.style.height = Math.ceil(l.h * MM * 0.45 + 30) + 'px';
+    }
+    document.addEventListener('input', function (e) {
+        if (e.target.classList && e.target.classList.contains('lay-input')) renderLayoutPreview(layoutFromInputs());
+    });
+
+    // ==========================================
+    // 標籤輸出 (直式,預設 100mm x 150mm)
     // ==========================================
     function formatTime(d) {
         function p2(n) { return String(n).padStart(2, '0'); }
         return d.getFullYear() + '/' + p2(d.getMonth() + 1) + '/' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
     }
+    /** 產生一張標籤元素;doPrint 與版面預覽共用。第二儲位印在手寫6格的左上角格子。 */
+    function buildLabelEl(job, qrIdPrefix, idx, l) {
+        l = l || layout;
+        var timeStr = formatTime(job.ts ? new Date(job.ts) : new Date());
+        var label = document.createElement('div');
+        label.className = 'inline-block bg-white border-4 border-black text-black text-left relative overflow-hidden p-0 m-2';
+        label.style.width = l.w + 'mm';
+        label.style.height = l.h + 'mm';
+        label.style.pageBreakAfter = 'always';
+        var qrId = qrIdPrefix + '-' + job.id + '-' + idx;
+        var cellH = Math.round(l.gridH / 3);
+        label.innerHTML =
+            '<div class="flex flex-col h-full w-full justify-between p-3 relative" style="font-family: \'Microsoft JhengHei\', sans-serif; box-sizing: border-box;">' +
+            '<div class="flex border-b-4 border-black py-1" style="height: 12%;">' +
+                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[18px] font-black leading-tight"><span>規</span><span>格</span><span>二</span></div>' +
+                '<div class="w-[80%] flex items-center justify-center font-extrabold px-2 font-mono tracking-widest text-center truncate" style="font-size:' + l.specFs + 'px">' + esc(job.spec2 || '無') + '</div>' +
+            '</div>' +
+            '<div class="flex border-b-4 border-black py-2" style="height: 38%;">' +
+                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[20px] font-black leading-normal"><span>品</span><span class="mt-2">名</span></div>' +
+                '<div class="w-[80%] flex items-center justify-start font-black px-4 leading-snug break-all overflow-hidden line-clamp-3" style="font-size:' + l.nameFs + 'px">' + esc(job.name) + '</div>' +
+            '</div>' +
+            '<div class="flex border-b-4 border-black py-1" style="height: 18%;">' +
+                '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[16px] font-black leading-tight"><span>貨</span><span>號</span></div>' +
+                '<div class="w-[80%] flex items-center justify-center font-black px-2 font-mono tracking-wide text-center" style="font-size:' + l.skuFs + 'px">' + esc(job.sku) + '</div>' +
+            '</div>' +
+            '<div class="flex items-stretch pt-2" style="height: 32%;">' +
+                '<div class="w-[40%] flex flex-col justify-between items-center h-full">' +
+                    '<div id="' + qrId + '" class="flex items-center justify-center bg-white" style="width:' + l.qr + 'px;height:' + l.qr + 'px"></div>' +
+                    '<div class="text-[10px] font-bold text-slate-800 text-left leading-tight tracking-tight select-none mt-1 w-full pl-2">人員: ' + esc(job.user || '上架人員') + '<br>時間: ' + esc(timeStr) + '</div>' +
+                '</div>' +
+                '<div class="w-[60%] flex flex-col justify-between h-full pl-2">' +
+                    '<div class="font-black font-sans text-center tracking-tighter whitespace-nowrap overflow-visible leading-none" style="font-size:' + l.locFs + 'px">' + esc(job.loc || '無儲位') + '</div>' +
+                    '<table class="w-full border-2 border-black border-collapse mt-2" style="height: ' + l.gridH + 'px;"><tbody>' +
+                        '<tr class="border-b-2 border-black"><td class="border-r-2 border-black text-center align-middle font-black leading-none" style="height: ' + cellH + 'px; width: 50%; font-size:' + l.secFs + 'px">' + esc(job.secondLoc || '') + '</td><td style="width: 50%;"></td></tr>' +
+                        '<tr class="border-b-2 border-black"><td class="border-r-2 border-black" style="height: ' + cellH + 'px;"></td><td></td></tr>' +
+                        '<tr><td class="border-r-2 border-black" style="height: ' + cellH + 'px;"></td><td></td></tr>' +
+                    '</tbody></table>' +
+                '</div>' +
+            '</div>' +
+            '</div>';
+        setTimeout(function () {
+            try {
+                new QRCode(document.getElementById(qrId), { text: job.sku, width: l.qr, height: l.qr, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+            } catch (e) {}
+        }, 50);
+        return label;
+    }
     function doPrint(jobs) {
         var printArea = document.getElementById('print-area');
         printArea.innerHTML = '';
         jobs.forEach(function (job) {
-            var timeStr = formatTime(job.ts ? new Date(job.ts) : new Date());
-            for (var i = 0; i < job.copies; i++) {
-                var label = document.createElement('div');
-                label.className = 'inline-block bg-white border-4 border-black text-black text-left relative overflow-hidden p-0 m-2';
-                label.style.width = '96mm';
-                label.style.height = '146mm';
-                label.style.pageBreakAfter = 'always';
-                var qrId = 'print-qr-' + job.id + '-' + i;
-                label.innerHTML =
-                    '<div class="flex flex-col h-full w-full justify-between p-3 relative" style="font-family: \'Microsoft JhengHei\', sans-serif; box-sizing: border-box;">' +
-                    '<div class="flex border-b-4 border-black py-1" style="height: 12%;">' +
-                        '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[18px] font-black leading-tight"><span>規</span><span>格</span><span>二</span></div>' +
-                        '<div class="w-[80%] flex items-center justify-center font-extrabold text-[28px] px-2 font-mono tracking-widest text-center truncate">' + esc(job.spec2 || '無') + '</div>' +
-                    '</div>' +
-                    '<div class="flex border-b-4 border-black py-2" style="height: 38%;">' +
-                        '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[20px] font-black leading-normal"><span>品</span><span class="mt-2">名</span></div>' +
-                        '<div class="w-[80%] flex items-center justify-start text-[32px] font-black px-4 leading-snug break-all overflow-hidden line-clamp-3">' + esc(job.name) + '</div>' +
-                    '</div>' +
-                    '<div class="flex border-b-4 border-black py-1" style="height: 18%;">' +
-                        '<div class="w-[20%] border-r-4 border-black flex flex-col items-center justify-center text-[16px] font-black leading-tight"><span>貨</span><span>號</span></div>' +
-                        '<div class="w-[80%] flex items-center justify-center text-[32px] font-black px-2 font-mono tracking-wide text-center">' + esc(job.sku) + '</div>' +
-                    '</div>' +
-                    '<div class="flex items-stretch pt-2" style="height: 32%;">' +
-                        '<div class="w-[40%] flex flex-col justify-between items-center h-full">' +
-                            '<div id="' + qrId + '" class="w-[120px] h-[120px] flex items-center justify-center bg-white"></div>' +
-                            '<div class="text-[10px] font-bold text-slate-800 text-left leading-tight tracking-tight select-none mt-1 w-full pl-2">人員: ' + esc(job.user || '上架人員') + '<br>時間: ' + esc(timeStr) + '</div>' +
-                        '</div>' +
-                        '<div class="w-[60%] flex flex-col justify-between h-full pl-2">' +
-                            '<div class="text-[38px] font-black font-sans text-center tracking-tighter whitespace-nowrap overflow-visible leading-none">' + esc(job.loc || '無儲位') + '</div>' +
-                            '<table class="w-full border-2 border-black border-collapse mt-2" style="height: 111px;"><tbody>' +
-                                '<tr class="border-b-2 border-black"><td class="border-r-2 border-black" style="height: 37px; width: 50%;"></td><td style="width: 50%;"></td></tr>' +
-                                '<tr class="border-b-2 border-black"><td class="border-r-2 border-black" style="height: 37px;"></td><td></td></tr>' +
-                                '<tr><td class="border-r-2 border-black" style="height: 37px;"></td><td></td></tr>' +
-                            '</tbody></table>' +
-                        '</div>' +
-                    '</div>' +
-                    '</div>';
-                printArea.appendChild(label);
-                (function (qrId, sku) {
-                    setTimeout(function () {
-                        try {
-                            new QRCode(document.getElementById(qrId), { text: sku, width: 120, height: 120, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
-                        } catch (e) {}
-                    }, 50);
-                })(qrId, job.sku);
-            }
+            for (var i = 0; i < job.copies; i++) printArea.appendChild(buildLabelEl(job, 'print-qr', i));
         });
         // 等 QR Code 生成後出紙;window.print 會擋住 JS,結束後解鎖並再檢查一次佇列
         setTimeout(function () {
             try { window.print(); } finally {
                 state.printing = false;
+                localStorage.setItem('label_last_print', String(Date.now()));
+                updateLastPrintTime();
                 setTimeout(pollQueue, 500);
             }
         }, 500);
+    }
+
+    // ==========================================
+    // 印表機檢測:測試列印 + 任務滯留警示
+    // ==========================================
+    function printTestLabel() {
+        if (state.printing) { showNotification('列印中,請稍候', 'warning'); return; }
+        state.printing = true;
+        showNotification('送出測試標籤,請確認印表機有出紙', 'info');
+        doPrint([{ id: 'test-' + Date.now(), ts: '', source: '測試', sku: 'TEST-0000', name: '★ 印表機測試標籤 ★ (此頁可丟棄)', spec2: '測試', loc: 'TEST-01', secondLoc: '4C22B', copies: 1, user: state.operator || '測試' }]);
+    }
+    function updateLastPrintTime() {
+        var t = Number(localStorage.getItem('label_last_print') || 0);
+        var el = document.getElementById('last-print-time');
+        if (el && t) el.innerText = new Date(t).toLocaleString();
+    }
+    var lastBeep = 0;
+    function beep() {
+        var now = Date.now();
+        if (now - lastBeep < 30000) return; // 最多 30 秒響一次
+        lastBeep = now;
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [0, 0.3].forEach(function (delay) {
+                var o = ctx.createOscillator(), g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.frequency.value = 880; g.gain.value = 0.3;
+                o.start(ctx.currentTime + delay); o.stop(ctx.currentTime + delay + 0.2);
+            });
+        } catch (e) {}
+    }
+    function checkPrinterHealth() {
+        var alertBox = document.getElementById('printer-stuck-alert');
+        var msgEl = document.getElementById('printer-stuck-msg');
+        var stuck = false, msg = '';
+        if (state.autoPrint && state.pendingJobs.length && !state.printing) {
+            if (!state.pendingSince) state.pendingSince = Date.now();
+            var sec = Math.round((Date.now() - state.pendingSince) / 1000);
+            if (sec > 30) {
+                stuck = true;
+                msg = '警告:有 ' + state.pendingJobs.length + ' 筆任務滯留 ' + sec + ' 秒未印出!請檢查印表機電源/紙張,或按「列印測試標籤」確認。';
+            }
+        } else {
+            state.pendingSince = 0;
+        }
+        if (state.pollFails >= 5) {
+            stuck = true;
+            msg = (msg ? msg + ' ' : '') + '雲端連線已失敗 ' + state.pollFails + ' 次,請檢查網路。';
+        }
+        if (stuck) {
+            alertBox.classList.remove('hidden');
+            msgEl.innerText = msg;
+            beep();
+        } else {
+            alertBox.classList.add('hidden');
+        }
+        var health = document.getElementById('conn-health');
+        if (health) {
+            health.innerText = state.pollFails ? ('異常(連續失敗 ' + state.pollFails + ' 次)') : '正常';
+            health.className = state.pollFails ? 'text-rose-600' : 'text-emerald-600';
+        }
     }
 
     // ==========================================
@@ -770,6 +949,7 @@
     // ==========================================
     // 啟動
     // ==========================================
+    loadLayout();
     loadCachedProducts();
     // 列印電腦可用 .../label/#pc 直接開在電腦列印端;自動列印開關會記住,重開機自動恢復
     switchTab(location.hash === '#pc' ? 'pc' : 'mobile');
