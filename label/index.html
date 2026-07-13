@@ -51,6 +51,9 @@
                 <button id="tab-btn-mobile" onclick="switchTab('mobile')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-keyboard"></i> 電腦輸入端
                 </button>
+                <button id="tab-btn-small" onclick="switchTab('small')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-cells-large"></i> 小標籤
+                </button>
                 <button id="tab-btn-pc" onclick="switchTab('pc')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-desktop"></i> 電腦列印端
                 </button>
@@ -193,6 +196,47 @@
             </div>
         </section>
 
+        <!-- ============ 小標籤 (4格合印一張) ============ -->
+        <section id="small-view" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="mb-4">
+                        <span class="bg-sky-100 text-sky-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">小標籤批次</span>
+                        <h2 class="text-lg font-bold text-slate-800 mt-2">貼上貨號，加入小標籤佇列</h2>
+                        <p class="text-xs text-slate-500 mt-1">4 格合印一張(100×150 剪 4 張)。品名與儲位自動帶出。改儲位到「小標籤前綴」的儲位也會自動進佇列(前綴在設定頁調)。</p>
+                    </div>
+                    <textarea id="small-input" rows="6" placeholder="314-0621&#10;PIAA037&#10;PIAB007-01&#10;..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y"></textarea>
+                    <div class="flex items-center gap-3 mt-3 flex-wrap">
+                        <button onclick="parseSmall()" class="bg-slate-700 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check"></i> 解析並預覽
+                        </button>
+                    </div>
+                    <div id="small-result" class="hidden mt-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-slate-600">找到 <b id="small-found-count" class="text-sky-600">0</b> 格 (每 4 格一張)</div>
+                            <button onclick="submitSmall()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-paper-plane"></i> 送到小標籤佇列
+                            </button>
+                        </div>
+                        <div id="small-notfound" class="hidden bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-lg px-3 py-2"></div>
+                        <div class="border border-slate-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase sticky top-0">
+                                    <tr><th class="px-3 py-2">貨號</th><th class="px-3 py-2">品名 / 儲位</th><th class="px-3 py-2"></th></tr>
+                                </thead>
+                                <tbody id="small-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-slate-800 mb-1">版面示意 (一張 = 4 格)</h3>
+                    <p class="text-[11px] text-slate-400 mb-3">每格：貨號(粗體) / 品名 / QR + 儲位。虛線為裁切線。</p>
+                    <div id="small-preview" class="mx-auto overflow-hidden"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- ============ 電腦列印端 ============ -->
         <section id="pc-view" class="hidden space-y-6">
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
@@ -239,6 +283,27 @@
                             </tr>
                         </thead>
                         <tbody id="queue-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 小標籤佇列 (4格/張) -->
+            <div class="bg-white rounded-xl shadow-sm border border-sky-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-sky-50 to-white flex justify-between items-center flex-wrap gap-3">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-table-cells-large text-sky-600"></i> 小標籤佇列
+                        <span class="text-xs font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">待印 <span id="small-cell-count">0</span> 格</span>
+                    </h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-slate-500">收工時間</span>
+                        <input id="small-flush-time" type="time" onchange="saveFlushTime()" class="border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                        <button onclick="printSmallFull()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition"><i class="fa-solid fa-print mr-1"></i>印滿張(4的倍數)</button>
+                        <button onclick="printSmallAll()" class="bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition"><i class="fa-solid fa-print mr-1"></i>全部印出(含留白)</button>
+                    </div>
+                </div>
+                <div class="px-6 py-2 text-[11px] text-slate-400 border-b border-slate-100">自動列印開啟時：滿 4 格自動出一張；過了收工時間，剩不滿 4 格也會自動印出(留白)。</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <tbody id="small-queue-tbody"></tbody>
                     </table>
                 </div>
             </div>
@@ -337,6 +402,29 @@
                 </div>
             </div>
 
+            <!-- 儲位前綴規則(全公司共用) -->
+            <div class="bg-white p-6 rounded-xl border border-amber-200 shadow-sm space-y-4">
+                <div>
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> 改儲位的儲位前綴規則(全公司共用)</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">只影響「改儲位」的自動出標籤。可整排貼上(換行/逗號分隔)，儲存後<strong class="text-amber-600">所有裝置都照這個標準</strong>，直到有人再更新。</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-sky-600 mb-1"><i class="fa-solid fa-table-cells-large mr-1"></i>轉「小標籤」的前綴 (例: 8A-01)</label>
+                        <textarea id="rules-small" rows="5" placeholder="8A-01&#10;8A-02&#10;..." class="w-full border border-sky-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-rose-600 mb-1"><i class="fa-solid fa-ban mr-1"></i>「完全不印」的前綴 (例: NS、AA)</label>
+                        <textarea id="rules-skip" rows="5" placeholder="NS&#10;AA&#10;..." class="w-full border border-rose-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 resize-y"></textarea>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <button onclick="saveRules()" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>儲存到雲端(全公司生效)</button>
+                    <span id="rules-updated" class="text-[11px] text-slate-400"></span>
+                </div>
+                <p class="text-[11px] text-slate-400">比對方式：儲位「開頭」符合任一前綴就套用(不分大小寫)。優先序：完全不印 ＞ 小標籤 ＞ 一般大標籤。</p>
+            </div>
+
             <!-- 標籤版面調整(拖曳式) -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div>
@@ -407,7 +495,9 @@
         limits: null,
         staff: [],
         lastScanCode: '',
-        lastScanTime: 0
+        lastScanTime: 0,
+        smallItems: [],
+        rules: { small: [], skip: [], updatedBy: '', updatedAt: '' }
     };
 
     function esc(s) {
@@ -613,16 +703,18 @@
             activeBtn.classList.add('text-indigo-600', 'border-indigo-600', 'bg-indigo-50', 'border');
             activeBtn.classList.remove('text-slate-500');
         }
-        ['mobile', 'pc', 'db'].forEach(function (t) {
+        ['mobile', 'small', 'pc', 'db'].forEach(function (t) {
             document.getElementById(t + '-view').classList.toggle('hidden', t !== tab);
         });
         if (tab !== 'mobile') { if (html5QrcodeScanner) stopScanner(); if (batchScanner) stopBatchScan(); }
         if (tab === 'mobile') { populateStaffSelects(); }
+        if (tab === 'small') { renderSmallPreviewSample(); }
         if (tab === 'db') {
             populateStaffSelects();
             fillLayoutInputs();
             fillLimitInputs();
             renderEditor();
+            loadRules();
         }
         if (tab === 'pc') { updateLastPrintTime(); pollQueue(); enterFullscreen(); }
         else { exitFullscreen(); }
@@ -885,6 +977,95 @@
     }
 
     // ==========================================
+    // 小標籤:批次輸入 + 4格合印
+    // ==========================================
+    function parseSmall() {
+        var raw = document.getElementById('small-input').value;
+        var tokens = raw.split(/[\r\n\t,;，、；\s]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        var seen = {}, items = [], notFound = [];
+        tokens.forEach(function (tk) {
+            var key = tk.toUpperCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            var p = findProduct(tk);
+            if (p) items.push({ sku: p.sku, product: p });
+            else notFound.push(tk);
+        });
+        state.smallItems = items;
+        renderSmallList(notFound);
+    }
+    function renderSmallList(notFound) {
+        var box = document.getElementById('small-result');
+        var tbody = document.getElementById('small-tbody');
+        box.classList.remove('hidden');
+        tbody.innerHTML = state.smallItems.length ? state.smallItems.map(function (it, i) {
+            return '<tr class="border-b border-slate-100">' +
+                '<td class="px-3 py-2 font-mono font-semibold text-sky-600">' + esc(it.sku) + '</td>' +
+                '<td class="px-3 py-2"><div class="text-slate-800 text-xs font-medium truncate max-w-[240px]">' + esc(it.product.name) + '</div>' +
+                '<div class="text-[10px] text-slate-400">' + esc(it.product.loc || '無儲位') + '</div></td>' +
+                '<td class="px-3 py-2 text-right"><button onclick="removeSmallItem(' + i + ')" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-xmark"></i></button></td></tr>';
+        }).join('') : '<tr><td colspan="3" class="px-3 py-6 text-center text-slate-400">沒有比對到任何貨號</td></tr>';
+        var nf = document.getElementById('small-notfound');
+        if (notFound && notFound.length) {
+            nf.classList.remove('hidden');
+            nf.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>有 ' + notFound.length + ' 筆找不到:' + notFound.map(esc).join('、');
+        } else { nf.classList.add('hidden'); }
+        document.getElementById('small-found-count').innerText = state.smallItems.length;
+    }
+    function removeSmallItem(i) { state.smallItems.splice(i, 1); renderSmallList(null); }
+    function submitSmall() {
+        if (!state.smallItems.length) { showNotification('沒有可送出的項目', 'warning'); return; }
+        var items = state.smallItems.map(function (it) { return { sku: it.sku, copies: 1 }; });
+        showNotification('送出小標籤中...', 'info');
+        apiPost({ action: 'labelAddBatch', items: items, small: true }).then(function (d) {
+            if (d.ok) {
+                showNotification('已排入小標籤佇列 ' + d.added + ' 格', 'success');
+                document.getElementById('small-input').value = '';
+                document.getElementById('small-result').classList.add('hidden');
+                state.smallItems = [];
+            } else if (!d.busy) { showNotification('送出失敗:' + (d.error || ''), 'error'); }
+        }).catch(function () { showNotification('送出失敗,請重試', 'error'); });
+    }
+
+    // ---- 收工時間(此電腦) ----
+    function flushTime() { return localStorage.getItem('label_small_flush') || '17:00'; }
+    function saveFlushTime() {
+        var v = document.getElementById('small-flush-time').value || '17:00';
+        localStorage.setItem('label_small_flush', v);
+        showNotification('收工時間已設為 ' + v + '(過了此時間,不滿4格也自動印出)', 'success');
+    }
+    function isPastFlush() {
+        var parts = flushTime().split(':');
+        var now = new Date();
+        return now.getHours() * 60 + now.getMinutes() >= (Number(parts[0]) || 17) * 60 + (Number(parts[1]) || 0);
+    }
+
+    // ---- 前綴規則(全公司共用,存後端) ----
+    function loadRules() {
+        apiGet('action=labelRules').then(function (d) {
+            if (!d.ok) return;
+            state.rules = d;
+            document.getElementById('rules-small').value = (d.small || []).join('\n');
+            document.getElementById('rules-skip').value = (d.skip || []).join('\n');
+            var u = document.getElementById('rules-updated');
+            u.innerText = d.updatedAt ? ('最後更新:' + new Date(d.updatedAt).toLocaleString() + (d.updatedBy ? ' · ' + d.updatedBy : '')) : '(目前為預設值)';
+        }).catch(function () {});
+    }
+    function splitPrefixes(id) {
+        return document.getElementById(id).value.split(/[\r\n\t,;，、；\s]+/)
+            .map(function (s) { return s.trim().toUpperCase(); }).filter(Boolean);
+    }
+    function saveRules() {
+        var small = splitPrefixes('rules-small');
+        var skip = splitPrefixes('rules-skip');
+        if (!confirm('確定儲存?\n小標籤前綴 ' + small.length + ' 個、完全不印前綴 ' + skip.length + ' 個\n儲存後全公司所有裝置立即照此標準。')) return;
+        apiPost({ action: 'labelRulesSave', small: small, skip: skip }).then(function (d) {
+            if (d.ok) { showNotification('前綴規則已儲存,全公司生效', 'success'); loadRules(); }
+            else if (!d.busy) { showNotification('儲存失敗:' + (d.error || ''), 'error'); }
+        }).catch(function () { showNotification('儲存失敗,請重試', 'error'); });
+    }
+
+    // ==========================================
     // 電腦列印端:輪詢 + 認領式列印
     // ==========================================
     function toggleAutoPrint() {
@@ -943,14 +1124,47 @@
             '<td class="px-4 py-3 text-center font-bold text-slate-700">' + job.copies + '</td>' +
             '<td class="px-4 py-3 text-right">' + btn + '</td></tr>';
     }
+    function bigJobs() { return state.pendingJobs.filter(function (j) { return j.source !== '小標籤'; }); }
+    function smallJobs() { return state.pendingJobs.filter(function (j) { return j.source === '小標籤'; }); }
+
     function renderQueue() {
         var tbody = document.getElementById('queue-tbody');
-        if (!state.pendingJobs.length) {
+        var jobs = bigJobs();
+        if (!jobs.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400"><i class="fa-solid fa-print text-4xl mb-3 block"></i>目前無待列印任務</td></tr>';
+        } else {
+            var sorted = jobs.slice().sort(function (a, b) { return new Date(b.ts) - new Date(a.ts); });
+            tbody.innerHTML = sorted.map(function (j) { return jobRowHtml(j, false); }).join('');
+        }
+        renderSmallQueue();
+    }
+    function renderSmallQueue() {
+        var tbody = document.getElementById('small-queue-tbody');
+        if (!tbody) return;
+        var jobs = smallJobs();
+        var cells = totalCopies(jobs);
+        var cnt = document.getElementById('small-cell-count');
+        if (cnt) cnt.innerText = cells;
+        if (!jobs.length) {
+            tbody.innerHTML = '<tr><td class="px-6 py-6 text-center text-slate-400 text-sm">目前無小標籤</td></tr>';
             return;
         }
-        var sorted = state.pendingJobs.slice().sort(function (a, b) { return new Date(b.ts) - new Date(a.ts); });
-        tbody.innerHTML = sorted.map(function (j) { return jobRowHtml(j, false); }).join('');
+        var sorted = jobs.slice().sort(function (a, b) { return new Date(a.ts) - new Date(b.ts); });
+        tbody.innerHTML = sorted.map(function (j) {
+            return '<tr class="hover:bg-slate-50 border-b border-slate-100">' +
+                '<td class="px-4 py-2 text-xs text-slate-400 font-mono">' + esc(j.ts ? new Date(j.ts).toLocaleTimeString() : '') + '</td>' +
+                '<td class="px-4 py-2 font-mono font-semibold text-sky-600 text-sm">' + esc(j.sku) + '</td>' +
+                '<td class="px-4 py-2"><div class="text-xs font-medium text-slate-800 truncate max-w-[260px]">' + esc(j.name) + '</div></td>' +
+                '<td class="px-4 py-2 text-xs font-bold text-indigo-600">' + esc(j.loc || '無') + '</td>' +
+                '<td class="px-4 py-2 text-center text-xs text-slate-600">' + j.copies + ' 格</td>' +
+                '<td class="px-4 py-2 text-right"><button onclick="removeSmallJob(\'' + esc(j.id) + '\')" class="text-slate-400 hover:text-red-600 text-xs px-2 py-1" title="移除(不印,標記已處理)"><i class="fa-solid fa-xmark"></i></button></td></tr>';
+        }).join('');
+    }
+    function removeSmallJob(id) {
+        if (!confirm('移除這格小標籤(不列印)?')) return;
+        apiPost({ action: 'labelPrinted', ids: [id] }).then(function (d) {
+            if (d.ok) { state.pendingJobs = state.pendingJobs.filter(function (j) { return j.id !== id; }); renderQueue(); }
+        });
     }
 
     var historyJobs = [];
@@ -1001,15 +1215,71 @@
     function autoPrintCheck() {
         if (!state.autoPrint || state.printing) return;
         var srcs = enabledSources();
-        var targets = state.pendingJobs.filter(function (j) { return srcs.indexOf(j.source) >= 0; });
+        var targets = bigJobs().filter(function (j) { return srcs.indexOf(j.source) >= 0; });
         if (targets.length) {
             showNotification('偵測到 ' + targets.length + ' 筆新任務,自動列印中', 'info');
             claimAndPrint(targets, false);
+            return;
         }
+        smallAutoCheck();
     }
     function printAllPending() {
-        if (!state.pendingJobs.length) { showNotification('目前無待列印的任務!', 'warning'); return; }
-        claimAndPrint(state.pendingJobs.slice(), true);
+        var jobs = bigJobs();
+        if (!jobs.length) { showNotification('目前無待列印的任務!', 'warning'); return; }
+        claimAndPrint(jobs, true);
+    }
+
+    /* ---- 小標籤:滿4自動印;過收工時間剩不滿4也印 ---- */
+    function smallAutoCheck() {
+        if (!state.autoPrint || state.printing) return;
+        var jobs = smallJobs();
+        var cells = totalCopies(jobs);
+        if (cells >= 4) {
+            var picked = pickFullSheets(jobs);
+            var pc = totalCopies(picked);
+            // 只有真的湊出 4 的倍數才自動印(單筆多格拆不開時等收工時間再清)
+            if (pc > 0 && pc % 4 === 0) { claimSmallAndPrint(picked, false); return; }
+        }
+        if (cells > 0 && isPastFlush()) {
+            showNotification('已過收工時間,印出剩餘 ' + cells + ' 格小標籤', 'info');
+            claimSmallAndPrint(jobs.slice(), false);
+        }
+    }
+    /** 從佇列頭挑出總格數為 4 的倍數的最大子集(不拆單筆) */
+    function pickFullSheets(jobs) {
+        var sorted = jobs.slice().sort(function (a, b) { return new Date(a.ts) - new Date(b.ts); });
+        var maxCells = Math.floor(totalCopies(sorted) / 4) * 4;
+        var out = [], acc = 0;
+        for (var i = 0; i < sorted.length; i++) {
+            var c = sorted[i].copies || 1;
+            if (acc + c <= maxCells) { out.push(sorted[i]); acc += c; }
+        }
+        return out;
+    }
+    function printSmallFull() {
+        var jobs = smallJobs();
+        if (totalCopies(jobs) < 4) { showNotification('不足 4 格,無法印滿張(可按「全部印出」)', 'warning'); return; }
+        claimSmallAndPrint(pickFullSheets(jobs), true);
+    }
+    function printSmallAll() {
+        var jobs = smallJobs();
+        if (!jobs.length) { showNotification('目前無小標籤', 'warning'); return; }
+        if (!confirm('印出全部 ' + totalCopies(jobs) + ' 格(不滿 4 格會留白)?')) return;
+        claimSmallAndPrint(jobs.slice(), true);
+    }
+    function claimSmallAndPrint(jobs, manual) {
+        if (!jobs.length || state.printing) return;
+        state.printing = true;
+        apiPost({ action: 'labelPrinted', ids: jobs.map(function (j) { return j.id; }) })
+            .then(function (d) {
+                if (!d.ok) { state.printing = false; if (!d.busy) showNotification('認領失敗:' + (d.error || ''), 'error'); return; }
+                var claimed = jobs.filter(function (j) { return (d.claimed || []).indexOf(j.id) >= 0; });
+                state.pendingJobs = state.pendingJobs.filter(function (j) { return (d.claimed || []).indexOf(j.id) < 0; });
+                renderQueue();
+                if (!claimed.length) { state.printing = false; return; }
+                doPrintSmall(claimed);
+            })
+            .catch(function () { state.printing = false; showNotification('連線失敗,無法認領列印', 'error'); });
     }
     function printOne(id) {
         var job = null;
@@ -1260,6 +1530,91 @@
     }
 
     // ==========================================
+    // 小標籤 4 格版面 (100x150 分 2x2,虛線裁切)
+    // ==========================================
+    function smallCellHtml(job, qrId) {
+        if (!job) return '<div class="flex items-center justify-center h-full text-slate-300" style="font-size:14px;">(空白)</div>';
+        return '<div class="flex flex-col h-full w-full" style="box-sizing:border-box; padding:6px 8px; font-family:\'Microsoft JhengHei\',sans-serif;">' +
+            '<div class="text-center font-black border-b-2 border-black" style="font-size:26px; line-height:1.25; padding-bottom:2px;">' + esc(job.sku) + '</div>' +
+            '<div class="flex flex-grow overflow-hidden" style="padding-top:4px;">' +
+                '<div class="flex flex-col items-center justify-center font-black border-r-2 border-black" style="font-size:13px; width:22px; padding-right:4px;"><span>品</span><span>名</span></div>' +
+                '<div class="font-bold break-all overflow-hidden" style="font-size:17px; line-height:1.3; padding-left:6px;">' + esc(job.name) + '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-2" style="height:52px;">' +
+                '<div id="' + qrId + '" class="bg-white shrink-0" style="width:44px;height:44px;"></div>' +
+                '<div class="font-black text-center flex-grow whitespace-nowrap" style="font-size:30px; line-height:1;">' + esc(job.loc || '') + '</div>' +
+            '</div>' +
+        '</div>';
+    }
+    /** 一張紙 = 4 格(2x2)。cells 為長度<=4 的 job 陣列(可含 null=留白) */
+    function buildSmallSheetEl(cells, qrIdPrefix, sheetIdx, forPrint) {
+        var l = layout;
+        var page = document.createElement('div');
+        page.className = 'bg-white text-black relative overflow-hidden';
+        page.style.cssText = 'width:' + l.w + 'mm;height:' + l.h + 'mm;box-sizing:border-box;border:2px solid #000;';
+        if (forPrint) { page.style.display = 'inline-block'; page.style.margin = '8px'; page.style.pageBreakAfter = 'always'; }
+        var inner = '';
+        for (var r = 0; r < 2; r++) {
+            for (var c = 0; c < 2; c++) {
+                var i = r * 2 + c;
+                var qrId = qrIdPrefix + '-' + sheetIdx + '-' + i;
+                inner += '<div style="position:absolute; left:' + (c * 50) + '%; top:' + (r * 50) + '%; width:50%; height:50%; box-sizing:border-box;' +
+                    (c === 0 ? 'border-right:3px dashed #000;' : '') + (r === 0 ? 'border-bottom:3px dashed #000;' : '') + '">' +
+                    smallCellHtml(cells[i], qrId) + '</div>';
+            }
+        }
+        page.innerHTML = inner;
+        setTimeout(function () {
+            for (var i = 0; i < 4; i++) {
+                if (!cells[i]) continue;
+                var el = document.getElementById(qrIdPrefix + '-' + sheetIdx + '-' + i);
+                if (el) { try { new QRCode(el, { text: cells[i].sku, width: 44, height: 44, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); } catch (e) {} }
+            }
+        }, 30);
+        return page;
+    }
+    /** jobs 依 copies 展開成格,切成每 4 格一張列印 */
+    function doPrintSmall(jobs) {
+        var cells = [];
+        jobs.forEach(function (j) { for (var i = 0; i < (j.copies || 1); i++) cells.push(j); });
+        var printArea = document.getElementById('print-area');
+        printArea.innerHTML = '';
+        var sheetIdx = 0;
+        for (var s = 0; s < cells.length; s += 4) {
+            var four = [cells[s] || null, cells[s + 1] || null, cells[s + 2] || null, cells[s + 3] || null];
+            printArea.appendChild(buildSmallSheetEl(four, 'sm-qr', sheetIdx++, true));
+        }
+        setTimeout(function () {
+            try { window.print(); } finally {
+                state.printing = false;
+                localStorage.setItem('label_last_print', String(Date.now()));
+                updateLastPrintTime();
+                if (state.currentTab === 'pc') setTimeout(function () { enterFullscreen(); setTimeout(updateFsButton, 400); }, 300);
+                setTimeout(pollQueue, 500);
+            }
+        }, 500);
+    }
+    function renderSmallPreviewSample() {
+        var box = document.getElementById('small-preview');
+        if (!box) return;
+        box.innerHTML = '';
+        var samples = [
+            { id: 's1', sku: '314-0621', name: '3V鋰電池__CR-1220', loc: '7A-09-A01' },
+            { id: 's2', sku: 'PIAA037', name: '女孩按動中性筆(黑)-顏色隨機_YM-2978__9783', loc: '7A-09-A02' },
+            { id: 's3', sku: 'PIAB007-01', name: '紅點-點點膠筆-白__2018', loc: '7A-09-A03' },
+            { id: 's4', sku: 'PIAB007-02', name: '紅點-點點膠筆-粉__2025', loc: '7A-09-A04' }
+        ];
+        var SCALE = 0.55;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'transform:scale(' + SCALE + ');transform-origin:top left;';
+        wrap.appendChild(buildSmallSheetEl(samples, 'smprev-qr', 0, false));
+        box.appendChild(wrap);
+        var MM = 3.7795;
+        box.style.width = Math.ceil(layout.w * MM * SCALE) + 'px';
+        box.style.height = Math.ceil(layout.h * MM * SCALE) + 'px';
+    }
+
+    // ==========================================
     // 印表機檢測
     // ==========================================
     function printTestLabel() {
@@ -1324,6 +1679,7 @@
     loadLayout();
     loadCachedProducts();
     loadStaff();
+    (function () { var ft = document.getElementById('small-flush-time'); if (ft) ft.value = flushTime(); })();
     var startPc = location.hash === '#pc';
     switchTab(startPc ? 'pc' : 'mobile');
     if (localStorage.getItem('label_autoprint') === '1') {
