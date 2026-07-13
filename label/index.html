@@ -51,11 +51,11 @@
                 <button id="tab-btn-mobile" onclick="switchTab('mobile')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-keyboard"></i> 電腦輸入端
                 </button>
-                <button id="tab-btn-small" onclick="switchTab('small')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-table-cells-large"></i> 小標籤
-                </button>
                 <button id="tab-btn-pc" onclick="switchTab('pc')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-desktop"></i> 電腦列印端
+                </button>
+                <button id="tab-btn-small" onclick="switchTab('small')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-cells-large"></i> 小標籤
                 </button>
                 <button id="tab-btn-db" onclick="switchTab('db')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-gear"></i> 設定與同步
@@ -203,7 +203,7 @@
                     <div class="mb-4">
                         <span class="bg-sky-100 text-sky-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">小標籤批次</span>
                         <h2 class="text-lg font-bold text-slate-800 mt-2">貼上貨號，加入小標籤佇列</h2>
-                        <p class="text-xs text-slate-500 mt-1">4 格合印一張(100×150 剪 4 張)。品名與儲位自動帶出。改儲位到「小標籤前綴」的儲位也會自動進佇列(前綴在設定頁調)。</p>
+                        <p class="text-xs text-slate-500 mt-1">4 格合印一張(100×150 剪 4 張)。品名/規格二/儲位自動帶出。改儲位到「小標籤前綴」的儲位也會自動進佇列(前綴在設定頁調)。</p>
                     </div>
                     <textarea id="small-input" rows="6" placeholder="314-0621&#10;PIAA037&#10;PIAB007-01&#10;..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y"></textarea>
                     <div class="flex items-center gap-3 mt-3 flex-wrap">
@@ -230,9 +230,10 @@
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="font-bold text-slate-800 mb-1">版面示意 (一張 = 4 格)</h3>
-                    <p class="text-[11px] text-slate-400 mb-3">每格：貨號(粗體) / 品名 / QR + 儲位。虛線為裁切線。</p>
+                    <h3 class="font-bold text-slate-800 mb-1">版面示意 (一張 = 4 橫格)</h3>
+                    <p class="text-[11px] text-slate-400 mb-3">每格：貨號(粗體) / 品名&規格二 / QR + 儲位。虛線為裁切線。列印時整張自動旋轉 90°,紙照樣直式放。</p>
                     <div id="small-preview" class="mx-auto overflow-hidden"></div>
+                    <p class="text-[11px] text-slate-400 mt-3"><i class="fa-solid fa-clock mr-1"></i>收工時間(預設 17:55,過了不滿 4 格也自動印)在「電腦列印端 → 小標籤佇列」右上角調整。</p>
                 </div>
             </div>
         </section>
@@ -1027,17 +1028,17 @@
         }).catch(function () { showNotification('送出失敗,請重試', 'error'); });
     }
 
-    // ---- 收工時間(此電腦) ----
-    function flushTime() { return localStorage.getItem('label_small_flush') || '17:00'; }
+    // ---- 收工時間(此電腦,預設 17:55) ----
+    function flushTime() { return localStorage.getItem('label_small_flush') || '17:55'; }
     function saveFlushTime() {
-        var v = document.getElementById('small-flush-time').value || '17:00';
+        var v = document.getElementById('small-flush-time').value || '17:55';
         localStorage.setItem('label_small_flush', v);
         showNotification('收工時間已設為 ' + v + '(過了此時間,不滿4格也自動印出)', 'success');
     }
     function isPastFlush() {
         var parts = flushTime().split(':');
         var now = new Date();
-        return now.getHours() * 60 + now.getMinutes() >= (Number(parts[0]) || 17) * 60 + (Number(parts[1]) || 0);
+        return now.getHours() * 60 + now.getMinutes() >= (Number(parts[0]) || 17) * 60 + (Number(parts[1]) || 55);
     }
 
     // ---- 前綴規則(全公司共用,存後端) ----
@@ -1532,38 +1533,40 @@
     // ==========================================
     // 小標籤 4 格版面 (100x150 分 2x2,虛線裁切)
     // ==========================================
+    /** 橫格(約73x48mm):貨號置頂 / 品名&規格二 / QR+儲位 */
     function smallCellHtml(job, qrId) {
         if (!job) return '<div class="flex items-center justify-center h-full text-slate-300" style="font-size:14px;">(空白)</div>';
-        return '<div class="flex flex-col h-full w-full" style="box-sizing:border-box; padding:6px 8px; font-family:\'Microsoft JhengHei\',sans-serif;">' +
-            '<div class="text-center font-black border-b-2 border-black" style="font-size:26px; line-height:1.25; padding-bottom:2px;">' + esc(job.sku) + '</div>' +
-            '<div class="flex flex-grow overflow-hidden" style="padding-top:4px;">' +
-                '<div class="flex flex-col items-center justify-center font-black border-r-2 border-black" style="font-size:13px; width:22px; padding-right:4px;"><span>品</span><span>名</span></div>' +
-                '<div class="font-bold break-all overflow-hidden" style="font-size:17px; line-height:1.3; padding-left:6px;">' + esc(job.name) + '</div>' +
+        var nameSpec = String(job.name || '') + (job.spec2 ? '__' + job.spec2 : '');
+        return '<div class="flex flex-col h-full w-full" style="box-sizing:border-box; padding:5px 8px; font-family:\'Microsoft JhengHei\',sans-serif;">' +
+            '<div class="text-center font-black border-b-2 border-black" style="font-size:30px; line-height:1.2; padding-bottom:2px;">' + esc(job.sku) + '</div>' +
+            '<div class="flex flex-grow overflow-hidden" style="padding-top:3px;">' +
+                '<div class="flex flex-col items-center justify-center font-black border-r-2 border-black shrink-0" style="font-size:13px; width:22px; padding-right:4px;"><span>品</span><span>名</span></div>' +
+                '<div class="font-bold break-all overflow-hidden" style="font-size:16px; line-height:1.3; padding-left:6px;">' + esc(nameSpec) + '</div>' +
             '</div>' +
-            '<div class="flex items-center gap-2" style="height:52px;">' +
+            '<div class="flex items-center gap-2" style="height:50px;">' +
                 '<div id="' + qrId + '" class="bg-white shrink-0" style="width:44px;height:44px;"></div>' +
-                '<div class="font-black text-center flex-grow whitespace-nowrap" style="font-size:30px; line-height:1;">' + esc(job.loc || '') + '</div>' +
+                '<div class="font-black text-center flex-grow whitespace-nowrap" style="font-size:32px; line-height:1;">' + esc(job.loc || '') + '</div>' +
             '</div>' +
         '</div>';
     }
-    /** 一張紙 = 4 格(2x2)。cells 為長度<=4 的 job 陣列(可含 null=留白) */
+    /** 一張紙 = 4 橫格(2x2)。內容為橫向(146x96),列印時旋轉 90° 印在直式 100x150 紙上。
+     *  forPrint=true 回傳含旋轉的直式頁;false 回傳未旋轉的橫向版(畫面預覽用,好閱讀)。 */
     function buildSmallSheetEl(cells, qrIdPrefix, sheetIdx, forPrint) {
         var l = layout;
-        var page = document.createElement('div');
-        page.className = 'bg-white text-black relative overflow-hidden';
-        page.style.cssText = 'width:' + l.w + 'mm;height:' + l.h + 'mm;box-sizing:border-box;border:2px solid #000;';
-        if (forPrint) { page.style.display = 'inline-block'; page.style.margin = '8px'; page.style.pageBreakAfter = 'always'; }
-        var inner = '';
+        var inner = document.createElement('div');
+        inner.className = 'bg-white text-black relative overflow-hidden';
+        inner.style.cssText = 'width:' + l.h + 'mm;height:' + l.w + 'mm;box-sizing:border-box;border:2px solid #000;';
+        var html = '';
         for (var r = 0; r < 2; r++) {
             for (var c = 0; c < 2; c++) {
                 var i = r * 2 + c;
                 var qrId = qrIdPrefix + '-' + sheetIdx + '-' + i;
-                inner += '<div style="position:absolute; left:' + (c * 50) + '%; top:' + (r * 50) + '%; width:50%; height:50%; box-sizing:border-box;' +
+                html += '<div style="position:absolute; left:' + (c * 50) + '%; top:' + (r * 50) + '%; width:50%; height:50%; box-sizing:border-box;' +
                     (c === 0 ? 'border-right:3px dashed #000;' : '') + (r === 0 ? 'border-bottom:3px dashed #000;' : '') + '">' +
                     smallCellHtml(cells[i], qrId) + '</div>';
             }
         }
-        page.innerHTML = inner;
+        inner.innerHTML = html;
         setTimeout(function () {
             for (var i = 0; i < 4; i++) {
                 if (!cells[i]) continue;
@@ -1571,6 +1574,16 @@
                 if (el) { try { new QRCode(el, { text: cells[i].sku, width: 44, height: 44, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); } catch (e) {} }
             }
         }, 30);
+        if (!forPrint) return inner;
+        // 直式進紙:外層直式頁 + 內容旋轉 90°
+        var page = document.createElement('div');
+        page.style.cssText = 'width:' + l.w + 'mm;height:' + l.h + 'mm;position:relative;overflow:hidden;display:inline-block;margin:8px;page-break-after:always;';
+        inner.style.position = 'absolute';
+        inner.style.top = '0';
+        inner.style.left = '0';
+        inner.style.transformOrigin = '0 0';
+        inner.style.transform = 'translateX(' + l.w + 'mm) rotate(90deg)';
+        page.appendChild(inner);
         return page;
     }
     /** jobs 依 copies 展開成格,切成每 4 格一張列印 */
@@ -1599,19 +1612,20 @@
         if (!box) return;
         box.innerHTML = '';
         var samples = [
-            { id: 's1', sku: '314-0621', name: '3V鋰電池__CR-1220', loc: '7A-09-A01' },
-            { id: 's2', sku: 'PIAA037', name: '女孩按動中性筆(黑)-顏色隨機_YM-2978__9783', loc: '7A-09-A02' },
-            { id: 's3', sku: 'PIAB007-01', name: '紅點-點點膠筆-白__2018', loc: '7A-09-A03' },
-            { id: 's4', sku: 'PIAB007-02', name: '紅點-點點膠筆-粉__2025', loc: '7A-09-A04' }
+            { id: 's1', sku: '314-0621', name: '3V鋰電池', spec2: 'CR-1220', loc: '7A-09-A01' },
+            { id: 's2', sku: 'PIAA037', name: '女孩按動中性筆(黑)-顏色隨機_YM-2978', spec2: '9783', loc: '7A-09-A02' },
+            { id: 's3', sku: 'PIAB007-01', name: '紅點-點點膠筆-白', spec2: '2018', loc: '7A-09-A03' },
+            { id: 's4', sku: 'PIAB007-02', name: '紅點-點點膠筆-粉', spec2: '2025', loc: '7A-09-A04' }
         ];
-        var SCALE = 0.55;
+        // 預覽用未旋轉的橫向版(跟實際印出的內容相同,只是沒轉90°比較好看)
+        var SCALE = 0.62;
         var wrap = document.createElement('div');
         wrap.style.cssText = 'transform:scale(' + SCALE + ');transform-origin:top left;';
         wrap.appendChild(buildSmallSheetEl(samples, 'smprev-qr', 0, false));
         box.appendChild(wrap);
         var MM = 3.7795;
-        box.style.width = Math.ceil(layout.w * MM * SCALE) + 'px';
-        box.style.height = Math.ceil(layout.h * MM * SCALE) + 'px';
+        box.style.width = Math.ceil(layout.h * MM * SCALE) + 'px';
+        box.style.height = Math.ceil(layout.w * MM * SCALE) + 'px';
     }
 
     // ==========================================
