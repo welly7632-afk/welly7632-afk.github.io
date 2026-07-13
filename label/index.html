@@ -407,7 +407,7 @@
             <div class="bg-white p-6 rounded-xl border border-amber-200 shadow-sm space-y-4">
                 <div>
                     <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-filter text-amber-500"></i> 改儲位的儲位前綴規則(全公司共用)</h3>
-                    <p class="text-[11px] text-slate-400 mt-1">只影響「改儲位」的自動出標籤。可整排貼上(換行/逗號分隔)，儲存後<strong class="text-amber-600">所有裝置都照這個標準</strong>，直到有人再更新。</p>
+                    <p class="text-[11px] text-slate-400 mt-1">影響「<strong>改儲位</strong>」與「<strong>盤點(勾要印標籤)</strong>」的自動出標籤：依標籤上的儲位分辨 完全不印／小標籤／大標籤。可整排貼上(換行/逗號分隔)，儲存後<strong class="text-amber-600">所有裝置都照這個標準</strong>，直到有人再更新。</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1564,16 +1564,20 @@
     // ==========================================
     // 小標籤 4 格版面 (100x150 分 2x2,虛線裁切)
     // ==========================================
-    /** 橫格(約73x48mm):貨號置頂 / 品名&規格二 / QR+儲位 */
+    /** 橫格(約73x48mm):貨號置頂 / 品名&規格二 / 人員+時間(小字) / QR+儲位 */
     function smallCellHtml(job, qrId) {
         if (!job) return '<div class="flex items-center justify-center h-full text-slate-300" style="font-size:14px;">(空白)</div>';
         var nameSpec = String(job.name || '') + (job.spec2 ? '__' + job.spec2 : '');
+        var d = job.ts ? new Date(job.ts) : new Date();
+        function p2(n) { return String(n).padStart(2, '0'); }
+        var timeShort = d.getFullYear() + '/' + p2(d.getMonth() + 1) + '/' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
         return '<div class="flex flex-col h-full w-full" style="box-sizing:border-box; padding:5px 8px; font-family:\'Microsoft JhengHei\',sans-serif;">' +
             '<div class="text-center font-black border-b-2 border-black" style="font-size:30px; line-height:1.2; padding-bottom:2px;">' + esc(job.sku) + '</div>' +
             '<div class="flex flex-grow overflow-hidden" style="padding-top:3px;">' +
                 '<div class="flex flex-col items-center justify-center font-black border-r-2 border-black shrink-0" style="font-size:13px; width:22px; padding-right:4px;"><span>品</span><span>名</span></div>' +
                 '<div class="font-bold break-all overflow-hidden" style="font-size:16px; line-height:1.3; padding-left:6px;">' + esc(nameSpec) + '</div>' +
             '</div>' +
+            '<div class="text-right font-bold text-slate-700 whitespace-nowrap overflow-hidden" style="font-size:9px; line-height:1.2; padding:1px 2px 0 0;">' + esc(job.user || '') + ' · ' + esc(timeShort) + '</div>' +
             '<div class="flex items-center gap-2" style="height:50px;">' +
                 '<div id="' + qrId + '" class="bg-white shrink-0" style="width:44px;height:44px;"></div>' +
                 '<div class="font-black text-center flex-grow whitespace-nowrap" style="font-size:32px; line-height:1;">' + esc(job.loc || '') + '</div>' +
@@ -1643,10 +1647,10 @@
         if (!box) return;
         box.innerHTML = '';
         var samples = [
-            { id: 's1', sku: '314-0621', name: '3V鋰電池', spec2: 'CR-1220', loc: '7A-09-A01' },
-            { id: 's2', sku: 'PIAA037', name: '女孩按動中性筆(黑)-顏色隨機_YM-2978', spec2: '9783', loc: '7A-09-A02' },
-            { id: 's3', sku: 'PIAB007-01', name: '紅點-點點膠筆-白', spec2: '2018', loc: '7A-09-A03' },
-            { id: 's4', sku: 'PIAB007-02', name: '紅點-點點膠筆-粉', spec2: '2025', loc: '7A-09-A04' }
+            { id: 's1', sku: '314-0621', name: '3V鋰電池', spec2: 'CR-1220', loc: '7A-09-A01', user: state.operator || '上架人員' },
+            { id: 's2', sku: 'PIAA037', name: '女孩按動中性筆(黑)-顏色隨機_YM-2978', spec2: '9783', loc: '7A-09-A02', user: state.operator || '上架人員' },
+            { id: 's3', sku: 'PIAB007-01', name: '紅點-點點膠筆-白', spec2: '2018', loc: '7A-09-A03', user: state.operator || '上架人員' },
+            { id: 's4', sku: 'PIAB007-02', name: '紅點-點點膠筆-粉', spec2: '2025', loc: '7A-09-A04', user: state.operator || '上架人員' }
         ];
         // 預覽用未旋轉的橫向版(跟實際印出的內容相同,只是沒轉90°比較好看)
         var SCALE = 0.62;
