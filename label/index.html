@@ -281,7 +281,8 @@
                     <li>按「列印測試標籤」會直接出一張測試頁:<strong>有出紙=印表機正常</strong>;沒出紙先看印表機電源/缺紙/夾紙燈號。</li>
                     <li>開啟自動列印時,若有任務<strong>滯留超過 30 秒沒印出</strong>,上方會出現紅色警告並發出提示音。</li>
                     <li>紙張設定:直式 100mm x 150mm;邊距設「無」;取消「頁首和頁尾」。</li>
-                    <li>要「全自動不跳列印視窗」,Chrome 捷徑加上 <code class="bg-slate-100 px-1 rounded">--kiosk-printing</code> 啟動參數。</li>
+                    <li>列印電腦建議捷徑:<code class="bg-slate-100 px-1 rounded">chrome.exe --kiosk --kiosk-printing "https://welly7632-afk.github.io/label/#pc"</code>(--kiosk=原生全螢幕,印完不會退出;--kiosk-printing=不跳列印視窗;#pc=直接開列印端)。</li>
+                    <li>換印表機:先關掉 kiosk 模式正常開 Chrome → Ctrl+P → 目的地選標籤機 → 印一張,之後 kiosk 就固定用那台。網頁無法讀取/切換印表機(瀏覽器安全限制)。</li>
                     <li>防重複保證:每筆列印前先向雲端「認領」,認領成功才出紙,重新整理/重開機不會重印。</li>
                 </ul>
             </div>
@@ -375,6 +376,11 @@
     <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 no-print">
         <p>© 2026 百思特標籤列印系統 3.0 — 與倉儲網頁共用後台</p>
     </footer>
+
+    <!-- 列印後被瀏覽器踢出全螢幕時的快速返回鈕 (點擊=手勢,可重新進全螢幕) -->
+    <button id="fs-return" onclick="enterFullscreen()" class="hidden no-print fixed bottom-4 left-4 z-50 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2">
+        <i class="fa-solid fa-expand"></i> 回全螢幕
+    </button>
 
     <script>
     // ==========================================
@@ -582,6 +588,16 @@
             }
         } catch (e) {}
     }
+    function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+    /* window.print() 會被 Chrome 強制退出網頁全螢幕;沒手勢時 requestFullscreen 會被拒,
+       所以列印端只要不在全螢幕就顯示「回全螢幕」鈕(點擊=手勢)。
+       若用 --kiosk 啟動參數(Chrome 原生全螢幕)則完全不受影響,建議列印電腦用該模式。 */
+    function updateFsButton() {
+        var btn = document.getElementById('fs-return');
+        if (btn) btn.classList.toggle('hidden', !(state.currentTab === 'pc' && !isFullscreen()));
+    }
+    document.addEventListener('fullscreenchange', function () { setTimeout(updateFsButton, 100); });
+    document.addEventListener('webkitfullscreenchange', function () { setTimeout(updateFsButton, 100); });
 
     // ==========================================
     // 分頁切換
@@ -610,6 +626,7 @@
         }
         if (tab === 'pc') { updateLastPrintTime(); pollQueue(); enterFullscreen(); }
         else { exitFullscreen(); }
+        setTimeout(updateFsButton, 300);
     }
 
     // ==========================================
@@ -1235,6 +1252,8 @@
                 state.printing = false;
                 localStorage.setItem('label_last_print', String(Date.now()));
                 updateLastPrintTime();
+                // 列印會被 Chrome 踢出網頁全螢幕:先嘗試自動回(kiosk下可能成功),失敗就亮「回全螢幕」鈕
+                if (state.currentTab === 'pc') setTimeout(function () { enterFullscreen(); setTimeout(updateFsButton, 400); }, 300);
                 setTimeout(pollQueue, 500);
             }
         }, 500);
