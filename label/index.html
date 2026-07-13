@@ -18,8 +18,9 @@
                 width: 100%; margin: 0; padding: 0;
             }
             .no-print { display: none !important; }
-            @page { size: auto; margin: 0mm; }
         }
+        /* @page 尺寸由 JS 依版面動態寫入 #print-page-style,確保紙張=標籤尺寸、零邊界,不會多吐一頁 */
+        @page { margin: 0; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         /* 拖曳版面編輯器的分隔線握把 */
@@ -29,6 +30,7 @@
         .ed-h.horz { height: 12px; margin-top: -6px; cursor: ns-resize; }
         .ed-h::after { content: ''; position: absolute; inset: 0; }
     </style>
+    <style id="print-page-style"></style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
@@ -1501,10 +1503,16 @@
         var label = document.createElement('div');
         label.className = 'bg-white border-4 border-black text-black text-left relative overflow-hidden';
         label.style.width = l.w + 'mm';
-        label.style.height = l.h + 'mm';
         label.style.boxSizing = 'border-box';
-        if (editor) { label.style.margin = '0'; }
-        else { label.style.display = 'inline-block'; label.style.margin = '8px'; label.style.pageBreakAfter = 'always'; }
+        if (editor) {
+            label.style.height = l.h + 'mm';
+            label.style.margin = '0';
+        } else {
+            // 列印:零邊距 + 高度留 1px 保險,避免 mm→px 進位溢出擠出第二頁
+            label.style.height = 'calc(' + l.h + 'mm - 1px)';
+            label.style.display = 'block';
+            label.style.margin = '0';
+        }
         var qrId = qrIdPrefix + '-' + job.id + '-' + idx;
         var pad = editor ? '0' : '12px';
         label.innerHTML =
@@ -1543,11 +1551,24 @@
         }, 30);
         return label;
     }
+    /* 動態宣告紙張尺寸=標籤尺寸、零邊界。這是「不會多吐一頁」的關鍵:
+       瀏覽器知道紙就是這麼大,內容剛好一頁,不會因 size:auto 而溢出換頁。 */
+    function setPrintPageSize(wmm, hmm) {
+        var st = document.getElementById('print-page-style');
+        if (st) st.textContent = '@page { size: ' + wmm + 'mm ' + hmm + 'mm; margin: 0; }';
+    }
     function doPrint(jobs) {
+        setPrintPageSize(layout.w, layout.h);
         var printArea = document.getElementById('print-area');
         printArea.innerHTML = '';
+        var els = [];
         jobs.forEach(function (job) {
-            for (var i = 0; i < job.copies; i++) printArea.appendChild(buildLabelEl(job, 'print-qr', i, layout, false));
+            for (var i = 0; i < job.copies; i++) els.push(buildLabelEl(job, 'print-qr', i, layout, false));
+        });
+        // 換頁只加在「兩張之間」:最後一張不加,避免多吐一張空白紙
+        els.forEach(function (el, i) {
+            el.style.pageBreakAfter = (i < els.length - 1) ? 'always' : 'auto';
+            printArea.appendChild(el);
         });
         setTimeout(function () {
             try { window.print(); } finally {
@@ -1610,9 +1631,9 @@
             }
         }, 30);
         if (!forPrint) return inner;
-        // 直式進紙:外層直式頁 + 內容旋轉 90°
+        // 直式進紙:外層直式頁(零邊界、高度留1px保險) + 內容旋轉 90°
         var page = document.createElement('div');
-        page.style.cssText = 'width:' + l.w + 'mm;height:' + l.h + 'mm;position:relative;overflow:hidden;display:inline-block;margin:8px;page-break-after:always;';
+        page.style.cssText = 'width:' + l.w + 'mm;height:calc(' + l.h + 'mm - 1px);position:relative;overflow:hidden;display:block;margin:0;';
         inner.style.position = 'absolute';
         inner.style.top = '0';
         inner.style.left = '0';
@@ -1623,15 +1644,21 @@
     }
     /** jobs 依 copies 展開成格,切成每 4 格一張列印 */
     function doPrintSmall(jobs) {
+        setPrintPageSize(layout.w, layout.h);
         var cells = [];
         jobs.forEach(function (j) { for (var i = 0; i < (j.copies || 1); i++) cells.push(j); });
         var printArea = document.getElementById('print-area');
         printArea.innerHTML = '';
-        var sheetIdx = 0;
+        var pages = [];
         for (var s = 0; s < cells.length; s += 4) {
             var four = [cells[s] || null, cells[s + 1] || null, cells[s + 2] || null, cells[s + 3] || null];
-            printArea.appendChild(buildSmallSheetEl(four, 'sm-qr', sheetIdx++, true));
+            pages.push(buildSmallSheetEl(four, 'sm-qr', pages.length, true));
         }
+        // 換頁只加在兩張之間,最後一張不加,避免多吐空白紙
+        pages.forEach(function (pg, i) {
+            pg.style.pageBreakAfter = (i < pages.length - 1) ? 'always' : 'auto';
+            printArea.appendChild(pg);
+        });
         setTimeout(function () {
             try { window.print(); } finally {
                 state.printing = false;
