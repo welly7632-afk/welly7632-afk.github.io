@@ -420,17 +420,18 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3 flex-wrap">
-                    <button onclick="saveRules()" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>儲存到雲端(全公司生效)</button>
+                    <button onclick="syncRules()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-rotate mr-1"></i>從櫃位表同步(按一次同步一次)</button>
+                    <button onclick="saveRules()" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>手動儲存(全公司生效)</button>
                     <span id="rules-updated" class="text-[11px] text-slate-400"></span>
                 </div>
-                <p class="text-[11px] text-slate-400">比對方式：儲位「開頭」符合任一前綴就套用(不分大小寫)。優先序：完全不印 ＞ 小標籤 ＞ 一般大標籤。</p>
+                <p class="text-[11px] text-slate-400">「從櫃位表同步」讀取櫃位試算表的「櫃位」分頁：A欄且尺寸限制=30 → 小標籤；C欄 → 完全不印。同步會覆蓋目前清單並記錄時間與人員。比對方式：儲位「開頭」符合任一前綴就套用(不分大小寫)。優先序：完全不印 ＞ 小標籤 ＞ 一般大標籤。</p>
             </div>
 
             <!-- 標籤版面調整(拖曳式) -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div>
-                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-indigo-500"></i> 標籤版面調整(存在這台電腦)</h3>
-                    <p class="text-[11px] text-slate-400 mt-1">像 Excel 一樣：把滑鼠移到預覽上的<strong class="text-indigo-500">藍色分隔線</strong>，直接拖曳就能改欄寬、列高、格子大小；字體大小用下方數字調。改完按「儲存並套用」。</p>
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-ruler-combined text-indigo-500"></i> 標籤版面調整(全公司共用)</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">像 Excel 一樣：把滑鼠移到預覽上的<strong class="text-indigo-500">藍色分隔線</strong>，直接拖曳就能改欄寬、列高、格子大小；字體大小用下方數字調。按「儲存並套用」後<strong class="text-amber-600">全公司所有列印電腦都用這個版面</strong>(大標籤與小標籤的紙張尺寸共用,預設 100×150mm)。</p>
                 </div>
                 <div class="flex flex-col lg:flex-row gap-6">
                     <div class="flex-grow space-y-4">
@@ -716,6 +717,7 @@
             fillLimitInputs();
             renderEditor();
             loadRules();
+            loadCloudLayout();
         }
         if (tab === 'pc') { updateLastPrintTime(); pollQueue(); enterFullscreen(); }
         else { exitFullscreen(); }
@@ -1065,6 +1067,17 @@
             else if (!d.busy) { showNotification('儲存失敗:' + (d.error || ''), 'error'); }
         }).catch(function () { showNotification('儲存失敗,請重試', 'error'); });
     }
+    /** 從櫃位試算表同步:A欄且尺寸限制=30→小標籤;C欄→完全不印 */
+    function syncRules() {
+        if (!confirm('從櫃位表同步?\n會覆蓋目前的兩份清單,全公司立即生效。')) return;
+        showNotification('同步櫃位表中...', 'info');
+        apiPost({ action: 'labelRulesSync' }).then(function (d) {
+            if (d.ok) {
+                showNotification('同步完成!小標籤前綴 ' + d.smallCount + ' 個、完全不印 ' + d.skipCount + ' 個', 'success');
+                loadRules();
+            } else if (!d.busy) { showNotification('同步失敗:' + (d.error || ''), 'error'); }
+        }).catch(function () { showNotification('同步失敗,請重試', 'error'); });
+    }
 
     // ==========================================
     // 電腦列印端:輪詢 + 認領式列印
@@ -1301,21 +1314,33 @@
     // 標籤版面設定 (拖曳式,存在此電腦)
     // ==========================================
     var LAYOUT_DEF = {
-        w: 96, h: 146, qr: 120,
+        w: 100, h: 150, qr: 120,
         specFs: 28, nameFs: 32, skuFs: 32, locFs: 38, secFs: 22,
         rowH: [12, 38, 18, 32], labelColW: 20, botLeftW: 40, locBandH: 30, gridColW: 50, gridRowH: [34, 33, 33]
     };
     var layout = deepCopy(LAYOUT_DEF);
+    function sanitizeLayoutInto(target, s) {
+        Object.keys(LAYOUT_DEF).forEach(function (k) {
+            if (Array.isArray(LAYOUT_DEF[k])) {
+                if (Array.isArray(s[k]) && s[k].length === LAYOUT_DEF[k].length && s[k].every(function (x) { return typeof x === 'number' && x > 0; })) target[k] = s[k].slice();
+            } else { var v = Number(s[k]); if (v > 0) target[k] = v; }
+        });
+    }
     function loadLayout() {
         layout = deepCopy(LAYOUT_DEF);
-        try {
-            var s = JSON.parse(localStorage.getItem('label_layout') || '{}');
-            Object.keys(LAYOUT_DEF).forEach(function (k) {
-                if (Array.isArray(LAYOUT_DEF[k])) {
-                    if (Array.isArray(s[k]) && s[k].length === LAYOUT_DEF[k].length && s[k].every(function (x) { return typeof x === 'number' && x > 0; })) layout[k] = s[k].slice();
-                } else { var v = Number(s[k]); if (v > 0) layout[k] = v; }
-            });
-        } catch (e) {}
+        try { sanitizeLayoutInto(layout, JSON.parse(localStorage.getItem('label_layout') || '{}')); } catch (e) {}
+    }
+    /** 版面為全公司共用:啟動時從雲端抓,蓋過本機快取 */
+    function loadCloudLayout() {
+        apiGet('action=labelLayout').then(function (d) {
+            if (!d.ok || !d.layout) return;
+            layout = deepCopy(LAYOUT_DEF);
+            sanitizeLayoutInto(layout, d.layout);
+            try { localStorage.setItem('label_layout', JSON.stringify(layout)); } catch (e) {}
+            if (state.currentTab === 'db') { fillLayoutInputs(); renderEditor(); }
+            if (state.currentTab === 'small') renderSmallPreviewSample();
+            if (state.selectedProduct) renderMiniPreview(state.selectedProduct);
+        }).catch(function () {});
     }
     function fillLayoutInputs() {
         document.querySelectorAll('.lay-input').forEach(function (inp) {
@@ -1325,14 +1350,20 @@
     }
     function saveLayout() {
         localStorage.setItem('label_layout', JSON.stringify(layout));
-        showNotification('標籤版面已儲存並套用(此電腦)', 'success');
+        apiPost({ action: 'labelLayoutSave', layout: layout }).then(function (d) {
+            if (d.ok) showNotification('標籤版面已儲存,全公司共用生效', 'success');
+            else if (!d.busy) showNotification('雲端儲存失敗:' + (d.error || '') + '(本機已暫存)', 'error');
+        }).catch(function () { showNotification('雲端儲存失敗,請重試(本機已暫存)', 'error'); });
     }
     function resetLayout() {
+        if (!confirm('恢復預設版面(100×150)?\n會同步到全公司所有裝置。')) return;
         layout = deepCopy(LAYOUT_DEF);
-        localStorage.removeItem('label_layout');
+        localStorage.setItem('label_layout', JSON.stringify(layout));
         fillLayoutInputs();
         renderEditor();
-        showNotification('已恢復預設版面', 'info');
+        apiPost({ action: 'labelLayoutSave', layout: layout }).then(function (d) {
+            if (d.ok) showNotification('已恢復預設版面,全公司生效', 'info');
+        }).catch(function () {});
     }
     // 字級數字輸入 → 即時更新
     document.addEventListener('input', function (e) {
@@ -1691,6 +1722,7 @@
     // ==========================================
     loadLimits();
     loadLayout();
+    loadCloudLayout(); // 版面全公司共用:啟動即抓雲端版
     loadCachedProducts();
     loadStaff();
     (function () { var ft = document.getElementById('small-flush-time'); if (ft) ft.value = flushTime(); })();
