@@ -44,7 +44,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-slate-800">百思特標籤列印系統 3.0</h1>
-                    <p class="text-xs text-slate-500">與儲位查詢共用後台 • 改儲位/盤點/第二庫存自動排入列印</p>
+                    <p class="text-xs text-slate-500">與儲位查詢共用後台 · 產品同步：<span id="global-sync-time" class="font-semibold text-emerald-600">尚未同步</span></p>
                 </div>
             </div>
             <nav class="flex border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-1">
@@ -122,7 +122,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">上架人員</label>
-                                <input id="print-operator" type="text" placeholder="例: 小張" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="print-operator" onchange="onOperatorPick(this.value)" class="staff-select w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="">（選擇人員）</option></select>
                             </div>
                         </div>
                         <div>
@@ -143,7 +143,24 @@
                         <p class="text-xs text-slate-500 mt-1">直接貼上一欄貨號（換行、逗號、空格都能分隔），一次全部排入列印</p>
                     </div>
 
-                    <textarea id="batch-input" rows="6" placeholder="319-1361&#10;328-002&#10;PIHG002-B02&#10;..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
+                    <!-- 連續掃描加入 -->
+                    <div class="flex items-center gap-2 mb-3 flex-wrap">
+                        <button id="batch-scan-btn" onclick="toggleBatchScan()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera"></i> 連續掃描加入
+                        </button>
+                        <span class="text-xs text-slate-500">用手機相機或 USB 掃描槍，一個一個掃，全部掃完再一起送印</span>
+                    </div>
+                    <div id="batch-scanner" class="hidden mb-3 overflow-hidden rounded-lg border border-emerald-200 bg-black relative">
+                        <div id="batch-scanner-reader" class="w-full bg-slate-900" style="min-height: 240px;"></div>
+                        <div class="absolute top-2 left-2 bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full">已掃 <span id="batch-scan-count">0</span> 筆</div>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="flex-grow border-t border-slate-100"></div>
+                        <span class="text-[11px] text-slate-400">或貼上貨號</span>
+                        <div class="flex-grow border-t border-slate-100"></div>
+                    </div>
+                    <textarea id="batch-input" rows="4" placeholder="319-1361&#10;328-002&#10;PIHG002-B02&#10;..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"></textarea>
 
                     <div class="flex items-center gap-3 mt-3 flex-wrap">
                         <div class="flex items-center gap-2">
@@ -151,7 +168,7 @@
                             <input id="batch-copies" type="number" min="1" value="1" class="w-16 border border-slate-300 rounded-lg px-2 py-1.5 text-center font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <button onclick="parseBatch()" class="bg-slate-700 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-list-check"></i> 解析並預覽
+                            <i class="fa-solid fa-list-check"></i> 解析貼上的貨號
                         </button>
                     </div>
 
@@ -296,10 +313,10 @@
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
                     <h3 class="font-bold text-slate-800">預設上架人員</h3>
                     <div class="flex gap-2">
-                        <input id="settings-operator" type="text" placeholder="例: 小張" class="flex-grow border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <select id="settings-operator" class="staff-select flex-grow border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"><option value="">（選擇人員）</option></select>
                         <button onclick="saveOperator()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition">儲存</button>
                     </div>
-                    <p class="text-[11px] text-slate-400">此名稱會登記在標籤佇列與標籤上。</p>
+                    <p class="text-[11px] text-slate-400">人員清單與「儲位查詢」共用同一份。此名稱會登記在標籤佇列與標籤上。</p>
                 </div>
                 <!-- 張數上限 -->
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -381,7 +398,10 @@
         pollFails: 0,
         pendingSince: 0,
         batchItems: [],
-        limits: null
+        limits: null,
+        staff: [],
+        lastScanCode: '',
+        lastScanTime: 0
     };
 
     function esc(s) {
@@ -486,9 +506,15 @@
                 }
                 var nowStr = new Date().toLocaleString();
                 localStorage.setItem('label_sync_time', nowStr);
-                document.getElementById('cache-sync-time').innerText = nowStr;
+                updateSyncTimeDisplay(nowStr);
             })
             .catch(function (e) { if (!isBackground) showNotification('同步失敗,請檢查網路', 'error'); });
+    }
+    // 最後同步完成時間 — 顯示在標題列(全分頁可見) + 設定頁
+    function updateSyncTimeDisplay(str) {
+        ['global-sync-time', 'cache-sync-time'].forEach(function (id) {
+            var el = document.getElementById(id); if (el) el.innerText = str;
+        });
     }
     function loadCachedProducts() {
         try {
@@ -496,7 +522,7 @@
             if (cached && cached.products) applyProducts(cached.products, cached.v);
         } catch (e) {}
         var t = localStorage.getItem('label_sync_time');
-        if (t) document.getElementById('cache-sync-time').innerText = t;
+        if (t) updateSyncTimeDisplay(t);
     }
     function findProduct(sku) {
         sku = String(sku).trim().toUpperCase();
@@ -504,6 +530,57 @@
             if (state.products[i].sku.toUpperCase() === sku) return state.products[i];
         }
         return null;
+    }
+
+    // ==========================================
+    // 人員清單 (與儲位查詢共用:action=meta 的 staff)
+    // ==========================================
+    function applyStaff(list) {
+        state.staff = (list || []).map(String);
+        try { localStorage.setItem('label_staff', JSON.stringify(state.staff)); } catch (e) {}
+        populateStaffSelects();
+    }
+    function loadStaff() {
+        try { var s = JSON.parse(localStorage.getItem('label_staff') || 'null'); if (Array.isArray(s)) state.staff = s; } catch (e) {}
+        apiGet('action=meta').then(function (d) { if (d && d.ok && d.staff) applyStaff(d.staff); }).catch(function () {});
+    }
+    function populateStaffSelects() {
+        document.querySelectorAll('.staff-select').forEach(function (sel) {
+            var cur = sel.value || state.operator || '';
+            var opts = '<option value="">（選擇人員）</option>' + state.staff.map(function (n) {
+                return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+            }).join('');
+            // 若目前選的人不在清單(舊資料),仍保留一個選項
+            if (cur && state.staff.indexOf(cur) < 0) opts += '<option value="' + esc(cur) + '">' + esc(cur) + '</option>';
+            sel.innerHTML = opts;
+            sel.value = cur;
+        });
+    }
+    function onOperatorPick(v) {
+        if (v && v !== state.operator) { state.operator = v; localStorage.setItem('label_operator', v); }
+        if (state.selectedProduct) renderMiniPreview(state.selectedProduct);
+        populateStaffSelects();
+    }
+
+    // ==========================================
+    // 全螢幕 (電腦列印端專用)
+    // ==========================================
+    function enterFullscreen() {
+        try {
+            var el = document.documentElement;
+            var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+            if (req && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+                var p = req.call(el); if (p && p.catch) p.catch(function () {});
+            }
+        } catch (e) {}
+    }
+    function exitFullscreen() {
+        try {
+            var ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+            if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                var p = ex.call(document); if (p && p.catch) p.catch(function () {});
+            }
+        } catch (e) {}
     }
 
     // ==========================================
@@ -523,14 +600,16 @@
         ['mobile', 'pc', 'db'].forEach(function (t) {
             document.getElementById(t + '-view').classList.toggle('hidden', t !== tab);
         });
-        if (tab !== 'mobile' && html5QrcodeScanner) stopScanner();
+        if (tab !== 'mobile') { if (html5QrcodeScanner) stopScanner(); if (batchScanner) stopBatchScan(); }
+        if (tab === 'mobile') { populateStaffSelects(); }
         if (tab === 'db') {
-            document.getElementById('settings-operator').value = state.operator;
+            populateStaffSelects();
             fillLayoutInputs();
             fillLimitInputs();
             renderEditor();
         }
-        if (tab === 'pc') { updateLastPrintTime(); pollQueue(); }
+        if (tab === 'pc') { updateLastPrintTime(); pollQueue(); enterFullscreen(); }
+        else { exitFullscreen(); }
     }
 
     // ==========================================
@@ -719,6 +798,8 @@
         var total = state.batchItems.reduce(function (s, it) { return s + it.copies; }, 0);
         document.getElementById('batch-found-count').innerText = state.batchItems.length;
         document.getElementById('batch-total-copies').innerText = total;
+        var badge = document.getElementById('batch-scan-count');
+        if (badge) badge.innerText = state.batchItems.length;
     }
     function submitBatch() {
         if (!state.batchItems.length) { showNotification('沒有可送出的項目', 'warning'); return; }
@@ -735,6 +816,55 @@
                 state.batchItems = [];
             } else if (!d.busy) { showNotification('批次失敗:' + (d.error || '請重試'), 'error'); }
         }).catch(function () { showNotification('批次送出失敗,請重試', 'error'); });
+    }
+
+    // ==========================================
+    // 連續掃描加入批次 (手機相機或 USB 掃描槍)
+    // ==========================================
+    var batchScanner = null;
+    function toggleBatchScan() {
+        var box = document.getElementById('batch-scanner');
+        var btn = document.getElementById('batch-scan-btn');
+        if (box.classList.contains('hidden')) {
+            box.classList.remove('hidden');
+            btn.innerHTML = '<i class="fa-solid fa-stop"></i> 停止掃描';
+            btn.classList.replace('bg-emerald-600', 'bg-red-600');
+            btn.classList.replace('hover:bg-emerald-700', 'hover:bg-red-700');
+            setTimeout(startBatchScan, 150);
+        } else { stopBatchScan(); }
+    }
+    function startBatchScan() {
+        batchScanner = new Html5Qrcode('batch-scanner-reader');
+        batchScanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 150 } },
+            function (decodedText) { addScanToBatch(decodedText); },
+            function () {}
+        ).catch(function () { showNotification('無法啟動相機,請檢查權限或改用掃描槍', 'error'); stopBatchScan(); });
+    }
+    function stopBatchScan() {
+        var box = document.getElementById('batch-scanner');
+        var btn = document.getElementById('batch-scan-btn');
+        if (box) box.classList.add('hidden');
+        if (btn) {
+            btn.innerHTML = '<i class="fa-solid fa-camera"></i> 連續掃描加入';
+            btn.classList.replace('bg-red-600', 'bg-emerald-600');
+            btn.classList.replace('hover:bg-red-700', 'hover:bg-emerald-700');
+        }
+        if (batchScanner) batchScanner.stop().then(function () { batchScanner = null; }).catch(function () {});
+    }
+    function addScanToBatch(code) {
+        code = String(code).trim();
+        var now = Date.now();
+        if (code === state.lastScanCode && now - state.lastScanTime < 2000) return; // 同碼防連發
+        state.lastScanCode = code; state.lastScanTime = now;
+        var p = findProduct(code);
+        if (!p) { showNotification('查無此貨號: ' + code, 'warning'); if (navigator.vibrate) navigator.vibrate(200); return; }
+        var defCopies = clamp(parseInt(document.getElementById('batch-copies').value) || 1, 1, state.limits.maxCopies);
+        var exist = null;
+        state.batchItems.forEach(function (it) { if (it.sku === p.sku) exist = it; });
+        if (exist) { exist.copies = clamp(exist.copies + 1, 1, state.limits.maxCopies); showNotification(p.sku + ' 再+1 (共 ' + exist.copies + ' 張)', 'info'); }
+        else { state.batchItems.push({ sku: p.sku, product: p, copies: defCopies }); showNotification('加入: ' + p.name, 'success'); }
+        if (navigator.vibrate) navigator.vibrate(60);
+        renderBatch(null);
     }
 
     // ==========================================
@@ -1174,10 +1304,22 @@
     loadLimits();
     loadLayout();
     loadCachedProducts();
-    switchTab(location.hash === '#pc' ? 'pc' : 'mobile');
+    loadStaff();
+    var startPc = location.hash === '#pc';
+    switchTab(startPc ? 'pc' : 'mobile');
     if (localStorage.getItem('label_autoprint') === '1') {
         document.getElementById('auto-print-toggle').checked = true;
         toggleAutoPrint();
+    }
+    // 初次用 #pc 開啟時瀏覽器不允許自動全螢幕(需手勢),第一次點擊/按鍵就進全螢幕
+    if (startPc) {
+        var once = function () {
+            enterFullscreen();
+            document.removeEventListener('click', once);
+            document.removeEventListener('keydown', once);
+        };
+        document.addEventListener('click', once);
+        document.addEventListener('keydown', once);
     }
     fetchIp();
     syncProducts(true);
