@@ -96,7 +96,11 @@
   td .cmp{margin-left:5px;font-size:10.5px}
   /* SOP */
   .schips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .schip{padding:6px 12px;border-radius:11px;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card)}
+  .schip{padding:6px 12px;border-radius:11px;font-size:13px;font-weight:600;border:1px solid var(--line);
+    background:var(--card);cursor:pointer;user-select:none;transition:.12s}
+  .schip:hover{filter:brightness(.97);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .schip.on{outline:2px solid currentColor;outline-offset:1px;filter:none}
+  .schip-x{color:var(--sub);font-weight:500}
   .schip b{margin-left:4px}
   .sc-up{color:var(--good);background:var(--goodbg);border-color:transparent}
   .sc-obs{color:var(--sub)}
@@ -336,6 +340,14 @@ const CONFIG = {
   token: 'g_bmoVNTUvAPsHpxOtezDmZF',
 };
 const UNCAT = '(未分類)';
+// 店鋪別名統一:月報(整合分析)用短名、廣告每日(整合分析(日))用全名 → 統一成短名(有 1-4 排序)
+const STORE_CANON = {
+  '1圓周率':'1圓周率', '圓周率文具生活百貨批發':'1圓周率',
+  '2百思特':'2百思特', 'BEST文具生活百貨':'2百思特',
+  '3阿蝦':'3阿蝦',   '阿蝦官方旗艦店':'3阿蝦',
+  '4萌寵':'4萌寵',   '憨吉生活館':'4萌寵',
+};
+const canonStore = s => STORE_CANON[String(s||'').trim()] || String(s||'').trim();
 const MCOLS = ['店鋪','分類','商品ID','商品名稱','月份','月銷','漲跌','差額','廣告花費','廣告銷售','ROAS','廣告佔比','廣告成本比'];
 const DCOLS = ['店鋪','分類','商品ID','商品名稱','廣告類型','日期','花費','銷售','直接銷售','瀏覽','點擊','轉換','直接轉換','購物車'];
 const M_NUMCOL = {'月銷':'money','差額':'money','廣告花費':'money','廣告銷售':'money','ROAS':'roas','漲跌':'pct','廣告佔比':'pct','廣告成本比':'pct'};
@@ -385,6 +397,7 @@ const state = {
   ptcols:new Set(['花費','銷售','ROAS','直接銷售','直接ROAS','轉換','轉換成本']),
   mtcols:new Set(M_TCOLS),
   psort:{key:'cost',dir:-1}, msort:{key:'廣告花費',dir:-1}, ssort:{key:'_ord',dir:1},
+  sopFilter:null,
 };
 let charts={};
 
@@ -431,7 +444,7 @@ function parseMonthly(data){
   const head=data[0], idx={}; MCOLS.forEach(c=>idx[c]=head.indexOf(c));
   return data.slice(1).filter(row=>String(row[idx['商品ID']]??'')!=='').map(row=>{
     const o={};
-    o['店鋪']=String(row[idx['店鋪']]||''); o['分類']=String(row[idx['分類']]||'')||UNCAT;
+    o['店鋪']=canonStore(row[idx['店鋪']]); o['分類']=String(row[idx['分類']]||'')||UNCAT;
     o['商品ID']=String(row[idx['商品ID']]||''); o['商品名稱']=String(row[idx['商品名稱']]||'');
     o['月份']=normDate(row[idx['月份']],7);
     ['月銷','漲跌','差額','廣告花費','廣告銷售','ROAS','廣告佔比','廣告成本比'].forEach(c=>{o[c]=parseNum(row[idx[c]]);});
@@ -445,7 +458,7 @@ function parseDaily(data){
     const ds=normDate(row[idx['日期']],10); if(!ds) return;
     const name=String(row[idx['商品名稱']]||''); if(!name) return;
     out.push({
-      shop:String(row[idx['店鋪']]||''), cat:String(row[idx['分類']]||'')||UNCAT,
+      shop:canonStore(row[idx['店鋪']]), cat:String(row[idx['分類']]||'')||UNCAT,
       pid:String(row[idx['商品ID']]||''), name, type:String(row[idx['廣告類型']]||''), ds,
       cost:parseNum(row[idx['花費']])||0, sale:parseNum(row[idx['銷售']])||0,
       dsale:parseNum(row[idx['直接銷售']])||0, views:parseNum(row[idx['瀏覽']])||0,
@@ -634,6 +647,15 @@ function renderSidebarCounts(){
   });
 }
 function mkChart(id,cfg){ if(charts[id])charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+// 散點軸上限:取第 p 百分位當上限(避免一兩個超大值把其他點擠成一坨);沒有明顯離群就回 null(自動)
+function niceCap(vals,p){
+  const a=vals.filter(v=>v!=null&&isFinite(v)&&v>0).sort((x,y)=>x-y);
+  if(a.length<4) return null;
+  const q=a[Math.min(a.length-1,Math.floor(a.length*p))], max=a[a.length-1];
+  if(max<=q*1.3) return null;                 // 最大值沒比 p95 大多少 → 不用截,讓 Chart.js 自動
+  const pad=q*1.1, mag=Math.pow(10,Math.floor(Math.log10(pad)));
+  return Math.max(mag, Math.ceil(pad/mag)*mag);
+}
 function cmpChip(cur,prev,goodDir){
   if(!state.compare) return '';
   if(cur==null||!isFinite(cur)||prev==null||!isFinite(prev)) return '<span class="cmp mut">—</span>';
@@ -722,14 +744,22 @@ function renderPTrend(rows,prows,qs_){
 }
 function renderPScatter(rows){
   const arr=[...aggProducts(rows).values()].filter(o=>o.cost>0);
-  const pts=arr.map(o=>({x:Math.round(o.cost),y:vRoas(o)==null?0:+vRoas(o).toFixed(2),
-    r:Math.max(3,Math.min(16,Math.sqrt(vSale(o))/10)),_n:o.name,_c:o.cat,_conv:o.conv}));
+  const xCap=niceCap(arr.map(o=>o.cost),0.95);
+  const yCap=niceCap(arr.map(o=>vRoas(o)),0.95);
+  let clipped=0;
+  const pts=arr.map(o=>{
+    const rx=Math.round(o.cost), ry=vRoas(o)==null?0:+vRoas(o).toFixed(2);
+    const cx=xCap&&rx>xCap, cy=yCap&&ry>yCap; if(cx||cy)clipped++;
+    return {x:cx?xCap:rx, y:cy?yCap:ry, r:Math.max(3,Math.min(16,Math.sqrt(vSale(o))/10)),
+      _n:o.name,_c:o.cat,_conv:o.conv,_rx:rx,_ry:ry,_clip:cx||cy};
+  });
   const col=arr.map(o=>roasColor(vRoas(o)));
   mkChart('pscatter',{type:'bubble',data:{datasets:[{data:pts,backgroundColor:col.map(c=>c+'bb'),borderColor:col}]},
     options:{maintainAspectRatio:false,scales:{
-      x:{title:{display:true,text:'花費 NT$'}},y:{title:{display:true,text:vRoasLabel()}}},
+      x:{min:0,max:xCap||undefined,title:{display:true,text:'花費 NT$'+(xCap?'(超過'+fmtMoney(xCap)+'靠右邊)':'')}},
+      y:{min:0,max:yCap||undefined,title:{display:true,text:vRoasLabel()+(yCap?'(超過'+yCap+'靠頂端)':'')}}},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const p=c.raw;
-        return `${p._c}｜${String(p._n).slice(0,18)} · 花費${fmtMoney(p.x)} ${vRoasLabel()}${p.y} 轉換${p._conv}`;}}}}}});
+        return `${p._c}｜${String(p._n).slice(0,18)} · 花費${fmtMoney(p._rx)} ${vRoasLabel()}${p._ry}${p._clip?'(離群)':''} 轉換${p._conv}`;}}}}}});
 }
 function renderPTopbar(rows){
   const arr=[...aggProducts(rows).values()].filter(o=>o.cost>0)
@@ -859,19 +889,24 @@ function renderSop(){
     else if(r.cls==='b-stop')cnt.stop++; else if(r.cls==='b-hold')cnt.hold++; else cnt.obs++;
     if(r.flags.some(f=>f.includes('問老闆')))cnt.boss++;
   });
+  const F=state.sopFilter;
+  const chip=(fil,cls,lab,n)=>`<span class="schip ${cls}${F===fil?' on':''}" data-fil="${fil}">${lab}<b>${n}</b></span>`;
   document.getElementById('sopChips').innerHTML=
-    `<span class="schip">共<b>${list.length}</b></span>`+
-    `<span class="schip sc-up">放大/提升<b>${cnt.up}</b></span>`+
-    `<span class="schip sc-obs">持平/觀察<b>${cnt.obs}</b></span>`+
-    `<span class="schip sc-down">小幅降<b>${cnt.down}</b></span>`+
-    `<span class="schip sc-stop">大降/暫停<b>${cnt.stop}</b></span>`+
-    `<span class="schip sc-hold">花不完<b>${cnt.hold}</b></span>`+
-    (cnt.boss?`<span class="schip sc-stop">⚠問老闆<b>${cnt.boss}</b></span>`:'');
+    `<span class="schip${F?'':' on'}" data-fil="">全部<b>${list.length}</b></span>`+
+    chip('b-up','sc-up','放大/提升',cnt.up)+
+    chip('b-obs','sc-obs','持平/觀察',cnt.obs)+
+    chip('b-down','sc-down','小幅降',cnt.down)+
+    chip('b-stop','sc-stop','大降/暫停',cnt.stop)+
+    chip('b-hold','sc-hold','花不完',cnt.hold)+
+    (cnt.boss?chip('boss','sc-stop','⚠問老闆',cnt.boss):'')+
+    (F?`<span class="schip schip-x" data-fil="">✕ 清除篩選</span>`:'');
+  // 依選中的籌碼篩選表格(籌碼數字仍顯示總數)
+  const shown = F ? list.filter(({r})=> F==='boss' ? r.flags.some(f=>f.includes('問老闆')) : r.cls===F) : list;
   const hd=[['_ord','建議動作'],['name','商品'],['roas','ROAS'],['cpa','轉換成本'],
             ['spend7','7天花費'],['rev7','7天營業額'],['spent','花完?'],['cart','購物車'],
             ['budget','預算→建議'],['rem','提醒']];
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'||k==='rem'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
-  const body=list.map(({o,r,spend7,rev7,cart,autoCart,cartPrev,spent,budget})=>{
+  const body=shown.map(({o,r,spend7,rev7,cart,autoCart,cartPrev,spent,budget})=>{
     const cartTxt=cartPrev==null?'<span class="muted">前期無</span>':
       `${fmtInt(cartPrev)}→${fmtInt(o.cart)}`;
     const cartSel=`<select data-sk="cart" data-key="${esc(o.key)}">
@@ -912,7 +947,7 @@ function bindSopInputs(){
 }
 function renderTierEditor(){
   const t=RULES.tiers;
-  const f=(k,lab,act)=>`<div class="tf"><small>${act}</small><b>ROAS ≥</b>
+  const f=(k,lab)=>`<div class="tf"><small>${lab}</small><b>ROAS ≥</b>
     <input type="number" step="0.1" data-tier="${k}" value="${t[k]}"></div>`;
   document.getElementById('tierEdit').innerHTML=
     f('big','積極放大')+'<span class="arrow">▸</span>'+
@@ -983,14 +1018,21 @@ function renderMTrend(){
 }
 function renderMScatter(){
   const rows=mFiltered(state.month).filter(r=>r['廣告花費']&&r['ROAS']!=null&&r['廣告佔比']!=null);
-  const pts=rows.map(r=>({x:r['廣告佔比']*100,y:r['ROAS'],r:Math.max(3,Math.min(16,Math.sqrt(r['廣告花費'])/12)),
-    _n:r['商品名稱'],_c:r['分類']}));
+  const xCap=niceCap(rows.map(r=>r['廣告佔比']*100),0.95);
+  const yCap=niceCap(rows.map(r=>r['ROAS']),0.95);
+  const pts=rows.map(r=>{
+    const rx=r['廣告佔比']*100, ry=r['ROAS'];
+    const cx=xCap&&rx>xCap, cy=yCap&&ry>yCap;
+    return {x:cx?xCap:rx, y:cy?yCap:ry, r:Math.max(3,Math.min(16,Math.sqrt(r['廣告花費'])/12)),
+      _n:r['商品名稱'],_c:r['分類'],_rx:rx,_ry:ry,_clip:cx||cy};
+  });
   const col=rows.map(r=>roasColor(r['ROAS']));
   mkChart('mscatter',{type:'bubble',data:{datasets:[{data:pts,backgroundColor:col.map(c=>c+'bb'),borderColor:col}]},
     options:{maintainAspectRatio:false,scales:{
-      x:{title:{display:true,text:'廣告佔比 %'}},y:{title:{display:true,text:'ROAS'}}},
+      x:{min:0,max:xCap||undefined,title:{display:true,text:'廣告佔比 %'+(xCap?'(超過'+Math.round(xCap)+'%靠右邊)':'')}},
+      y:{min:0,max:yCap||undefined,title:{display:true,text:'ROAS'+(yCap?'(超過'+yCap+'靠頂端)':'')}}},
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const p=c.raw;
-        return `${p._c}｜${String(p._n).slice(0,18)} · 佔比${p.x.toFixed(0)}% ROAS${p.y}`;}}}}}});
+        return `${p._c}｜${String(p._n).slice(0,18)} · 佔比${p._rx.toFixed(0)}% ROAS${p._ry}${p._clip?'(離群)':''}`;}}}}}});
 }
 function renderMTopbar(){
   const rows=mFiltered(state.month).filter(r=>r['廣告花費']).sort((a,b)=>b['廣告花費']-a['廣告花費']).slice(0,15);
@@ -1088,6 +1130,12 @@ function bind(){
   document.getElementById('reload').addEventListener('click',load);
   document.getElementById('assumeSpent').addEventListener('change',renderSop);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
+  document.getElementById('sopChips').addEventListener('click',e=>{
+    const c=e.target.closest('[data-fil]'); if(!c)return;
+    const fil=c.dataset.fil;
+    state.sopFilter = (fil==='' || state.sopFilter===fil) ? null : fil;   // 再點同一個或「全部」= 取消
+    renderSop();
+  });
   bindSopInputs();
   // 規則編輯
   document.getElementById('rulesTbl').addEventListener('input',e=>{
