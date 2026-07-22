@@ -249,8 +249,17 @@
       <div class="tblscroll"><table id="sopTbl"></table></div>
     </div>
     <div class="card">
-      <h2>調整對照表(可編輯,存在這台瀏覽器)</h2>
-      <div class="hint">轉換成本決定列、7天花費未達門檻→觀察。下方「ROAS 分級門檻」決定每則廣告落在哪個動作,對照表各欄跟著更新。</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h2 style="margin:0">調整對照表(可編輯)</h2>
+        <span class="muted" style="font-size:12px">存放:</span>
+        <div class="seg" id="scopeSeg">
+          <button data-scope="local" class="on">本機(這台)</button>
+          <button data-scope="global">全域(所有裝置共用)</button>
+        </div>
+        <span id="scopeMsg" class="muted" style="font-size:12px"></span>
+      </div>
+      <div class="hint">轉換成本決定列、7天花費未達門檻→觀察。下方「ROAS 分級門檻」決定每則廣告落在哪個動作,對照表各欄跟著更新。
+        「全域」= 存到雲端(GAS),所有裝置/使用者共用同一套;「本機」= 只存這台瀏覽器。</div>
       <div class="tieredit" id="tierEdit"></div>
       <div style="overflow-x:auto"><table id="rulesTbl"></table></div>
       <div class="tbar" style="padding-top:12px">
@@ -338,6 +347,7 @@
 const CONFIG = {
   api: 'https://script.google.com/macros/s/AKfycbwr0fr-33e3p316eQZlZuWCvOVikHc_Geo632n-BZW6Pt6Hjdu7lQT2PMFrHHD2a_63/exec',
   token: 'g_bmoVNTUvAPsHpxOtezDmZF',
+  cfgToken: 'Kx7pQ2mVn9RbTfZ4wLcHsUgD6yJ3aEeP',   // 寫「全域 SOP 規則」用(需 Code.gs v3.13);與 Code.gs 的 CFG_TOKEN 一致
 };
 const UNCAT = '(未分類)';
 // 店鋪別名統一:月報(整合分析)用短名、廣告每日(整合分析(日))用全名 → 統一成短名(有 1-4 排序)
@@ -375,7 +385,24 @@ let SETTINGS = Object.assign(clone(DEFAULT_SETTINGS), lsGet('adDash:settings',{}
 let RULES = lsGet('adDash:rules', DEFAULT_RULES);
 if(!RULES.rows || RULES.rows.length!==6) RULES = clone(DEFAULT_RULES);
 if(!RULES.tiers) RULES.tiers = clone(DEFAULT_RULES.tiers);   // 舊 localStorage 沒有 tiers → 補預設
+let RULES_SCOPE = lsGet('adDash:rulesScope', 'local');       // 'local'(這台瀏覽器)| 'global'(雲端共用)
 let BUDGETS = lsGet('adDash:budgets', {});
+function validRules(r){ return r && Array.isArray(r.rows) && r.rows.length===6 && r.tiers; }
+async function loadGlobalRules(){
+  const r = await fetch(CONFIG.api+'?api=getcfg&token='+encodeURIComponent(CONFIG.token));
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.error||'讀取失敗');
+  return (j.cfg && j.cfg.rules) || null;
+}
+async function saveGlobalRules(rules){
+  // Apps Script 不給瀏覽器讀 POST 回應(CORS)→ no-cors 送出後,再 GET 重讀比對確認
+  await fetch(CONFIG.api, {method:'POST', mode:'no-cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({kind:'cfg', token:CONFIG.cfgToken, cfg:{rules}})});
+  const back = await loadGlobalRules();
+  if(!back || JSON.stringify(back)!==JSON.stringify(rules))
+    throw new Error('雲端確認不符(檢查 Code.gs 是否已部署 v3.13、CFG_TOKEN 是否一致)');
+}
 
 function applySettingsCss(){
   const r=document.documentElement.style;
@@ -536,11 +563,20 @@ function init(){
     `<label><input type="checkbox" data-col="${c}" ${state.mtcols.has(c)?'checked':''}> ${c}</label>`).join('');
 
   renderRules();
+  setScopeUI();
   applySettingsCss();
   bind();
   document.getElementById('status').style.display='none';
   document.getElementById('board').style.display='flex';
   render();
+  // 全域模式:開頁時抓一次雲端規則(讓各裝置同步);抓不到就沿用本機快取
+  if(RULES_SCOPE==='global'){
+    loadGlobalRules().then(g=>{ if(validRules(g)){ RULES=g; lsSet('adDash:rules',RULES); renderRules(); renderSop(); }})
+      .catch(()=>{ flash('scopeMsg','全域規則讀取失敗,暫用本機快取',true); });
+  }
+}
+function setScopeUI(){
+  document.querySelectorAll('#scopeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.scope===RULES_SCOPE));
 }
 function chkRow(kind,val,label){
   return `<label class="chk"><input type="checkbox" data-kind="${kind}" data-val="${encodeURIComponent(val)}" checked>${label}</label>`;
@@ -1149,13 +1185,36 @@ function bind(){
     const v=+e.target.value; if(v>0) RULES.tiers[k]=v; else e.target.value=RULES.tiers[k];
     renderRulesTable(); renderSop();
   });
-  document.getElementById('rulesSave').addEventListener('click',()=>{
-    lsSet('adDash:rules',RULES); renderSop();
-    flash('rulesMsg','已儲存 ✓');
+  document.getElementById('rulesSave').addEventListener('click',async()=>{
+    lsSet('adDash:rules',RULES);                       // 一律也存本機當快取
+    renderSop();
+    if(RULES_SCOPE==='global'){
+      flash('rulesMsg','雲端儲存中…');
+      try{ await saveGlobalRules(RULES); flash('rulesMsg','已存到全域(所有裝置)✓'); }
+      catch(e){ flash('rulesMsg','全域儲存失敗:'+e.message,true); }
+    }else{
+      flash('rulesMsg','已存這台瀏覽器 ✓');
+    }
   });
   document.getElementById('rulesReset').addEventListener('click',()=>{
     RULES=clone(DEFAULT_RULES); lsSet('adDash:rules',RULES); renderRules(); renderSop();
-    flash('rulesMsg','已還原 ✓');
+    flash('rulesMsg', RULES_SCOPE==='global'?'已還原(按儲存才會寫回全域)':'已還原 ✓');
+  });
+  // 存放範圍切換:本機 ⇄ 全域
+  document.getElementById('scopeSeg').addEventListener('click',async e=>{
+    const sc=e.target.dataset.scope; if(!sc||sc===RULES_SCOPE)return;
+    if(sc==='global'){
+      flash('scopeMsg','讀取全域規則…');
+      try{
+        const g=await loadGlobalRules();
+        if(validRules(g)){ RULES=g; lsSet('adDash:rules',RULES); flash('scopeMsg','已載入雲端全域規則 ✓'); }
+        else { await saveGlobalRules(RULES); flash('scopeMsg','雲端還沒有→已用目前規則建立全域基準 ✓'); }
+      }catch(err){ flash('scopeMsg','切換全域失敗:'+err.message,true); return; }   // 失敗維持本機
+    }else{
+      flash('scopeMsg','改為只存這台瀏覽器');
+    }
+    RULES_SCOPE=sc; lsSet('adDash:rulesScope',RULES_SCOPE);
+    setScopeUI(); renderRules(); renderSop();
   });
   // 設定面板
   document.getElementById('btnSettings').addEventListener('click',()=>{
@@ -1188,7 +1247,8 @@ function bind(){
     document.getElementById('modalBk').classList.remove('on'); render();
   });
 }
-function flash(id,msg){const el=document.getElementById(id);el.textContent=msg;setTimeout(()=>el.textContent='',2200);}
+function flash(id,msg,err){const el=document.getElementById(id);el.textContent=msg;
+  el.style.color=err?'var(--bad)':'var(--good)';setTimeout(()=>{el.textContent='';el.style.color='';},err?4000:2200);}
 load();
 </script>
 </body>
