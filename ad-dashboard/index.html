@@ -117,6 +117,13 @@
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
   .newb{display:block;font-size:11px;color:var(--sub)}
   /* 規則表 */
+  .tieredit{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px;padding:10px 12px;
+    background:var(--chip);border-radius:10px;align-items:flex-end}
+  .tieredit .tf{display:flex;flex-direction:column;gap:3px}
+  .tieredit .tf small{color:var(--sub);font-size:11px}
+  .tieredit .tf b{font-size:12px}
+  .tieredit input{width:66px;padding:5px 6px;text-align:center;font-size:13px}
+  .tieredit .arrow{align-self:center;color:var(--sub);padding-bottom:6px}
   #rulesTbl input{width:64px;padding:4px;text-align:center;font-size:13px}
   #rulesTbl th{position:static;text-align:center}
   #rulesTbl td{text-align:center}
@@ -239,7 +246,8 @@
     </div>
     <div class="card">
       <h2>調整對照表(可編輯,存在這台瀏覽器)</h2>
-      <div class="hint">轉換成本決定列、7天花費未達門檻→觀察;ROAS 分級:≥10 積極放大、7–10 穩健提升、6.x 持平、5.x 小幅降、&lt;5 大降/暫停</div>
+      <div class="hint">轉換成本決定列、7天花費未達門檻→觀察。下方「ROAS 分級門檻」決定每則廣告落在哪個動作,對照表各欄跟著更新。</div>
+      <div class="tieredit" id="tierEdit"></div>
       <div style="overflow-x:auto"><table id="rulesTbl"></table></div>
       <div class="tbar" style="padding-top:12px">
         <button id="rulesSave">💾 儲存規則</button>
@@ -248,7 +256,7 @@
       </div>
       <div class="note">
         <b>SOP 提醒</b>:調整前先確認「預算已花完」;沒花完不是調預算,是到後台把「ROI 目標」調低一點。
-        ROAS &lt; 5 且 7 天營業額 &gt; <span id="bossNote"></span> → 先問老闆。
+        ROAS &lt; <span id="downNote"></span> 且 7 天營業額 &gt; <span id="bossNote"></span> → 先問老闆。
         ROAS 差但購物車有升 → 先別砍(表內購物車=本期 vs 前期自動比較,可手動改)。
         數據已依所選週期天數自動換算成 7 天標準值;「預算」欄手填後會記住並算出建議新預算。
       </div>
@@ -336,20 +344,25 @@ const M_TCOLS = ['月銷','漲跌','差額','廣告花費','ROAS','廣告佔比'
 // ===== 設定 / SOP 規則(localStorage) =====
 const DEFAULT_SETTINGS = {roasRed:2, roasGreen:6, redColor:'#dc2626', greenColor:'#16a34a',
                           costRatioBad:25, sopBoss:3000, obsDays:3};
-const DEFAULT_RULES = {rows:[
-  {label:"< $25",  th:150,  pct:[50,30,-10,-30]},
-  {label:"< $50",  th:300,  pct:[40,20,-10,-30]},
-  {label:"< $100", th:500,  pct:[30,20,-10,-30]},
-  {label:"< $200", th:1000, pct:[20,20,-20,-50]},
-  {label:"< $500", th:2000, pct:[20,10,-30,-50]},
-  {label:"高客單價", th:3000, pct:[20,10,-30,-50]},
-]};
+const DEFAULT_RULES = {
+  // tiers:ROAS 分級門檻(由高到低)→ 決定每則廣告落在放大/提升/持平/小幅降/大降暫停
+  //   ≥big 積極放大 · [up,big) 穩健提升 · [hold,up) 持平觀察 · [down,hold) 小幅降 · <down 大降/暫停
+  tiers:{big:10, up:7, hold:6, down:5},
+  rows:[
+    {label:"< $25",  th:150,  pct:[50,30,-10,-30]},
+    {label:"< $50",  th:300,  pct:[40,20,-10,-30]},
+    {label:"< $100", th:500,  pct:[30,20,-10,-30]},
+    {label:"< $200", th:1000, pct:[20,20,-20,-50]},
+    {label:"< $500", th:2000, pct:[20,10,-30,-50]},
+    {label:"高客單價", th:3000, pct:[20,10,-30,-50]},
+  ]};
 const clone = o=>JSON.parse(JSON.stringify(o));
 function lsGet(k,def){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):clone(def);}catch(e){return clone(def);} }
 function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 let SETTINGS = Object.assign(clone(DEFAULT_SETTINGS), lsGet('adDash:settings',{}));
 let RULES = lsGet('adDash:rules', DEFAULT_RULES);
 if(!RULES.rows || RULES.rows.length!==6) RULES = clone(DEFAULT_RULES);
+if(!RULES.tiers) RULES.tiers = clone(DEFAULT_RULES.tiers);   // 舊 localStorage 沒有 tiers → 補預設
 let BUDGETS = lsGet('adDash:budgets', {});
 
 function applySettingsCss(){
@@ -766,7 +779,7 @@ function renderPTable(rows,prows){
 
 // ===== SOP 建議頁 =====
 function rowFor(cost){const t=[25,50,100,200,500];for(let i=0;i<t.length;i++)if(cost<t[i])return i;return 5;}
-function roasTier(r){if(r>=10)return 0;if(r>=7)return 1;if(r>=6)return 'hold6';if(r>=5)return 2;return 3;}
+function roasTier(r){const t=RULES.tiers;if(r>=t.big)return 0;if(r>=t.up)return 1;if(r>=t.hold)return 'hold6';if(r>=t.down)return 2;return 3;}
 const ORDER={"大降 / 暫停":0,"小幅降低":1,"積極放大":2,"穩健提升":3,"持平 · 觀察":4,"觀察(資料不足)":5,"先別調預算":6,"無轉換":7};
 function evaluate(p){
   // p={type,cost(CPA),conv,spend(7天),roas,rev(7天),budget,spent,cart}
@@ -829,6 +842,7 @@ function renderSop(){
   document.getElementById('sopPeriodNote').textContent=
     `週期 ${state.ps} ~ ${state.pe}(${len}天)→ ×${(7/len).toFixed(2)} 換算 7 天標準值;ROAS/轉換成本為期間實際值`;
   document.getElementById('bossNote').textContent='NT$'+fmtMoney(SETTINGS.sopBoss);
+  document.getElementById('downNote').textContent=RULES.tiers.down;
   const list=sopRows();
   const s=state.ssort;
   list.sort((a,b)=>{
@@ -896,14 +910,27 @@ function bindSopInputs(){
     renderSop();
   });
 }
-function renderRules(){
-  const heads=['轉換成本','7天花費門檻','ROAS ≥10','ROAS 7–10','ROAS 5–6','ROAS <5'];
+function renderTierEditor(){
+  const t=RULES.tiers;
+  const f=(k,lab,act)=>`<div class="tf"><small>${act}</small><b>ROAS ≥</b>
+    <input type="number" step="0.1" data-tier="${k}" value="${t[k]}"></div>`;
+  document.getElementById('tierEdit').innerHTML=
+    f('big','積極放大')+'<span class="arrow">▸</span>'+
+    f('up','穩健提升')+'<span class="arrow">▸</span>'+
+    f('hold','持平觀察')+'<span class="arrow">▸</span>'+
+    f('down','小幅降低')+
+    `<div class="tf"><small>低於小幅降線</small><b>= 大降 / 暫停</b></div>`;
+}
+function renderRulesTable(){
+  const t=RULES.tiers;
+  const heads=['轉換成本','7天花費門檻',`ROAS ≥${t.big}`,`ROAS ${t.up}–${t.big}`,`ROAS ${t.down}–${t.hold}`,`ROAS <${t.down}`];
   const th='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   const body=RULES.rows.map((row,ri)=>
     `<tr><td>${esc(row.label)}</td><td><input data-ri="${ri}" data-f="th" value="${row.th}"></td>`+
     row.pct.map((v,ci)=>`<td><input class="${v>=0?'pos':'neg'}" data-ri="${ri}" data-pc="${ci}" value="${v}"></td>`).join('')+'</tr>').join('');
   document.getElementById('rulesTbl').innerHTML=`<thead>${th}</thead><tbody>${body}</tbody>`;
 }
+function renderRules(){ renderRulesTable(); renderTierEditor(); }
 function sopExportCsv(){
   const list=sopRows();
   const head=['商品','分類','店鋪','類型','建議動作','調整幅度','建議日預算','ROAS','轉換成本','7天花費','7天營業額','花完','購物車','提醒'];
@@ -1067,6 +1094,12 @@ function bind(){
     const ri=e.target.dataset.ri; if(ri==null)return;
     if(e.target.dataset.f==='th')RULES.rows[ri].th=+e.target.value||0;
     if(e.target.dataset.pc!=null){RULES.rows[ri].pct[+e.target.dataset.pc]=+e.target.value||0;}
+  });
+  // ROAS 分級門檻編輯:change(離開輸入框)才更新,避免重繪造成失焦;即時重算對照表標題+SOP
+  document.getElementById('tierEdit').addEventListener('change',e=>{
+    const k=e.target.dataset.tier; if(!k)return;
+    const v=+e.target.value; if(v>0) RULES.tiers[k]=v; else e.target.value=RULES.tiers[k];
+    renderRulesTable(); renderSop();
   });
   document.getElementById('rulesSave').addEventListener('click',()=>{
     lsSet('adDash:rules',RULES); renderSop();
