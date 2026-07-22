@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v18 — 點貨主管覆核/狀態=才算已點完/訂貨表搜尋開單/346點貨中分覆核/🔒帳號一律要密碼 */
+/* 倉儲系統前端 SPA v20 — 點貨/覆核畫面即時更新;儲位查詢搜尋忽略「-」;盤點作業紀錄顯示當時庫存 */
 'use strict';
 
 var CONFIG = {
@@ -250,6 +250,11 @@ document.getElementById('app').addEventListener('click', function (e) {
 });
 
 /* ===================== 樂觀送出 ===================== */
+/* 總表的「實到/實點數量」是試算表公式彙總點貨紀錄,append 後公式要幾秒才算好;
+ * 太快重抓會拿到「還沒算好的舊值」蓋掉畫面上本地算好的正確值,故延後重抓。 */
+function reloadTotalsSoon(key) {
+  setTimeout(function () { loadData(key, true).then(function () { rerenderActive(); }); }, 5000);
+}
 function submitBg(body, okMsg, patch, noBack) {
   if (patch) { try { patch(); } catch (e) {} }
   store.pending++; updateSyncInfo();
@@ -259,9 +264,9 @@ function submitBg(body, okMsg, patch, noBack) {
     store.pending--; updateSyncInfo();
     if (d.ok) {
       toast(okMsg, 'ok'); refreshProducts(true); loadData('rel', true);
-      if (body.action === 'pickSave') { loadRecords('pick', true); loadData('picking', true); }
-      if (body.action === 'pick346Save') { loadRecords('pick346', true); loadData('picking346', true); }
-      if (body.action === 'bigcountSave' || body.action === 'bigcountAdd') { loadRecords('bigcount', true); loadData('bigcount', true); }
+      if (body.action === 'pickSave') { loadRecords('pick', true).then(rerenderActive); reloadTotalsSoon('picking'); }
+      if (body.action === 'pick346Save') { loadRecords('pick346', true).then(rerenderActive); reloadTotalsSoon('picking346'); }
+      if (body.action === 'bigcountSave' || body.action === 'bigcountAdd') { loadRecords('bigcount', true).then(rerenderActive); reloadTotalsSoon('bigcount'); }
       apiGet('meta').then(applyMeta).catch(function () {});
     } else if (d.needPassword) { toast('⚠ 寫入被拒:請重新登入', 'err', 6000); }
     else { toast('⚠ 寫入失敗:' + (d.error || '') + '(請重新操作一次)', 'err', 6000); refreshProducts(true); }
@@ -356,10 +361,13 @@ function pageStorage() {
   bindSortBar('st', searchState.sort, resetList);
   currentRender = renderList; renderList();
 }
+/* 比對時忽略「-」並統一大寫:打 1A01 / 1a01 都能找到儲位 1A-01-A01,貨號同理 */
+function normSearch(s) { return String(s == null ? '' : s).toUpperCase().replace(/-/g, ''); }
 function matchProduct(p, term, field) {
   if (!term) return true;
-  if (field === 'all') return p.sku.indexOf(term) >= 0 || p.barcode.indexOf(term) >= 0 || p.name.indexOf(term) >= 0 || p.loc.indexOf(term) >= 0 || p.secondLoc.indexOf(term) >= 0 || p.vendor.indexOf(term) >= 0;
-  return String(p[field] || '').indexOf(term) >= 0;
+  var nt = normSearch(term);
+  if (field === 'all') return normSearch(p.sku).indexOf(nt) >= 0 || normSearch(p.barcode).indexOf(nt) >= 0 || normSearch(p.name).indexOf(nt) >= 0 || normSearch(p.loc).indexOf(nt) >= 0 || normSearch(p.secondLoc).indexOf(nt) >= 0 || normSearch(p.vendor).indexOf(nt) >= 0;
+  return normSearch(p[field]).indexOf(nt) >= 0;
 }
 function productCard(p, withBtns) {
   var second = p.secondLoc ? ' <span class="second">(庫: ' + esc(p.secondLoc) + ')</span>' : '';
@@ -749,18 +757,33 @@ function pickForm(opts) {
     if (!opts.review.eligible() || !isSupervisorUser() || !list.length) { rb.innerHTML = ''; return; }
     rb.innerHTML = '<button type="button" class="reviewbtn" id="reviewBtn">🛡 主管覆核(數量確認無誤)</button>';
     $('#reviewBtn').onclick = function () {
-      var self = this;
       if (!confirm('確認覆核「' + it.name + '」?\n會在點貨備註加上:' + store.user + '已覆核')) return;
-      self.disabled = true; self.textContent = '覆核中…';
+      /* 樂觀:立刻在本地最新一筆紀錄備註加「XX已覆核」→ 畫面馬上顯示已覆核,後端在背景跑 */
+      var stamp = store.user + '已覆核';
+      var curList = (store.recCache[existKind] || {})[existKey] || [];
+      if (curList.length && String(curList[0].note || '').indexOf(stamp) < 0) {
+        curList[0].note = curList[0].note ? curList[0].note + ',' + stamp : stamp;
+      }
+      renderExist();
       store.pending++; updateSyncInfo();
       apiPost(opts.review.body()).then(function (d) {
         store.pending--; updateSyncInfo();
         if (d.ok) {
           toast('已覆核 ✓', 'ok');
-          loadRecords(existKind, true).then(renderExist);
-          loadData(existKind === 'pick' ? 'picking' : 'picking346', true);
-        } else { self.disabled = false; self.textContent = '🛡 主管覆核(數量確認無誤)'; toast('⚠ ' + (d.error || '覆核失敗'), 'err', 6000); }
-      }).catch(function () { store.pending--; updateSyncInfo(); self.disabled = false; self.textContent = '🛡 主管覆核(數量確認無誤)'; toast('⚠ 網路失敗', 'err'); });
+          setTimeout(function () {
+            loadRecords(existKind, true).then(function () { if (nav === navSeq) renderExist(); });
+            loadData(existKind === 'pick' ? 'picking' : 'picking346', true);
+          }, 3000);
+        } else {
+          /* 失敗:把本地樂觀的覆核撤回、還原畫面 */
+          loadRecords(existKind, true).then(function () { if (nav === navSeq) renderExist(); });
+          toast('⚠ ' + (d.error || '覆核失敗'), 'err', 6000);
+        }
+      }).catch(function () {
+        store.pending--; updateSyncInfo();
+        loadRecords(existKind, true).then(function () { if (nav === navSeq) renderExist(); });
+        toast('⚠ 網路失敗,覆核可能未完成,請重新整理確認', 'err', 6000);
+      });
     };
   }
   function renderExist() {
@@ -770,7 +793,7 @@ function pickForm(opts) {
     renderReview(list);
     if (!list.length) { box.innerHTML = ''; return; }
     box.innerHTML = '<label>已有 ' + list.length + ' 筆紀錄 — 點「修改」改舊資料,或直接輸入新增新的一筆</label>' +
-      list.map(function (r) { return '<div class="reccard"><div class="recmain">× <b>' + r.qty + '</b> · ' + esc(r.user) + ' · ' + fmtDate(r.time) + (r.note ? ' · ' + esc(r.note) : '') + '</div><button class="chip" data-rec="' + esc(r.recId) + '" data-qty="' + r.qty + '" data-note="' + esc(r.note) + '">✏️ 修改</button></div>'; }).join('');
+      list.map(function (r) { return '<div class="reccard"><div class="recmain">× <b>' + r.qty + '</b>' + (r.stock != null ? '(當時庫存 ' + r.stock + ')' : '') + ' · ' + esc(r.user) + ' · ' + fmtDate(r.time) + (r.note ? ' · ' + esc(r.note) : '') + '</div><button class="chip" data-rec="' + esc(r.recId) + '" data-qty="' + r.qty + '" data-note="' + esc(r.note) + '">✏️ 修改</button></div>'; }).join('');
     box.onclick = function (e) {
       var b = e.target.closest('button[data-rec]'); if (!b) return;
       editRecId = b.getAttribute('data-rec'); qtyEl.value = b.getAttribute('data-qty'); $('#note').value = b.getAttribute('data-note'); syncBox();
@@ -1033,7 +1056,7 @@ function pageBigcountForm(params) {
   var it = (store.bigcount || []).find(function (r) { return r.sku === params.sku; });
   if (!it) { toast('找不到品項', 'err'); history.back(); return; }
   pickForm({ title: '盤點作業', it: it, defaultQty: it.doneQty != null ? it.doneQty : it.stock, kind: 'bigcount', key: it.sku, dims: true,
-    onSave: function (qty, note, recId, dims) { submitBg({ action: 'bigcountSave', sku: it.sku, qty: qty, note: note, recId: recId, dims: dims }, (recId ? '已修改盤點紀錄:' : '盤點已送出:') + it.sku + ' × ' + qty, function () { it.doneQty = qty; it.user = mergeUser(it.user, store.user); it.status = '已點'; }); } });
+    onSave: function (qty, note, recId, dims) { submitBg({ action: 'bigcountSave', sku: it.sku, qty: qty, note: note, recId: recId, dims: dims, stock: it.stock }, (recId ? '已修改盤點紀錄:' : '盤點已送出:') + it.sku + ' × ' + qty, function () { it.doneQty = qty; it.user = mergeUser(it.user, store.user); it.status = '已點'; }); } });
 }
 
 /* ===================== 缺貨單 ===================== */
