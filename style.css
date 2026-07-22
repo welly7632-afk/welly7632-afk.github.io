@@ -178,6 +178,12 @@ body.si-full .siwrap { max-height: 100vh; }
 .kv.sibigkv .k { font-size: 15px; align-self: center; }
 .kv.sibigkv .v { font-size: 26px; font-weight: bold; color: #222; }
 
+/* 點貨:主管覆核 */
+.reviewbtn { display: block; width: 100%; padding: 12px 0; margin: 10px 0 2px; font-size: 15px; font-weight: bold;
+  border: none; border-radius: 8px; background: #2e7d32; color: #fff; }
+.okline { background: #e8f5e9; color: #2e7d32; border: 1px solid #bcd9bf; border-radius: 8px;
+  padding: 9px 12px; margin: 10px 0 2px; font-size: 14px; font-weight: bold; }
+
 /* 第二庫存:櫃位總覽 */
 .cabgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .cabgrid button { padding: 12px 4px; border: 1px solid #ccc; border-radius: 10px; background: #fff;

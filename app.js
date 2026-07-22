@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v17 — 標籤列印整併(連結改指向主站 /label/) */
+/* 倉儲系統前端 SPA v18 — 點貨主管覆核/狀態=才算已點完/訂貨表搜尋開單/346點貨中分覆核/🔒帳號一律要密碼 */
 'use strict';
 
 var CONFIG = {
@@ -139,7 +139,7 @@ function startAuthRecheck() {
     fetchIp().then(function () {
       apiPost({ action: 'authcheck', name: store.user }).then(function (d) {
         if (d.ok) return;
-        toast(d.companyOnly ? '此帳號僅限公司網路使用,已登出' : '已離開公司網路,請重新以密碼登入', 'err', 5000);
+        toast(d.companyOnly ? '此帳號僅限公司網路使用,已登出' : '此帳號需要密碼登入,請重新登入', 'err', 5000);
         store.user = ''; localStorage.removeItem('user'); updateSyncInfo(); location.hash = '#/settings';
       });
     });
@@ -716,7 +716,7 @@ function pickForm(opts) {
     '<label>品名</label><input class="ro" readonly value="' + esc(it.name) + '">' +
     '<label>' + refLabel + '</label><input class="ro" readonly value="' + refVal + (it.boxQty ? ' (箱數 ' + it.boxQty + ')' : '') + '">' +
     (it.doneQty != null ? '<label>目前' + (existKind === 'bigcount' ? '盤點量' : '已點數量') + '</label><input class="ro" readonly value="' + it.doneQty + '">' : '') +
-    '<div id="existBox"></div>' +
+    '<div id="existBox"></div><div id="reviewBox"></div>' +
     (showBox ? '<label>本次箱數(與數量連動)</label><div class="stepper"><button id="bminus">−</button><input id="boxQty" type="number" inputmode="numeric" value="' + (it.boxQty || 0) + '"><button id="bplus">＋</button></div>' : '') +
     '<label>本次' + (existKind === 'bigcount' ? '盤點量' : '數量') + ' *</label><div class="stepper"><button id="minus">−</button><input id="qty" type="number" inputmode="numeric" value="' + opts.defaultQty + '"><button id="plus">＋</button></div>' +
     (opts.dims ? '<label>尺寸/重量(選填,不填免)</label><div class="dimrow"><input id="d0" type="number" inputmode="decimal" placeholder="長cm"><input id="d1" type="number" inputmode="decimal" placeholder="寬cm"><input id="d2" type="number" inputmode="decimal" placeholder="高cm"><input id="d3" type="number" inputmode="decimal" placeholder="重量g"></div>' : '') +
@@ -741,10 +741,33 @@ function pickForm(opts) {
     opts.onSave(qty, $('#note').value, editRecId, dims);
   };
   var recs = (store.recCache[existKind] || {})[existKey];
+  /* 主管覆核區塊:一定要先有點貨紀錄才能覆核;覆核=備註附加「XX已覆核」 */
+  function renderReview(list) {
+    var rb = $('#reviewBox'); if (!rb || !opts.review) return;
+    var rev = recReviewed(existKind, existKey);
+    if (rev) { rb.innerHTML = '<div class="okline">✅ 已覆核:' + esc(rev.join('、')) + '</div>'; return; }
+    if (!opts.review.eligible() || !isSupervisorUser() || !list.length) { rb.innerHTML = ''; return; }
+    rb.innerHTML = '<button type="button" class="reviewbtn" id="reviewBtn">🛡 主管覆核(數量確認無誤)</button>';
+    $('#reviewBtn').onclick = function () {
+      var self = this;
+      if (!confirm('確認覆核「' + it.name + '」?\n會在點貨備註加上:' + store.user + '已覆核')) return;
+      self.disabled = true; self.textContent = '覆核中…';
+      store.pending++; updateSyncInfo();
+      apiPost(opts.review.body()).then(function (d) {
+        store.pending--; updateSyncInfo();
+        if (d.ok) {
+          toast('已覆核 ✓', 'ok');
+          loadRecords(existKind, true).then(renderExist);
+          loadData(existKind === 'pick' ? 'picking' : 'picking346', true);
+        } else { self.disabled = false; self.textContent = '🛡 主管覆核(數量確認無誤)'; toast('⚠ ' + (d.error || '覆核失敗'), 'err', 6000); }
+      }).catch(function () { store.pending--; updateSyncInfo(); self.disabled = false; self.textContent = '🛡 主管覆核(數量確認無誤)'; toast('⚠ 網路失敗', 'err'); });
+    };
+  }
   function renderExist() {
     if (nav !== navSeq) return;
     var list = (store.recCache[existKind] || {})[existKey] || [];
     var box = $('#existBox'); if (!box) return;
+    renderReview(list);
     if (!list.length) { box.innerHTML = ''; return; }
     box.innerHTML = '<label>已有 ' + list.length + ' 筆紀錄 — 點「修改」改舊資料,或直接輸入新增新的一筆</label>' +
       list.map(function (r) { return '<div class="reccard"><div class="recmain">× <b>' + r.qty + '</b> · ' + esc(r.user) + ' · ' + fmtDate(r.time) + (r.note ? ' · ' + esc(r.note) : '') + '</div><button class="chip" data-rec="' + esc(r.recId) + '" data-qty="' + r.qty + '" data-note="' + esc(r.note) + '">✏️ 修改</button></div>'; }).join('');
@@ -769,22 +792,78 @@ function mergeUser(existing, me) {
 function applyPickPatch(it, qty, isEdit, oldQty) {
   if (isEdit) it.doneQty = (it.doneQty || 0) - oldQty + qty; else it.doneQty = (it.doneQty || 0) + qty;
   it.user = mergeUser(it.user, store.user);
-  if (/1-|2-|3-/.test(it.status)) it.status = it.doneQty >= it.orderQty ? '3-已點完' : '2-數量異常(需確認並告知主管)';
+  /* 只有實到=訂貨量才是已點完;多點也是異常 */
+  if (/1-|2-|3-/.test(it.status)) it.status = it.doneQty === it.orderQty ? '3-已點完' : '2-數量異常(需確認並告知主管)';
+}
+/* ==== 主管覆核共用 ==== */
+function isSupervisorUser() { return !!(store.staffPw && store.staffPw[store.user]); }
+/* 從點貨紀錄備註找「XX已覆核」,回傳覆核人陣列(沒有回 null) */
+function recReviewed(kind, key) {
+  var list = (store.recCache[kind] || {})[key] || [];
+  var names = [];
+  list.forEach(function (r) {
+    /* 認得「XX已覆核」(新按鈕寫入)與「XX已確認」(以前手打習慣) */
+    String(r.note || '').split(/[,，]/).forEach(function (s) {
+      s = s.trim();
+      if (s && /(已覆核|已確認)$/.test(s)) { var n = s.replace(/(已覆核|已確認)$/, '').trim() || '主管'; if (names.indexOf(n) < 0) names.push(n); }
+    });
+  });
+  return names.length ? names : null;
+}
+/* 一般點貨的顯示狀態:數量異常但主管已覆核 → 視同已點完 */
+function pickEffStatus(it) {
+  if (/^2-/.test(it.status) && recReviewed('pick', it.id)) return '3-已點完';
+  return it.status;
 }
 
 /* ===================== 一般點貨 ===================== */
-var ordersOpen = {};
+var ordersOpen = {}, ordersSearch = '', odPrefill = '';
+function ordersMatches() {
+  var raw = ordersSearch.trim(), t = raw.toUpperCase();
+  var items = (store.picking || []).filter(function (r) {
+    return r.sku.toUpperCase().indexOf(t) >= 0 || r.barcode.indexOf(raw) >= 0 || r.name.toUpperCase().indexOf(t) >= 0;
+  });
+  var groups = [];
+  items.forEach(function (r) { if (groups.indexOf(r.group) < 0) groups.push(r.group); });
+  return { items: items, groups: groups };
+}
 function pageOrders() {
   $('#pageTitle').textContent = '訂貨表';
-  $('#app').innerHTML = '<div id="list"></div>';
+  $('#app').innerHTML = searchBarHtml('or') + '<div id="list"></div>';
+  bindSearch('or', function (v) { ordersSearch = v; renderOrders(); });
+  $('#q_or').value = ordersSearch;
+  /* 掃描:唯一符合一張單就直接開單 */
+  $('#scan_or').onclick = function () {
+    openScanner(function (text) {
+      $('#q_or').value = text; ordersSearch = text;
+      var m = ordersMatches();
+      if (m.items.length && m.groups.length === 1) { odPrefill = m.items[0].sku; go('/order-detail', 'g=' + encodeURIComponent(m.groups[0])); return; }
+      renderOrders();
+    });
+  };
   currentRender = renderOrders; renderOrders();
   loadData('picking').then(renderOrders);
 }
 function renderOrders() {
   var box = $('#list'); if (!box || (location.hash.slice(1) || '').split('?')[0] !== '/orders') return;
   var rows = store.picking; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
+  /* 搜尋模式:列出符合的品項與所屬單,點了直接開那張單 */
+  if (ordersSearch.trim()) {
+    var m = ordersMatches();
+    box.innerHTML = m.items.length
+      ? '<div class="detail"><h3>🔍 搜尋結果(' + m.items.length + ' 項 / ' + m.groups.length + ' 張單)</h3>' +
+        m.items.slice(0, 60).map(function (r) {
+          return '<div class="card" data-osku="' + esc(r.sku) + '" data-og="' + esc(r.group) + '"><div class="locline"><span class="name" style="color:' + statusColor(pickEffStatus(r)) + ';font-weight:bold">' + esc(r.name) + '</span><span class="sku">' + esc(r.loc) + '</span></div>' +
+            '<div class="sku">' + esc(r.sku) + ' · ' + esc(r.barcode) + '</div><div class="sales">📁 ' + esc(r.group || '(未分組)') + '</div></div>';
+        }).join('') + (m.items.length > 60 ? '<div class="empty" style="padding:8px 0">還有 ' + (m.items.length - 60) + ' 項,請輸入更精確</div>' : '') + '</div>'
+      : '<div class="empty">沒有符合的品項</div>';
+    box.querySelectorAll('[data-og]').forEach(function (el) {
+      el.onclick = function () { odPrefill = el.getAttribute('data-osku'); go('/order-detail', 'g=' + encodeURIComponent(el.getAttribute('data-og'))); };
+    });
+    return;
+  }
   var groups = {};
-  rows.forEach(function (r) { var g = groups[r.group] = groups[r.group] || { name: r.group, vendor: r.vendorCode, date: r.orderDate, total: 0, done: 0 }; g.total++; if (r.status === '3-已點完') g.done++; });
+  rows.forEach(function (r) { var g = groups[r.group] = groups[r.group] || { name: r.group, vendor: r.vendorCode, date: r.orderDate, total: 0, done: 0 }; g.total++; if (pickEffStatus(r) === '3-已點完') g.done++; });
   var vendors = {};
   Object.keys(groups).forEach(function (k) { var v = groups[k].vendor || '(無廠商)'; (vendors[v] = vendors[v] || []).push(groups[k]); });
   box.innerHTML = Object.keys(vendors).sort().map(function (v) {
@@ -803,6 +882,7 @@ function pageOrderDetail(params) {
   $('#pageTitle').textContent = '訂貨明細';
   $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回訂貨表</button></div>' + searchBarHtml('od') + '<div id="list"></div>';
   var term = '';
+  if (odPrefill) { term = odPrefill.toUpperCase(); $('#q_od').value = odPrefill; odPrefill = ''; }
   bindSearch('od', function (v) { term = v.toUpperCase(); render(); });
   function render() {
     if (nav !== navSeq) return;
@@ -811,10 +891,15 @@ function pageOrderDetail(params) {
     if (term) rows = rows.filter(function (r) { return r.sku.toUpperCase().indexOf(term) >= 0 || r.name.toUpperCase().indexOf(term) >= 0 || r.barcode.indexOf(term) >= 0 || r.loc.toUpperCase().indexOf(term) >= 0; });
     if (!rows.length) { box.innerHTML = '<div class="empty">載入中或無資料…</div>'; return; }
     var groups = {};
-    rows.forEach(function (r) { (groups[r.status] = groups[r.status] || []).push(r); });
+    rows.forEach(function (r) { var s = pickEffStatus(r); (groups[s] = groups[s] || []).push(r); });
     box.innerHTML = Object.keys(groups).sort().map(function (s) {
       return '<div class="detail"><h3 style="color:' + statusColor(s) + '">' + esc(s) + '(' + groups[s].length + ')</h3>' +
-        groups[s].map(function (it) { var c = Object.assign({}, it); c.subline = it.barcode + (it.loc ? ' · ' + it.loc : ''); return pickCard(c, 'data-nav="/pick?id=' + encodeURIComponent(it.id) + '"'); }).join('') + '</div>';
+        groups[s].map(function (it) {
+          var c = Object.assign({}, it); c.status = s;
+          var rev = recReviewed('pick', it.id);
+          c.subline = it.barcode + (it.loc ? ' · ' + it.loc : '') + (rev ? ' · ✅' + rev.join('、') + '已覆核' : '');
+          return pickCard(c, 'data-nav="/pick?id=' + encodeURIComponent(it.id) + '"');
+        }).join('') + '</div>';
     }).join('');
   }
   currentRender = render; render();
@@ -825,6 +910,7 @@ function pagePick(params) {
   if (!it) { toast('找不到品項', 'err'); history.back(); return; }
   var remain = Math.max(0, it.orderQty - (it.doneQty || 0));
   pickForm({ title: '點貨', it: it, defaultQty: remain || it.orderQty, kind: 'pick', key: it.id,
+    review: { eligible: function () { return /^2-/.test(it.status); }, body: function () { return { action: 'pickReview', id: it.id }; } },
     onSave: function (qty, note, recId) { submitBg({ action: 'pickSave', id: it.id, qty: qty, note: note, recId: recId }, (recId ? '已修改點貨紀錄:' : '點貨已送出:') + it.sku + ' × ' + qty, function () { applyPickPatch(it, qty, !!recId, recId ? qty : 0); }); } });
 }
 
@@ -843,7 +929,18 @@ function pagePick346List() {
     var rows = store.picking346; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
     rows = rows.filter(function (r) { return (r.status || '未點') === p346Tab; });
     if (term) rows = rows.filter(function (r) { return r.sku.toUpperCase().indexOf(term) >= 0 || r.name.toUpperCase().indexOf(term) >= 0 || r.loc.toUpperCase().indexOf(term) >= 0; });
-    box.innerHTML = rows.length ? rows.map(function (it) { var c = Object.assign({}, it); c.subline = it.spec1 || it.loc; return pickCard(c, 'data-nav="/pick346form?sku=' + encodeURIComponent(it.sku) + '"', true); }).join('') : '<div class="empty">此分頁沒有品項</div>';
+    var cardOf = function (it) { var c = Object.assign({}, it); c.subline = it.spec1 || it.loc; return pickCard(c, 'data-nav="/pick346form?sku=' + encodeURIComponent(it.sku) + '"', true); };
+    /* 點貨中分上下:上=還在點貨中(未覆核),下=主管已覆核(狀態由 EXCEL 公式控制,不會自動變已點完) */
+    if (p346Tab === '點貨中') {
+      var un = [], rev = [];
+      rows.forEach(function (r) { (recReviewed('pick346', r.sku) ? rev : un).push(r); });
+      box.innerHTML = (un.length || rev.length)
+        ? ((un.length ? '<div class="detail"><h3 style="color:#e68a00">點貨中(未覆核)(' + un.length + ')</h3>' + un.map(cardOf).join('') + '</div>' : '') +
+           (rev.length ? '<div class="detail"><h3 style="color:#2e7d32">✅ 主管已覆核(' + rev.length + ')</h3>' + rev.map(cardOf).join('') + '</div>' : ''))
+        : '<div class="empty">此分頁沒有品項</div>';
+      return;
+    }
+    box.innerHTML = rows.length ? rows.map(cardOf).join('') : '<div class="empty">此分頁沒有品項</div>';
   }
   currentRender = render; render();
   loadData('picking346').then(render);
@@ -853,6 +950,7 @@ function pagePick346Form(params) {
   if (!it) { toast('找不到品項', 'err'); history.back(); return; }
   var remain = Math.max(0, it.orderQty - (it.doneQty || 0));
   pickForm({ title: '346點貨', it: it, defaultQty: remain || it.orderQty, kind: 'pick346', key: it.sku, showBox: true,
+    review: { eligible: function () { return it.status === '點貨中'; }, body: function () { return { action: 'pick346Review', sku: it.sku }; } },
     onSave: function (qty, note, recId) { submitBg({ action: 'pick346Save', sku: it.sku, qty: qty, note: note, recId: recId }, (recId ? '已修改點貨紀錄:' : '346點貨已送出:') + it.sku + ' × ' + qty, function () { applyPickPatch(it, qty, !!recId, recId ? qty : 0); if (it.status === '未點') it.status = '點貨中'; }); } });
 }
 
@@ -1309,7 +1407,7 @@ function selectUser(name) {
     if (d.ok) { finishLogin(name); return; }
     if (d.companyOnly) { toast('「' + name + '」僅限公司網路使用。如需回家使用,請 0107 到登入管理表為此人設定密碼。', 'err', 6000); return; }
     if (d.needPassword) {
-      var pw = prompt('「' + name + '」不在公司網路,請輸入個人密碼:'); if (pw === null) return;
+      var pw = prompt('「' + name + '」需要輸入個人密碼(🔒帳號不論在哪都要密碼):'); if (pw === null) return;
       apiPost({ action: 'loginUser', name: name, password: pw }).then(function (r) { if (r.ok) { store.token = r.token; localStorage.setItem('token', r.token); finishLogin(name); } else toast(r.error || '密碼錯誤', 'err', 4000); });
     }
   }).catch(function () { toast('無法連線後端', 'err'); });
