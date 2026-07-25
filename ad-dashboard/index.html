@@ -113,7 +113,14 @@
   .b-down{background:#d9770626;color:var(--warn)}
   .b-stop{background:var(--badbg);color:var(--bad)}
   .b-hold{background:#2563eb26;color:var(--accent)}
-  #sopTbl td.l{text-align:left;white-space:normal;min-width:150px;max-width:240px}
+  .qbadge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .q-done{background:var(--goodbg);color:var(--good)}
+  .q-fail{background:var(--badbg);color:var(--bad)}
+  .q-skip{background:#d9770626;color:var(--warn)}
+  .q-wait{background:#2563eb26;color:var(--accent)}
+  .q-other{background:var(--chip);color:var(--sub)}
+  #queueTbl td.l{text-align:left;white-space:normal;max-width:260px}
+  #queueTbl td.msg{text-align:left;white-space:normal;font-size:12px;color:var(--sub)}  #sopTbl td.l{text-align:left;white-space:normal;min-width:150px;max-width:240px}
   #sopTbl td.rem{text-align:left;white-space:normal;min-width:170px;font-size:12px;color:var(--sub);line-height:1.5}
   #sopTbl input[type=number]{width:74px;padding:3px 6px;font-size:12px}
   #sopTbl select{padding:3px 5px;font-size:12px}
@@ -241,16 +248,26 @@
       <div class="tbar" style="padding:10px 0 0">
         <span class="muted" id="sopPeriodNote" style="font-size:12.5px"></span>
         <span class="spacer"></span>
-        <label class="chklab"><input type="checkbox" id="assumeSpent" checked>假設全部「預算已花完」</label>
-        <button class="plain" id="sopExport">⬇ 匯出 CSV</button>
+        <span id="sopSelNote" class="muted" style="font-size:12.5px"></span>
+        <label class="chklab" title="測試用:待確認不會被本機 15 分排程撿走"><input type="checkbox" id="queuePending">只加入待確認</label>
+        <button id="sopSend">送出勾選到佇列</button>        <button class="plain" id="sopExport">⬇ 匯出 CSV</button>
       </div>
     </div>
     <div class="tablecard">
       <div class="tblscroll"><table id="sopTbl"></table></div>
+    </div>    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h2 style="margin:0">調整佇列現況</h2>
+        <button class="plain" id="queueReload">↻ 重新整理</button>
+        <span id="queueMsg" class="muted" style="font-size:12px"></span>
+      </div>
+      <div class="hint">勾選上表商品 →「送出勾選到佇列」寫入試算表分頁「調整佇列」(狀態=待執行);
+        本機每 15 分輪詢執行,同一則廣告一週只准改一次(節流),執行結果會回寫到這裡。</div>
+      <div class="tblscroll"><table id="queueTbl"></table></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <h2 style="margin:0">調整對照表(可編輯)</h2>
+        <h2 style="margin:0">調預算% 對照表(舊 SOP,可編輯)</h2>
         <span class="muted" style="font-size:12px">存放:</span>
         <div class="seg" id="scopeSeg">
           <button data-scope="local" class="on">本機(這台)</button>
@@ -258,7 +275,7 @@
         </div>
         <span id="scopeMsg" class="muted" style="font-size:12px"></span>
       </div>
-      <div class="hint">轉換成本決定列、7天花費未達門檻→觀察。下方「ROAS 分級門檻」決定每則廣告落在哪個動作,對照表各欄跟著更新。
+      <div class="hint">⚠ 這張表是舊的「調預算%」SOP 規則,<b>ROI 主軸的建議不使用它</b>(保留供參考、日後要切回時用)。轉換成本決定列、7天花費未達門檻→觀察。
         「全域」= 存到雲端(GAS),所有裝置/使用者共用同一套;「本機」= 只存這台瀏覽器。</div>
       <div class="tieredit" id="tierEdit"></div>
       <div style="overflow-x:auto"><table id="rulesTbl"></table></div>
@@ -268,12 +285,11 @@
         <span id="rulesMsg" class="pos" style="font-size:13px"></span>
       </div>
       <div class="note">
-        <b>SOP 提醒</b>:調整前先確認「預算已花完」;沒花完不是調預算,是到後台把「ROI 目標」調低一點。
-        ROAS &lt; <span id="downNote"></span> 且 7 天營業額 &gt; <span id="bossNote"></span> → 先問老闆。
-        ROAS 差但購物車有升 → 先別砍(表內購物車=本期 vs 前期自動比較,可手動改)。
-        數據已依所選週期天數自動換算成 7 天標準值;「預算」欄手填後會記住並算出建議新預算。
-      </div>
-    </div>
+        <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>(取保守低值)。
+        目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
+        建議值未含賣家負擔優惠券/蝦幣回饋,偏樂觀 → <b>請分階段調整,不要一次到位</b>。
+        同一則廣告<b>一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則);本機輪詢會自動節流並回寫「已略過(節流)」。
+      </div>    </div>
   </section>
 
   <!-- ===== 月度整合 ===== -->
@@ -348,6 +364,7 @@ const CONFIG = {
   api: 'https://script.google.com/macros/s/AKfycbwr0fr-33e3p316eQZlZuWCvOVikHc_Geo632n-BZW6Pt6Hjdu7lQT2PMFrHHD2a_63/exec',
   token: 'g_bmoVNTUvAPsHpxOtezDmZF',
   cfgToken: 'Kx7pQ2mVn9RbTfZ4wLcHsUgD6yJ3aEeP',   // 寫「全域 SOP 規則」用(需 Code.gs v3.13);與 Code.gs 的 CFG_TOKEN 一致
+  queueToken: 'Q7mVz2Rp9nKt4Ls8Hb3YcFxaeGuDwNj', // 寫「調整佇列」用(需 Code.gs v3.15);與 Code.gs 的 QUEUE_TOKEN 一致
 };
 const UNCAT = '(未分類)';
 // 店鋪別名統一:月報(整合分析)用短名、廣告每日(整合分析(日))用全名 → 統一成短名(有 1-4 排序)
@@ -414,6 +431,7 @@ function applySettingsCss(){
 
 // ===== 資料 =====
 let MDATA=[], DDATA=[];          // 月列 / 日列(物件)
+let ACFG={}, ROISUG={};          // 商品ID→廣告設定(campaign_id/目前ROI/預算/已花完) / 商品ID→成本推算的建議ROI
 let months=[], allShops=[], allCats=[];
 let dataMin=null, dataMax=null;  // 日資料範圍 'YYYY-MM-DD'
 let monthlyOk=false, dailyOk=false;
@@ -495,6 +513,39 @@ function parseDaily(data){
   });
   return out;
 }
+// 廣告設定(每則廣告一列)→ 以商品ID 為鍵(一個商品同時間只有一則廣告,所以 1:1)
+function parseAdcfg(data){
+  const h=data[0], ix={};
+  ['店鋪','廣告名稱','廣告類型','狀態','商品ID','campaign_id','每日預算','目標投入產出比',
+   '可改欄位','預算已花完','花費','銷售額','ROAS'].forEach(c=>ix[c]=h.indexOf(c));
+  const m={};
+  data.slice(1).forEach(r=>{
+    const pid=String(r[ix['商品ID']]??'').trim(), cid=String(r[ix['campaign_id']]??'').trim();
+    if(!pid||!cid) return;                       // 無商品ID的賣場/全站推廣廣告不在商品列 SOP 內
+    m[pid]={
+      cid, rawShop:String(r[ix['店鋪']]||''),     // rawShop=原始全名,送佇列要用(短名反查不到埠)
+      shop:canonStore(r[ix['店鋪']]), name:String(r[ix['廣告名稱']]||''),
+      type:String(r[ix['廣告類型']]||''), state:String(r[ix['狀態']]||''),
+      budget:parseNum(r[ix['每日預算']]), roi:parseNum(r[ix['目標投入產出比']]),
+      editable:String(r[ix['可改欄位']]||''), out:String(r[ix['預算已花完']]||'').trim(),
+    };
+  });
+  return m;
+}
+// 目標ROI建議(成本推算)→ 以商品ID 為鍵
+function parseRoisug(data){
+  const h=data[0], ix={};
+  ['商品ID','建議設定ROI(低)','建議設定ROI(高)','目前目標ROI','落差','建議動作',
+   '成本率(低)','成本率(高)','資料品質','規格數'].forEach(c=>ix[c]=h.indexOf(c));
+  const m={};
+  data.slice(1).forEach(r=>{
+    const pid=String(r[ix['商品ID']]??'').trim(); if(!pid) return;
+    m[pid]={low:parseNum(r[ix['建議設定ROI(低)']]), high:parseNum(r[ix['建議設定ROI(高)']]),
+      act:String(r[ix['建議動作']]||''), quality:String(r[ix['資料品質']]||''),
+      crLow:parseNum(r[ix['成本率(低)']]), crHigh:parseNum(r[ix['成本率(高)']])};
+  });
+  return m;
+}
 async function load(){
   const st=document.getElementById('status');
   st.style.display='block'; st.textContent='載入中…';
@@ -503,10 +554,15 @@ async function load(){
   if(window.EMBED){
     try{ MDATA=parseMonthly(window.EMBED.monthly.data); monthlyOk=true; }catch(e){}
     try{ DDATA=parseDaily(window.EMBED.daily.data); dailyOk=true; }catch(e){}
+    try{ ACFG=parseAdcfg(window.EMBED.adcfg.data); }catch(e){}
+    try{ ROISUG=parseRoisug(window.EMBED.roisug.data); }catch(e){}
   }else{
-    const [m,d] = await Promise.allSettled([fetchApi('analysis',qs('src')), fetchApi('daily',qs('srcd'))]);
+    const [m,d,ac,rs] = await Promise.allSettled([fetchApi('analysis',qs('src')), fetchApi('daily',qs('srcd')),
+                                                  fetchApi('adcfg'), fetchApi('roisug')]);
     if(m.status==='fulfilled'){ try{ MDATA=parseMonthly(m.value); monthlyOk=true; }catch(e){} }
     if(d.status==='fulfilled'){ try{ DDATA=parseDaily(d.value); dailyOk=true; }catch(e){} }
+    if(ac.status==='fulfilled'){ try{ ACFG=parseAdcfg(ac.value); }catch(e){} }
+    if(rs.status==='fulfilled'){ try{ ROISUG=parseRoisug(rs.value); }catch(e){} }
     if(!monthlyOk && !dailyOk){
       const err=(m.status==='rejected'&&m.reason&&m.reason.message)||(d.status==='rejected'&&d.reason&&d.reason.message)||'';
       st.innerHTML='載入失敗:'+esc(err)+'<br><span class="muted">若剛部署 GAS,請確認已「新版本」部署且存取=任何人。</span>';
@@ -847,127 +903,104 @@ function renderPTable(rows,prows){
 function rowFor(cost){const t=[25,50,100,200,500];for(let i=0;i<t.length;i++)if(cost<t[i])return i;return 5;}
 function roasTier(r){const t=RULES.tiers;if(r>=t.big)return 0;if(r>=t.up)return 1;if(r>=t.hold)return 'hold6';if(r>=t.down)return 2;return 3;}
 const ORDER={"大降 / 暫停":0,"小幅降低":1,"積極放大":2,"穩健提升":3,"持平 · 觀察":4,"觀察(資料不足)":5,"先別調預算":6,"無轉換":7};
-function evaluate(p){
-  // p={type,cost(CPA),conv,spend(7天),roas,rev(7天),budget,spent,cart}
-  const spend=+p.spend, roas=+p.roas, rev=+p.rev, budget=+p.budget;
-  let cost=+p.cost;
-  const isMall=p.type&&p.type.includes('賣場'), isCombo=p.type&&p.type.includes('組合');
-  const typeTxt=isMall?'賣場廣告':(isCombo?'組合式':'');
-  const flags=[]; if(typeTxt) flags.push(typeTxt+'(預算依紅色列)');
-  if(!(cost>0)){
-    return {cls:'b-obs',act:'無轉換',amt:'—',flags:['期間無轉換,無法對照成本列;低花費先觀察,高花費檢討素材/暫停',...flags],newB:null,ord:ORDER['無轉換']};
-  }
-  const ri=rowFor(cost), row=RULES.rows[ri];
-  if(!p.spent){
-    return {cls:'b-hold',act:'先別調預算',amt:'花不完',row:row.label,
-      flags:['預算未花完→到後台調低「ROI 目標」,不是調預算',...flags],newB:null,ord:ORDER['先別調預算']};
-  }
-  if(spend<row.th){
-    return {cls:'b-obs',act:'觀察(資料不足)',amt:`觀察 ${SETTINGS.obsDays} 天`,row:row.label,
-      flags:[`7天花費 ${fmtMoney(spend)} 未達門檻 ${fmtMoney(row.th)}`,...flags],newB:null,ord:ORDER['觀察(資料不足)']};
-  }
-  const tier=roasTier(roas);
-  let cls,act,amt,pct=null,newB=null;
-  if(tier==='hold6'){ cls='b-obs';act='持平 · 觀察';amt='維持不變';flags.push('ROAS 6.x 持平帶'); }
-  else{
-    pct=row.pct[tier];
-    newB=budget>0?Math.round(budget*(1+pct/100)):null;
-    if(tier===0){cls='b-up';act='積極放大';amt=`預算 +${pct}%`;}
-    else if(tier===1){cls='b-up';act='穩健提升';amt=`預算 +${pct}%`;}
-    else if(tier===2){cls='b-down';act='小幅降低';amt=`預算 ${pct}%`;}
-    else{cls='b-stop';act='大降 / 暫停';amt=`預算 ${pct}% 或暫停`;}
-  }
-  if(tier===3&&rev>SETTINGS.sopBoss) flags.unshift(`⚠ 7天營業額 ${fmtMoney(rev)} > ${fmtMoney(SETTINGS.sopBoss)} → 先問老闆`);
-  if((tier===2||tier===3)&&p.cart==='up') flags.unshift('🛒 購物車有提升,先別砍');
-  if((tier===2||tier===3)&&(!p.cart||p.cart==='unknown')) flags.push('查購物車再決定');
-  return {cls,act,amt,row:row.label,flags,newB,pct,ord:ORDER[act]};
+// ROI 主軸:比「目前目標ROI(廣告設定)」與「成本推算建議ROI(保守低值)」→ 調低放量 / 偏低可調高 / 合理 / 無法調整
+const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'不可改ROI':3,'無建議值':4,'無廣告設定':5};
+function evalRoi(o, ac, rs){
+  const cur = ac ? ac.roi : null;
+  const ref = (rs && rs.low>0) ? rs.low : null;
+  const editable = !!(ac && String(ac.editable).includes('roi_two_target'));
+  const out = !!(ac && ac.out==='是');
+  const base = {cur, ref, high:(rs&&rs.high>0)?rs.high:null, out, editable,
+                cid: ac?ac.cid:null, rawShop: ac?ac.rawShop:null, adName: ac?ac.name:null, target:null};
+  if(!ac)        return {...base, cls:'b-obs', act:'無廣告設定', flags:['adcfg 沒有這商品(可能非進行中或無商品ID的賣場廣告)'], ord:ROI_ORDER['無廣告設定']};
+  if(!editable)  return {...base, cls:'b-obs', act:'不可改ROI', flags:['蝦皮宣告此廣告不可改目標ROI'], ord:ROI_ORDER['不可改ROI']};
+  if(ref==null)  return {...base, cls:'b-obs', act:'無建議值', flags:['目標ROI建議未算出(多規格待訂單/無成本表)'], ord:ROI_ORDER['無建議值']};
+  if(!(cur>0))   return {...base, cls:'b-obs', act:'無建議值', flags:['廣告設定讀不到目前目標ROI'], ord:ROI_ORDER['無建議值']};
+  const flags=[]; if(out) flags.push('預算已花完');
+  let cls, act, target=ref;
+  if(cur > ref*1.15){ cls='b-up'; act='調低放量'; flags.unshift('目前 '+fmtRoas(cur)+' 高於建議 '+fmtRoas(ref)+',目標設太高,調低可放量'); }
+  else if(cur < ref*0.85){ cls='b-down'; act='偏低可調高'; flags.unshift('目前 '+fmtRoas(cur)+' 低於建議 '+fmtRoas(ref)+',獲利可能不足'); }
+  else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近建議 '+fmtRoas(ref)); }
+  return {...base, cls, act, target, flags, ord:ROI_ORDER[act]};
 }
-let SOP_OVR={};   // key -> {spent,cart} 手動覆蓋(session)
+let SOP_SEL={};   // key -> {pick:bool, target:number} 勾選與目標ROI 覆蓋(session)
 function sopRows(){
   const rows=dailyRows(state.ps,state.pe);
-  const [qs_,qe_]=prevRange();
-  const pagg=aggProducts(dailyRows(qs_,qe_));
   const len=diffDays(state.ps,state.pe)+1, ratio=7/len;
-  const assume=document.getElementById('assumeSpent').checked;
-  return [...aggProducts(rows).values()].filter(o=>o.cost>0).map(o=>{
-    const p=pagg.get(o.key);
-    const cartPrev=p?p.cart:null;
-    const autoCart=cartPrev==null?'':(o.cart>cartPrev?'up':o.cart<cartPrev?'down':'flat');
-    const ovr=SOP_OVR[o.key]||{};
-    const spent=ovr.spent!=null?ovr.spent:assume;
-    const cart=ovr.cart!=null?ovr.cart:autoCart;
-    const budget=BUDGETS[o.key]||'';
-    const spend7=o.cost*ratio, conv7=o.conv*ratio, rev7=o.sale*ratio;
-    const r=evaluate({type:o.type,cost:o.cpa,conv:conv7,spend:spend7,roas:o.roas??0,
-                      rev:rev7,budget,spent,cart});
-    return {o,r,spend7,rev7,cart,autoCart,cartPrev,spent,budget};
+  return [...aggProducts(rows).values()].filter(o=>o.pid).map(o=>{
+    const ac = ACFG[o.pid]||null, rs = ROISUG[o.pid]||null;
+    const r = evalRoi(o, ac, rs);
+    const canPick = !!(ac && r.editable && r.ref!=null);
+    const sel = SOP_SEL[o.key]||{};
+    const target = sel.target!=null ? sel.target : r.target;
+    const pick = canPick && sel.pick===true;
+    const spend7=o.cost*ratio, rev7=o.sale*ratio;
+    return {o,r,ac,rs,canPick,target,pick,spend7,rev7};
   });
 }
+
 function renderSop(){
   const len=diffDays(state.ps,state.pe)+1;
   document.getElementById('sopPeriodNote').textContent=
-    `週期 ${state.ps} ~ ${state.pe}(${len}天)→ ×${(7/len).toFixed(2)} 換算 7 天標準值;ROAS/轉換成本為期間實際值`;
-  document.getElementById('bossNote').textContent='NT$'+fmtMoney(SETTINGS.sopBoss);
-  document.getElementById('downNote').textContent=RULES.tiers.down;
+    `週期 ${state.ps} ~ ${state.pe}(${len}天);建議 = 比「目前目標ROI」與「成本推算建議ROI(保守低值)」,與期間長度無關;期間ROAS 供參考`;
+  const bn=document.getElementById('bossNote'); if(bn) bn.textContent='NT$'+fmtMoney(SETTINGS.sopBoss);
+  const dn=document.getElementById('downNote'); if(dn) dn.textContent=RULES.tiers.down;
   const list=sopRows();
   const s=state.ssort;
+  const g=(x,k)=>{ if(k==='cur')return x.r.cur; if(k==='ref')return x.r.ref;
+    if(k==='roas')return x.o.roas; if(k==='budget')return x.ac?x.ac.budget:null; return null; };
   list.sort((a,b)=>{
-    let av,bv;
-    if(s.key==='_ord'){av=a.r.ord;bv=b.r.ord; if(av===bv){return b.o.cost-a.o.cost;}}
-    else if(s.key==='name'){return String(a.o.name).localeCompare(b.o.name,'zh-Hant')*s.dir;}
-    else {av=a[s.key]!=null?a[s.key]:(a.o[s.key]!=null?a.o[s.key]:-Infinity);
-          bv=b[s.key]!=null?b[s.key]:(b.o[s.key]!=null?b.o[s.key]:-Infinity);}
-    return (av<bv?-1:av>bv?1:0)*s.dir;
+    if(s.key==='_ord'){ if(a.r.ord!==b.r.ord)return a.r.ord-b.r.ord; return (b.o.cost||0)-(a.o.cost||0); }
+    if(s.key==='name'){ return String(a.o.name).localeCompare(b.o.name,'zh-Hant')*s.dir; }
+    const av=g(a,s.key), bv=g(b,s.key), an=av==null?-Infinity:av, bn2=bv==null?-Infinity:bv;
+    return (an<bn2?-1:an>bn2?1:0)*s.dir;
   });
-  const cnt={up:0,obs:0,down:0,stop:0,hold:0,boss:0};
-  list.forEach(({r})=>{
-    if(r.cls==='b-up')cnt.up++; else if(r.cls==='b-down')cnt.down++;
-    else if(r.cls==='b-stop')cnt.stop++; else if(r.cls==='b-hold')cnt.hold++; else cnt.obs++;
-    if(r.flags.some(f=>f.includes('問老闆')))cnt.boss++;
-  });
+  const cnt={down:0,up:0,hold:0,na:0};
+  list.forEach(({r})=>{ if(r.act==='調低放量')cnt.down++; else if(r.act==='偏低可調高')cnt.up++;
+    else if(r.act==='合理')cnt.hold++; else cnt.na++; });
   const F=state.sopFilter;
   const chip=(fil,cls,lab,n)=>`<span class="schip ${cls}${F===fil?' on':''}" data-fil="${fil}">${lab}<b>${n}</b></span>`;
   document.getElementById('sopChips').innerHTML=
     `<span class="schip${F?'':' on'}" data-fil="">全部<b>${list.length}</b></span>`+
-    chip('b-up','sc-up','放大/提升',cnt.up)+
-    chip('b-obs','sc-obs','持平/觀察',cnt.obs)+
-    chip('b-down','sc-down','小幅降',cnt.down)+
-    chip('b-stop','sc-stop','大降/暫停',cnt.stop)+
-    chip('b-hold','sc-hold','花不完',cnt.hold)+
-    (cnt.boss?chip('boss','sc-stop','⚠問老闆',cnt.boss):'')+
+    chip('down','sc-up','調低放量',cnt.down)+
+    chip('up','sc-down','偏低可調高',cnt.up)+
+    chip('hold','sc-hold','合理',cnt.hold)+
+    chip('na','sc-obs','無法調整',cnt.na)+
     (F?`<span class="schip schip-x" data-fil="">✕ 清除篩選</span>`:'');
-  // 依選中的籌碼篩選表格(籌碼數字仍顯示總數)
-  const shown = F ? list.filter(({r})=> F==='boss' ? r.flags.some(f=>f.includes('問老闆')) : r.cls===F) : list;
-  const hd=[['_ord','建議動作'],['name','商品'],['roas','ROAS'],['cpa','轉換成本'],
-            ['spend7','7天花費'],['rev7','7天營業額'],['spent','花完?'],['cart','購物車'],
-            ['budget','預算→建議'],['rem','提醒']];
-  const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'||k==='rem'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
-  const body=shown.map(({o,r,spend7,rev7,cart,autoCart,cartPrev,spent,budget})=>{
-    const cartTxt=cartPrev==null?'<span class="muted">前期無</span>':
-      `${fmtInt(cartPrev)}→${fmtInt(o.cart)}`;
-    const cartSel=`<select data-sk="cart" data-key="${esc(o.key)}">
-      <option value="" ${!SOP_OVR[o.key]||SOP_OVR[o.key].cart==null?'selected':''}>自動${autoCart?({up:'↑',down:'↓',flat:'→'})[autoCart]:''}</option>
-      <option value="up" ${SOP_OVR[o.key]&&SOP_OVR[o.key].cart==='up'?'selected':''}>升↑</option>
-      <option value="flat" ${SOP_OVR[o.key]&&SOP_OVR[o.key].cart==='flat'?'selected':''}>平→</option>
-      <option value="down" ${SOP_OVR[o.key]&&SOP_OVR[o.key].cart==='down'?'selected':''}>降↓</option></select>`;
-    const newb=r.newB!=null?`<span class="newb">→ ${fmtMoney(r.newB)}</span>`:'';
+  const actF={down:'調低放量',up:'偏低可調高',hold:'合理'};
+  const shown = !F ? list : list.filter(({r})=> F==='na'
+    ? !['調低放量','偏低可調高','合理'].includes(r.act) : r.act===actF[F]);
+  const hd=[['_ord','建議動作'],['name','商品'],['cur','目前ROI'],['ref','建議ROI'],
+            ['target','目標值'],['budget','目前預算'],['out','已花完'],['roas','期間ROAS'],['pick','勾選']];
+  const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
+  let nPick=0;
+  const body=shown.map(({o,r,ac,rs,canPick,target,pick})=>{
+    if(pick)nPick++;
+    const curTxt = r.cur!=null ? fmtRoas(r.cur) : '—';
+    const refTxt = r.ref!=null ? ((rs&&rs.high>rs.low)?`${fmtRoas(rs.low)}~${fmtRoas(rs.high)}`:fmtRoas(r.ref)) : '—';
+    const budTxt = ac ? fmtMoney(ac.budget) : '—';
+    const outTxt = ac ? (r.out?'<span style="color:var(--bad);font-weight:700">是</span>':'否') : '—';
+    const targetCell = canPick
+      ? `<input type="number" step="0.1" min="0" data-sk="target" data-key="${esc(o.key)}" value="${target!=null?target:''}">`
+      : '<span class="muted">—</span>';
+    const pickCell = canPick ? `<input type="checkbox" data-sk="pick" data-key="${esc(o.key)}" ${pick?'checked':''}>` : '';
     return `<tr>
-      <td><span class="bdg ${r.cls}">${r.act}</span><span class="newb">${r.amt||''}</span></td>
+      <td><span class="bdg ${r.cls}">${r.act}</span></td>
       <td class="l txt" title="${esc(o.name)}">${esc(o.name)}${o.type&&o.type.includes('賣場')?'<span class="typechip">賣場</span>':''}${o.type&&o.type.includes('組合')?'<span class="typechip">組合</span>':''}
-        <span class="newb">${esc(o.cat)} · ${esc(o.shop)}${r.row?' · 對照列 '+esc(r.row):''}</span></td>
+        <span class="newb">${esc(o.cat)} · ${esc(o.shop)}${r.flags&&r.flags[0]?' · '+esc(r.flags[0]):''}</span></td>
+      <td>${curTxt}</td>
+      <td>${refTxt}</td>
+      <td>${targetCell}</td>
+      <td>${budTxt}</td>
+      <td>${outTxt}</td>
       <td class="${roasCls(o.roas)}">${fmtRoas(o.roas)}</td>
-      <td>${o.cpa==null?'—':fmtMoney(o.cpa)}</td>
-      <td>${fmtMoney(spend7)}</td>
-      <td>${fmtMoney(rev7)}</td>
-      <td><input type="checkbox" data-sk="spent" data-key="${esc(o.key)}" ${spent?'checked':''}></td>
-      <td>${cartTxt}<br>${cartSel}</td>
-      <td><input type="number" data-sk="budget" data-key="${esc(o.key)}" value="${budget}" placeholder="日預算">${newb}</td>
-      <td class="rem">${r.flags.map(esc).join('<br>')}</td>
+      <td>${pickCell}</td>
     </tr>`;
   }).join('');
   document.getElementById('sopTbl').innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
+  const sn=document.getElementById('sopSelNote'); if(sn) sn.textContent = nPick?`已勾選 ${nPick} 筆`:'';
   document.querySelectorAll('#sopTbl th').forEach(h=>h.addEventListener('click',()=>{
-    const k=h.dataset.k; if(k==='rem'||k==='spent')return;
+    const k=h.dataset.k; if(k==='pick'||k==='target'||k==='out')return;
     state.ssort= state.ssort.key===k?{key:k,dir:-state.ssort.dir}:{key:k,dir:k==='name'?1:(k==='_ord'?1:-1)};
     renderSop();
   }));
@@ -975,9 +1008,9 @@ function renderSop(){
 function bindSopInputs(){
   document.getElementById('sopTbl').addEventListener('change',e=>{
     const k=e.target.dataset.sk, key=e.target.dataset.key; if(!k||!key)return;
-    if(k==='spent'){ SOP_OVR[key]=SOP_OVR[key]||{}; SOP_OVR[key].spent=e.target.checked; }
-    if(k==='cart'){ SOP_OVR[key]=SOP_OVR[key]||{}; SOP_OVR[key].cart=e.target.value||null; }
-    if(k==='budget'){ const v=+e.target.value; if(v>0)BUDGETS[key]=v; else delete BUDGETS[key]; lsSet('adDash:budgets',BUDGETS); }
+    SOP_SEL[key]=SOP_SEL[key]||{};
+    if(k==='pick'){ SOP_SEL[key].pick=e.target.checked; }
+    if(k==='target'){ const v=+e.target.value; SOP_SEL[key].target = v>0?v:null; }
     renderSop();
   });
 }
@@ -1002,19 +1035,101 @@ function renderRulesTable(){
   document.getElementById('rulesTbl').innerHTML=`<thead>${th}</thead><tbody>${body}</tbody>`;
 }
 function renderRules(){ renderRulesTable(); renderTierEditor(); }
+// ===== 調整佇列(勾選 → 經 GAS 寫試算表「調整佇列」→ 本機 queue_run 輪詢執行) =====
+let QROWS=[], queueLoaded=false;
+const qmsg=(m,err)=>{const el=document.getElementById('queueMsg');if(!el)return;
+  el.textContent=m; el.style.color=err?'var(--bad)':'';};
+function sopSelected(){ return sopRows().filter(x=>x.pick&&x.canPick&&x.target>0); }
+async function sendQueue(){
+  const sel=sopSelected();
+  if(!sel.length){ qmsg('沒有勾選任何商品(要先勾「勾選」欄且有目標值)',true); return; }
+  const pend=document.getElementById('queuePending');
+  const status=(pend&&pend.checked)?'待確認':'待執行';
+  const rows=sel.map(({o,r,ac,target})=>({
+    shop: ac.rawShop,                       // ★ 原始全名;queue_run 用店名反查埠號,短名會對不上
+    title: ac.name||o.name, campaign_id: ac.cid, field:'roi',
+    current: r.cur, target:+target,
+    reason: '儀表板ROI建議'+(r.ref!=null?'(成本推算 '+fmtRoas(r.ref)+')':''),
+    who: 'dashboard',
+  }));
+  const btn=document.getElementById('sopSend'); btn.disabled=true;
+  qmsg(`送出 ${rows.length} 筆(狀態=${status})…`);
+  try{
+    // Apps Script 不給瀏覽器讀 POST 回應(CORS)→ no-cors 送出後重讀佇列比對確認
+    await fetch(CONFIG.api,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({kind:'queue',token:CONFIG.queueToken,status,rows})});
+    await loadQueue();
+    const hit=rows.filter(x=>QROWS.some(q=>String(q.cid)===String(x.campaign_id)&&q.field==='roi')).length;
+    if(hit){
+      sel.forEach(({o})=>{ SOP_SEL[o.key]=SOP_SEL[o.key]||{}; SOP_SEL[o.key].pick=false; });
+      renderSop();
+      qmsg(`已送出 ${rows.length} 筆,佇列讀回 ${hit} 筆 ✓(狀態=${status})`);
+    }else{
+      qmsg('送出後在佇列找不到對應列 → 確認 Code.gs 已部署 v3.15 且 QUEUE_TOKEN 一致',true);
+    }
+  }catch(e){ qmsg('送出失敗:'+e.message,true); }
+  finally{ btn.disabled=false; }
+}
+const QCOLS=['建立時間','狀態','店鋪','廣告名稱','campaign_id','欄位','目前值','目標值','理由','建立者',
+             '執行時間','結果','讀回值','訊息'];
+async function loadQueue(){
+  const data=await fetchApi('queue');
+  const h=data[0]||[], ix={}; QCOLS.forEach(c=>ix[c]=h.indexOf(c));
+  QROWS=data.slice(1).map(r=>({
+    ts:String(r[ix['建立時間']]??''), status:String(r[ix['狀態']]??'').trim(),
+    shop:String(r[ix['店鋪']]??''), name:String(r[ix['廣告名稱']]??''),
+    cid:String(r[ix['campaign_id']]??'').trim(), field:String(r[ix['欄位']]??'').trim(),
+    cur:r[ix['目前值']], target:r[ix['目標值']],
+    result:String(r[ix['結果']]??''), back:r[ix['讀回值']], msg:String(r[ix['訊息']]??''),
+  })).filter(q=>q.cid||q.name);
+  renderQueue();
+}
+function qCls(s){
+  if(s==='完成')return 'q-done';
+  if(s==='失敗')return 'q-fail';
+  if(s.indexOf('略過')>=0||s==='取消')return 'q-skip';
+  if(s==='待執行'||s==='待確認')return 'q-wait';
+  return 'q-other';
+}
+function renderQueue(){
+  const el=document.getElementById('queueTbl'); if(!el)return;
+  if(!QROWS.length){ el.innerHTML='<tbody><tr><td class="msg">佇列目前是空的</td></tr></tbody>'; qmsg('共 0 筆'); return; }
+  const list=QROWS.slice().reverse().slice(0,50);
+  const th=['建立時間','狀態','廣告名稱','欄位','目前值','目標值','結果','訊息']
+    .map((l,i)=>`<th class="${i===2||i===7?'txt':''}">${l}</th>`).join('');
+  const body=list.map(q=>`<tr>
+    <td>${esc(String(q.ts).replace('T',' ').slice(0,16))}</td>
+    <td><span class="qbadge ${qCls(q.status)}">${esc(q.status||'—')}</span></td>
+    <td class="l" title="${esc(q.name)}">${esc(q.name)}<span class="newb">${esc(q.shop)}</span></td>
+    <td>${esc(q.field)}</td>
+    <td>${q.cur==null||q.cur===''?'—':esc(String(q.cur))}</td>
+    <td>${q.target==null||q.target===''?'—':esc(String(q.target))}</td>
+    <td>${esc(q.result||'')}${(q.back!=null&&q.back!=='')?`<span class="newb">讀回 ${esc(String(q.back))}</span>`:''}</td>
+    <td class="msg">${esc(q.msg||'')}</td></tr>`).join('');
+  el.innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
+  qmsg(`共 ${QROWS.length} 筆${QROWS.length>50?'(顯示最新 50)':''}`);
+}
+async function refreshQueue(){
+  qmsg('讀取佇列…');
+  try{ await loadQueue(); }catch(e){ qmsg('讀佇列失敗:'+e.message,true); }
+}
 function sopExportCsv(){
   const list=sopRows();
-  const head=['商品','分類','店鋪','類型','建議動作','調整幅度','建議日預算','ROAS','轉換成本','7天花費','7天營業額','花完','購物車','提醒'];
+  const head=['商品','分類','店鋪','campaign_id','建議動作','目前ROI','建議ROI(低)','建議ROI(高)',
+              '目標值','目前預算','已花完','期間ROAS','期間花費','說明'];
   const c=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
   const lines=[head.join(',')];
-  list.forEach(({o,r,spend7,rev7,cart,spent})=>{
-    lines.push([c(o.name),c(o.cat),c(o.shop),c(o.type),c(r.act),c(r.amt),c(r.newB??''),
-      c(fmtRoas(o.roas)),c(o.cpa==null?'':Math.round(o.cpa)),c(Math.round(spend7)),c(Math.round(rev7)),
-      c(spent?'是':'否'),c({up:'升',down:'降',flat:'平'}[cart]||''),c(r.flags.join(' / '))].join(','));
+  list.forEach(({o,r,ac,rs,target})=>{
+    lines.push([c(o.name),c(o.cat),c(o.shop),c(ac?ac.cid:''),c(r.act),
+      c(r.cur??''),c(rs&&rs.low?rs.low:''),c(rs&&rs.high?rs.high:''),c(target??''),
+      c(ac?ac.budget:''),c(r.out?'是':'否'),
+      c(o.roas==null?'':o.roas.toFixed(2)),c(Math.round(o.cost)),
+      c((r.flags||[]).join(' / '))].join(','));
   });
-  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`SOP建議_${state.ps}_${state.pe}.csv`;a.click();
+  a.download=`SOP_ROI建議_${state.ps}_${state.pe}.csv`;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);
 }
 
@@ -1115,6 +1230,7 @@ function setTab(t){
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('on',p.id==='tab-'+t));
   document.getElementById('pbar').style.display=(t==='month'||!dailyOk)?'none':'flex';
+  if(t==='sop'&&!queueLoaded){ queueLoaded=true; refreshQueue(); }
 }
 function syncChecks(kind,val){document.querySelectorAll(`[data-kind="${kind}"]`).forEach(el=>el.checked=val);}
 let bound=false;
@@ -1164,7 +1280,8 @@ function bind(){
     document.getElementById('search').value='';syncChecks('shop',true);syncChecks('cat',true);render();
   });
   document.getElementById('reload').addEventListener('click',load);
-  document.getElementById('assumeSpent').addEventListener('change',renderSop);
+  document.getElementById('sopSend').addEventListener('click',sendQueue);
+  document.getElementById('queueReload').addEventListener('click',refreshQueue);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
   document.getElementById('sopChips').addEventListener('click',e=>{
     const c=e.target.closest('[data-fil]'); if(!c)return;
