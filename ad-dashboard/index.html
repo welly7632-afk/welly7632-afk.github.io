@@ -287,7 +287,9 @@
       <div class="note">
         <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>(取保守低值)。
         目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
+        <b>「目標值」欄預設＝目前ROI(等於不動)</b>,請自己參考「建議ROI」往下調一階再送;
         建議值未含賣家負擔優惠券/蝦幣回饋,偏樂觀 → <b>請分階段調整,不要一次到位</b>。
+        目標值與目前值相同時本機會回「值相同,未送出」,不會佔用一週一次的節流額度。
         同一則廣告<b>一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則);本機輪詢會自動節流並回寫「已略過(節流)」。
       </div>    </div>
   </section>
@@ -917,7 +919,7 @@ function evalRoi(o, ac, rs){
   if(ref==null)  return {...base, cls:'b-obs', act:'無建議值', flags:['目標ROI建議未算出(多規格待訂單/無成本表)'], ord:ROI_ORDER['無建議值']};
   if(!(cur>0))   return {...base, cls:'b-obs', act:'無建議值', flags:['廣告設定讀不到目前目標ROI'], ord:ROI_ORDER['無建議值']};
   const flags=[]; if(out) flags.push('預算已花完');
-  let cls, act, target=ref;
+  let cls, act, target=cur;   // 預設帶「目前ROI」= 不動;要調的人自己往建議值方向分段調
   if(cur > ref*1.15){ cls='b-up'; act='調低放量'; flags.unshift('目前 '+fmtRoas(cur)+' 高於建議 '+fmtRoas(ref)+',目標設太高,調低可放量'); }
   else if(cur < ref*0.85){ cls='b-down'; act='偏低可調高'; flags.unshift('目前 '+fmtRoas(cur)+' 低於建議 '+fmtRoas(ref)+',獲利可能不足'); }
   else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近建議 '+fmtRoas(ref)); }
