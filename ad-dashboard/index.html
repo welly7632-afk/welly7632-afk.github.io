@@ -192,6 +192,7 @@
     <button data-v="all" class="on">廣告銷售</button>
     <button data-v="direct">直接銷售</button>
   </div>
+  <label class="chklab" title="Shop GMV Max 商品明細(蝦皮自動廣告);SOP 建議永遠不含"><input type="checkbox" id="autoChk" checked>自動選品</label>
   <label class="chklab"><input type="checkbox" id="cmpChk" checked>與前期比較</label>
 </div>
 
@@ -444,6 +445,7 @@ const state = {
   ptcols:new Set(['花費','銷售','ROAS','直接銷售','直接ROAS','轉換','轉換成本']),
   mtcols:new Set(M_TCOLS),
   psort:{key:'cost',dir:-1}, msort:{key:'廣告花費',dir:-1}, ssort:{key:'_ord',dir:1},
+  showAuto:lsGet('adDash:showAuto',true),   // 週期分析是否含自動選品(GMV Max);SOP 一律排除
   sopFilter:null,
 };
 let charts={};
@@ -684,8 +686,10 @@ function inFilter(shop,cat,name,pid){
   return state.shops.has(shop)&&state.cats.has(cat)
     &&(!q||String(name).toLowerCase().includes(q)||String(pid).includes(q));
 }
+// 自動選品(GMV Max):明細列 type=自動選品廣告;舊日期只有總計列(name=Shop GMV Max,type 空)
+const isAuto=r=>(r.type&&r.type.includes('自動選品'))||r.name==='Shop GMV Max';
 function dailyRows(ps,pe){
-  return DDATA.filter(r=>r.ds>=ps&&r.ds<=pe&&inFilter(r.shop,r.cat,r.name,r.pid));
+  return DDATA.filter(r=>r.ds>=ps&&r.ds<=pe&&(state.showAuto||!isAuto(r))&&inFilter(r.shop,r.cat,r.name,r.pid));
 }
 const SUMK=['cost','sale','dsale','views','clicks','conv','dconv','cart'];
 function totals(rows){
@@ -927,7 +931,9 @@ function evalRoi(o, ac, rs){
 }
 let SOP_SEL={};   // key -> {pick:bool, target:number} 勾選與目標ROI 覆蓋(session)
 function sopRows(){
-  const rows=dailyRows(state.ps,state.pe);
+  // SOP 判斷的是「手動商品廣告的目標ROI」→ 自動選品(GMV Max)一律排除,
+  // 否則同商品的自動廣告花費/銷售會混進期間ROAS,誤導判斷
+  const rows=dailyRows(state.ps,state.pe).filter(r=>!isAuto(r));
   const len=diffDays(state.ps,state.pe)+1, ratio=7/len;
   return [...aggProducts(rows).values()].filter(o=>o.pid).map(o=>{
     const ac = ACFG[o.pid]||null, rs = ROISUG[o.pid]||null;
@@ -950,7 +956,8 @@ function renderSop(){
   const list=sopRows();
   const s=state.ssort;
   const g=(x,k)=>{ if(k==='cur')return x.r.cur; if(k==='ref')return x.r.ref;
-    if(k==='roas')return x.o.roas; if(k==='budget')return x.ac?x.ac.budget:null; return null; };
+    if(k==='roas')return x.o.roas; if(k==='cost')return x.o.cost; if(k==='sale')return x.o.sale;
+    if(k==='budget')return x.ac?x.ac.budget:null; return null; };
   list.sort((a,b)=>{
     if(s.key==='_ord'){ if(a.r.ord!==b.r.ord)return a.r.ord-b.r.ord; return (b.o.cost||0)-(a.o.cost||0); }
     if(s.key==='name'){ return String(a.o.name).localeCompare(b.o.name,'zh-Hant')*s.dir; }
@@ -973,7 +980,8 @@ function renderSop(){
   const shown = !F ? list : list.filter(({r})=> F==='na'
     ? !['調低放量','偏低可調高','合理'].includes(r.act) : r.act===actF[F]);
   const hd=[['_ord','建議動作'],['name','商品'],['cur','目前ROI'],['ref','建議ROI'],
-            ['target','目標值'],['budget','目前預算'],['out','已花完'],['roas','期間ROAS'],['pick','勾選']];
+            ['target','目標值'],['budget','目前預算'],['out','已花完'],
+            ['cost','期間花費'],['sale','期間銷售'],['roas','期間ROAS'],['pick','勾選']];
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   let nPick=0;
   const body=shown.map(({o,r,ac,rs,canPick,target,pick})=>{
@@ -995,6 +1003,8 @@ function renderSop(){
       <td>${targetCell}</td>
       <td>${budTxt}</td>
       <td>${outTxt}</td>
+      <td>${fmtMoney(o.cost)}</td>
+      <td>${fmtMoney(o.sale)}</td>
       <td class="${roasCls(o.roas)}">${fmtRoas(o.roas)}</td>
       <td>${pickCell}</td>
     </tr>`;
@@ -1119,14 +1129,14 @@ async function refreshQueue(){
 function sopExportCsv(){
   const list=sopRows();
   const head=['商品','分類','店鋪','campaign_id','建議動作','目前ROI','建議ROI(低)','建議ROI(高)',
-              '目標值','目前預算','已花完','期間ROAS','期間花費','說明'];
+              '目標值','目前預算','已花完','期間花費','期間銷售','期間ROAS','說明'];
   const c=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
   const lines=[head.join(',')];
   list.forEach(({o,r,ac,rs,target})=>{
     lines.push([c(o.name),c(o.cat),c(o.shop),c(ac?ac.cid:''),c(r.act),
       c(r.cur??''),c(rs&&rs.low?rs.low:''),c(rs&&rs.high?rs.high:''),c(target??''),
       c(ac?ac.budget:''),c(r.out?'是':'否'),
-      c(o.roas==null?'':o.roas.toFixed(2)),c(Math.round(o.cost)),
+      c(Math.round(o.cost)),c(Math.round(o.sale)),c(o.roas==null?'':o.roas.toFixed(2)),
       c((r.flags||[]).join(' / '))].join(','));
   });
   const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
@@ -1285,6 +1295,10 @@ function bind(){
   document.getElementById('sopSend').addEventListener('click',sendQueue);
   document.getElementById('queueReload').addEventListener('click',refreshQueue);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
+  document.getElementById('autoChk').checked=state.showAuto;
+  document.getElementById('autoChk').addEventListener('change',e=>{
+    state.showAuto=e.target.checked; lsSet('adDash:showAuto',state.showAuto); render();
+  });
   document.getElementById('sopChips').addEventListener('click',e=>{
     const c=e.target.closest('[data-fil]'); if(!c)return;
     const fil=c.dataset.fil;
