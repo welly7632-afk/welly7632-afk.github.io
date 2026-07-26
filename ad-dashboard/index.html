@@ -163,7 +163,8 @@
   <nav class="tabsnav">
     <button class="tabbtn on" data-tab="period">週期分析</button>
     <button class="tabbtn" data-tab="sop">SOP 建議</button>
-    <button class="tabbtn" data-tab="month">月度整合</button>
+    <button class="tabbtn" data-tab="compare">調整成效</button>
+  <button class="tabbtn" data-tab="month">月度整合</button>
   </nav>
   <input type="search" id="search" placeholder="搜尋商品名稱 / ID">
   <div class="spacer"></div>
@@ -293,6 +294,25 @@
         目標值與目前值相同時本機會回「值相同,未送出」,不會佔用一週一次的節流額度。
         同一則廣告<b>一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則);本機輪詢會自動節流並回寫「已略過(節流)」。
       </div>    </div>
+  </section>
+
+  <!-- ===== 調整成效 ===== -->
+  <section class="tabpanel" id="tab-compare">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">調整成效比較</h2>
+        <select id="cmpField"><option value="">全部欄位</option><option>目標投入產出比</option><option>每日預算</option></select>
+        <select id="cmpSrc"><option value="">全部來源</option><option>本工具</option><option>外部</option></select>
+        <select id="cmpSt"><option value="">全部狀態</option><option value="done">已滿7天</option><option value="wait">累計中</option><option value="none">等資料</option></select>
+        <input id="cmpQ" placeholder="搜尋廣告名稱" style="width:170px">
+        <button class="plain" id="cmpReload">↻ 重新整理</button>
+        <span id="cmpMsg" class="muted" style="font-size:12px"></span>
+      </div>
+      <div class="hint">每筆設定變更（快照差異，含手動與蝦皮自動改）比「變更前 7 天 vs 變更後 7 天」成效，皆不含變更當天。
+        後窗未滿 7 天顯示「累計中」；「日均花費變化%」已用日均消除天數差。每天 08:30／20:00 隨設定快照自動重算。
+        ROI 調低放量的預期：花費↑、ROAS 往目標值靠攏。</div>
+    </div>
+    <div class="tablecard"><div class="tblscroll"><table id="cmpTbl"></table></div></div>
   </section>
 
   <!-- ===== 月度整合 ===== -->
@@ -1126,6 +1146,81 @@ async function refreshQueue(){
   qmsg('讀取佇列…');
   try{ await loadQueue(); }catch(e){ qmsg('讀佇列失敗:'+e.message,true); }
 }
+// ===== 調整成效比較(分頁「調整成效比較」;compare_run.py 每日隨快照重算) =====
+let CMPDATA=[], cmpLoaded=false, csort={key:'ds',dir:-1};
+function parseCompare(data){
+  const h=data[0]||[], ix={};
+  ['變更日期','時段','店鋪','廣告名稱','campaign_id','欄位','舊值','新值','來源',
+   '前7天花費','前7天銷售','前ROAS','後窗天數','後窗花費','後窗銷售','後ROAS',
+   '日均花費變化%','ROAS差','狀態'].forEach(c=>ix[c]=h.indexOf(c));
+  return data.slice(1).filter(r=>String(r[ix['變更日期']]??'').trim()).map(r=>({
+    ds:String(r[ix['變更日期']]).slice(0,10), slot:String(r[ix['時段']]||''),
+    shop:canonStore(r[ix['店鋪']]), name:String(r[ix['廣告名稱']]||''),
+    cid:String(r[ix['campaign_id']]||''), field:String(r[ix['欄位']]||''),
+    oldV:parseNum(r[ix['舊值']]), newV:parseNum(r[ix['新值']]), src:String(r[ix['來源']]||''),
+    preCost:parseNum(r[ix['前7天花費']]), preSale:parseNum(r[ix['前7天銷售']]), preRoas:parseNum(r[ix['前ROAS']]),
+    postDays:parseNum(r[ix['後窗天數']]), postCost:parseNum(r[ix['後窗花費']]), postSale:parseNum(r[ix['後窗銷售']]),
+    postRoas:parseNum(r[ix['後ROAS']]),
+    costD:parseNum(r[ix['日均花費變化%']]), roasD:parseNum(r[ix['ROAS差']]),
+    status:String(r[ix['狀態']]||''),
+  }));
+}
+async function loadCompare(){
+  const el=document.getElementById('cmpMsg'); el.textContent='讀取中…'; el.style.color='';
+  try{
+    CMPDATA=parseCompare(await fetchApi('compare'));
+    renderCompare();
+  }catch(e){ el.textContent='讀取失敗:'+e.message+'(確認 Code.gs v3.17 已部署)'; el.style.color='var(--bad)'; }
+}
+function cmpStCls(s){ if(s==='已滿7天')return 'q-done'; if(s.indexOf('累計中')>=0)return 'q-wait'; return 'q-other'; }
+function renderCompare(){
+  const el=document.getElementById('cmpTbl'); if(!el)return;
+  const fF=document.getElementById('cmpField').value, fS=document.getElementById('cmpSrc').value,
+        fSt=document.getElementById('cmpSt').value, q=document.getElementById('cmpQ').value.trim().toLowerCase();
+  let list=CMPDATA.filter(x=>
+    (!fF||x.field===fF)&&(!fS||x.src===fS)&&
+    (!fSt||(fSt==='done'?x.status==='已滿7天':fSt==='wait'?x.status.indexOf('累計中')>=0:x.status==='等資料'))&&
+    (!q||x.name.toLowerCase().includes(q)));
+  const s=csort;
+  list.sort((a,b)=>{
+    const av=s.key==='ds'?a.ds+a.slot:(a[s.key]==null?-Infinity:a[s.key]);
+    const bv=s.key==='ds'?b.ds+b.slot:(b[s.key]==null?-Infinity:b[s.key]);
+    return (av<bv?-1:av>bv?1:0)*s.dir;
+  });
+  const hd=[['ds','變更'],['shop','店鋪'],['name','廣告名稱'],['field','欄位'],['chg','舊→新'],['src','來源'],
+            ['preCost','前7天花費'],['preRoas','前ROAS'],['postCost','後窗花費'],['postRoas','後ROAS'],
+            ['costD','日均花費%'],['roasD','ROAS差'],['status','狀態']];
+  const sortable=new Set(['ds','preCost','preRoas','postCost','postRoas','costD','roasD']);
+  const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
+  const body=list.map(x=>{
+    const chg=`${x.oldV??'—'} → <b>${x.newV??'—'}</b>`;
+    const cd=x.costD==null?'—':`<span class="${x.costD>0?'pos':x.costD<0?'neg':''}">${(x.costD*100).toFixed(1)}%</span>`;
+    const rd=x.roasD==null?'—':`<span class="${x.roasD>0?'pos':x.roasD<0?'neg':''}">${x.roasD>0?'+':''}${x.roasD.toFixed(2)}</span>`;
+    return `<tr>
+      <td style="white-space:nowrap">${x.ds.slice(5)} ${esc(x.slot)}</td>
+      <td>${esc(x.shop)}</td>
+      <td class="l txt" title="${esc(x.name)}">${esc(x.name)}</td>
+      <td>${x.field==='目標投入產出比'?'目標ROI':esc(x.field)}</td>
+      <td style="white-space:nowrap">${chg}</td>
+      <td>${esc(x.src)}</td>
+      <td>${fmtMoney(x.preCost||0)}</td>
+      <td>${x.preRoas==null?'—':fmtRoas(x.preRoas)}</td>
+      <td>${fmtMoney(x.postCost||0)}<span class="newb">${x.postDays||0} 天</span></td>
+      <td>${x.postRoas==null?'—':fmtRoas(x.postRoas)}</td>
+      <td>${cd}</td>
+      <td>${rd}</td>
+      <td><span class="qbadge ${cmpStCls(x.status)}">${esc(x.status)}</span></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
+  document.getElementById('cmpMsg').textContent=`顯示 ${list.length} / ${CMPDATA.length} 筆`;
+  el.querySelectorAll('th').forEach(h=>h.addEventListener('click',()=>{
+    const k=h.dataset.k; if(!sortable.has(k))return;
+    csort = csort.key===k?{key:k,dir:-csort.dir}:{key:k,dir:-1};
+    renderCompare();
+  }));
+}
+
 function sopExportCsv(){
   const list=sopRows();
   const head=['商品','分類','店鋪','campaign_id','建議動作','目前ROI','建議ROI(低)','建議ROI(高)',
@@ -1241,8 +1336,9 @@ function setTab(t){
   state.tab=t;
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('on',p.id==='tab-'+t));
-  document.getElementById('pbar').style.display=(t==='month'||!dailyOk)?'none':'flex';
+  document.getElementById('pbar').style.display=(t==='month'||t==='compare'||!dailyOk)?'none':'flex';
   if(t==='sop'&&!queueLoaded){ queueLoaded=true; refreshQueue(); }
+  if(t==='compare'&&!cmpLoaded){ cmpLoaded=true; loadCompare(); }
 }
 function syncChecks(kind,val){document.querySelectorAll(`[data-kind="${kind}"]`).forEach(el=>el.checked=val);}
 let bound=false;
@@ -1294,6 +1390,9 @@ function bind(){
   document.getElementById('reload').addEventListener('click',load);
   document.getElementById('sopSend').addEventListener('click',sendQueue);
   document.getElementById('queueReload').addEventListener('click',refreshQueue);
+  document.getElementById('cmpReload').addEventListener('click',loadCompare);
+  ['cmpField','cmpSrc','cmpSt'].forEach(id=>document.getElementById(id).addEventListener('change',renderCompare));
+  document.getElementById('cmpQ').addEventListener('input',renderCompare);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
   document.getElementById('autoChk').checked=state.showAuto;
   document.getElementById('autoChk').addEventListener('change',e=>{
