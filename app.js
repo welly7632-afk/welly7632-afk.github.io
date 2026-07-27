@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v22 — 側邊欄加驗貨呼叫台;標籤列印在首頁功能區;標籤系統有驗貨呼叫台分頁 */
+/* 倉儲系統前端 SPA v23 — 側邊欄移除舊「刪除第二庫存」外部工具(第二庫存清單頁已內建刪除) */
 'use strict';
 
 var CONFIG = {
@@ -7,8 +7,8 @@ var CONFIG = {
   AUTH_RECHECK_MS: 3600000,
   BULK_TTL: 21600000,
   LINKS: {
-    labelPrint: 'https://welly7632-afk.github.io/label/',
-    secondDel: 'https://bestx0114-dev.github.io/second-storage-del/'
+    labelPrint: 'https://welly7632-afk.github.io/label/'
+    /* secondDel 舊外部工具已移除:第二庫存清單頁本身就能刪(單筆/連續掃描/批次) */
   }
 };
 var SHORTAGE_HANDLE = ['不足需聊', '不足等到貨', '需找', '缺先出', '不出', '已找到貨', '同意換貨'];
