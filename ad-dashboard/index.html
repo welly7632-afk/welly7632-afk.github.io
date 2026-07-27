@@ -124,6 +124,8 @@
   #sopTbl td.rem{text-align:left;white-space:normal;min-width:170px;font-size:12px;color:var(--sub);line-height:1.5}
   #sopTbl input[type=number]{width:74px;padding:3px 6px;font-size:12px}
   #sopTbl .origv{display:block;font-size:10.5px;color:#d97706;white-space:nowrap;margin-top:2px}
+  #sopTbl .subrow td{background:rgba(148,163,184,.08);font-size:12px;padding-top:4px;padding-bottom:4px}
+  #sopTbl .xbtn{font-size:11px;padding:1px 8px;margin-left:8px;cursor:pointer}
   #sopTbl select{padding:3px 5px;font-size:12px}
   .typechip{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid var(--warn);
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
@@ -267,7 +269,8 @@
       </div>
       <div class="hint">在上表直接改「目標ROI／每日預算」的值(改了會自動勾選,並顯示原值)→「送出勾選到佇列」
         只送<b>有變更</b>的欄位到試算表「調整佇列」(狀態=待執行);本機每 15 分輪詢執行,執行結果回寫到這裡。
-        ⚠ 同一則廣告<b>一週只准改一次</b>(節流,不分ROI/預算):同週同時送 ROI+預算,只會執行先到的一項。</div>
+        節流:<b>目標ROI 同一則一週一次</b>(蝦皮獎勵方案規則);<b>預算不設限</b>。
+        調整成功會自動把該廣告<b>結束日延長到今天+2個月</b>(只延不縮;需先跑過 endtime_probe 攔截格式)。</div>
       <div class="tblscroll"><table id="queueTbl"></table></div>
     </div>
     <div class="card">
@@ -294,8 +297,9 @@
         目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
         <b>「目前ROI→目標」同一格:欄內就是目前值,改了才算調整</b>(自動勾選並顯示「原 X」),請參考「建議ROI」往下調一階;
         建議值未含賣家負擔優惠券/蝦幣回饋,偏樂觀 → <b>請分階段調整,不要一次到位</b>。
-        沒有改動的欄位不會送出,不佔用一週一次的節流額度。
-        同一則廣告<b>一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則);本機輪詢會自動節流並回寫「已略過(節流)」。
+        沒有改動的欄位不會送出,不佔用節流額度。
+        <b>目標ROI 同一則一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則,本機自動節流並回寫「已略過(節流)」);
+        <b>每日預算不設限</b>,隨時可調。預算格顯示的是<b>你設定的基準值</b>,蝦皮智慧預算的自動生效值(帶小數)另以灰字標示。
       </div>    </div>
   </section>
 
@@ -304,9 +308,10 @@
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <h2 style="margin:0">調整成效比較</h2>
-        <select id="cmpField"><option value="">全部欄位</option><option>目標投入產出比</option><option>每日預算</option></select>
+        <select id="cmpField"><option value="">全部欄位</option><option value="目標投入產出比">調整ROI</option><option value="每日預算">調整預算</option></select>
         <select id="cmpSrc"><option value="">全部來源</option><option>本工具</option><option>外部</option></select>
         <select id="cmpSt"><option value="">全部狀態</option><option value="done">已滿7天</option><option value="wait">累計中</option><option value="none">等資料</option></select>
+        <label class="chklab" title="預算帶小數的外部變更=蝦皮智慧預算自動調的,大多不用看"><input type="checkbox" id="cmpHideAuto" checked>隱藏蝦皮自動</label>
         <input id="cmpQ" placeholder="搜尋廣告名稱" style="width:170px">
         <button class="plain" id="cmpReload">↻ 重新整理</button>
         <span id="cmpMsg" class="muted" style="font-size:12px"></span>
@@ -547,7 +552,7 @@ function parseDaily(data){
 function parseAdcfg(data){
   const h=data[0], ix={};
   ['店鋪','廣告名稱','廣告類型','狀態','商品ID','campaign_id','每日預算','目標投入產出比',
-   '可改欄位','預算已花完','花費','銷售額','ROAS'].forEach(c=>ix[c]=h.indexOf(c));
+   '可改欄位','預算已花完','花費','銷售額','ROAS','設定預算(基準)','加速推廣'].forEach(c=>ix[c]=h.indexOf(c));
   const m={}; ACFG_NAME={};
   data.slice(1).forEach(r=>{
     const pid=String(r[ix['商品ID']]??'').trim(), cid=String(r[ix['campaign_id']]??'').trim();
@@ -557,6 +562,9 @@ function parseAdcfg(data){
       shop:canonStore(r[ix['店鋪']]), name:String(r[ix['廣告名稱']]||''),
       type:String(r[ix['廣告類型']]||''), state:String(r[ix['狀態']]||''),
       budget:parseNum(r[ix['每日預算']]), roi:parseNum(r[ix['目標投入產出比']]),
+      // 每日預算=API目前生效值(蝦皮智慧預算會自動改,常帶小數);設定預算(基準)=使用者實際設的值
+      baseBudget:ix['設定預算(基準)']>=0?parseNum(r[ix['設定預算(基準)']]):null,
+      boost:ix['加速推廣']>=0?String(r[ix['加速推廣']]||'').trim():'',
       editable:String(r[ix['可改欄位']]||''), out:String(r[ix['預算已花完']]||'').trim(),
     };
     if(pid) m[pid]=rec;                          // 商品廣告:一商品同時間一則,1:1
@@ -963,7 +971,16 @@ function evalRoi(o, ac, rs){
   else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近建議 '+fmtRoas(ref)); }
   return {...base, cls, act, target, flags, ord:ROI_ORDER[act]};
 }
-let SOP_SEL={};   // key -> {pick:bool, target:目標ROI覆蓋, btarget:預算覆蓋}(session)
+let SOP_SEL={};    // key -> {pick:bool, target:目標ROI覆蓋, btarget:預算覆蓋}(session)
+let SOP_EXPAND={}; // key -> bool:自動選品每店彙總列 是否展開商品明細
+function autoDetail(shop){   // 該店本期 自動選品(GMV Max)明細,依花費排序
+  const rows=DDATA.filter(r=>r.ds>=state.ps&&r.ds<=state.pe&&r.shop===shop&&isAuto(r)&&r.pid);
+  const m=new Map();
+  rows.forEach(r=>{ let o=m.get(r.pid);
+    if(!o){ o={pid:r.pid,name:r.name,cost:0,sale:0}; m.set(r.pid,o); }
+    o.cost+=r.cost; o.sale+=r.sale; });
+  return [...m.values()].sort((a,b)=>b.cost-a.cost);
+}
 function sopRows(){
   // SOP 主體=手動商品廣告(自動選品混入會污染期間ROAS)。
   // 勾「含自動選品/群組」(sopAuto):加入 無商品ID的賣場/廣告群組(join 廣告設定,可調)
@@ -979,9 +996,12 @@ function sopRows(){
     const canPickB = !!(ac && String(ac.editable).includes('budget'));  // 每日預算可調
     const sel = SOP_SEL[o.key]||{};
     const target = sel.target!=null ? sel.target : r.target;
-    const btarget = sel.btarget!=null ? sel.btarget : (ac?ac.budget:null);
+    // 預算格顯示「使用者設定的基準值」;蝦皮自動生效值(常帶小數)只當參考標籤,
+    // 沒動這格就不會送預算(避免把蝦皮暫時的自動值寫成設定)
+    const binit = ac ? (ac.baseBudget!=null&&ac.baseBudget>0 ? ac.baseBudget : ac.budget) : null;
+    const btarget = sel.btarget!=null ? sel.btarget : binit;
     const pick = (canPick||canPickB) && sel.pick===true;
-    return {o,r,ac,rs,canPick,canPickB,target,btarget,pick,spend7:o.cost*ratio,rev7:o.sale*ratio};
+    return {o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick,spend7:o.cost*ratio,rev7:o.sale*ratio};
   };
   const list=[...aggProducts(rows).values()].filter(o=>o.pid||state.sopAuto).map(mk);
   if(state.sopAuto){
@@ -1035,24 +1055,29 @@ function renderSop(){
             ['cost','期間花費'],['sale','期間銷售'],['roas','期間ROAS'],['pick','勾選']];
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   let nPick=0;
-  const body=shown.map(({o,r,ac,rs,canPick,canPickB,target,btarget,pick})=>{
+  const body=shown.map(({o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick})=>{
     if(pick)nPick++;
     const refTxt = r.ref!=null ? ((rs&&rs.high>rs.low)?`${fmtRoas(rs.low)}~${fmtRoas(rs.high)}`:fmtRoas(r.ref)) : '—';
     const roiChg = canPick && r.cur!=null && target!=null && +target!==+r.cur;
-    const budChg = canPickB && ac && ac.budget!=null && btarget!=null && +btarget!==+ac.budget;
+    const budChg = canPickB && binit!=null && btarget!=null && +btarget!==+binit;
+    const autoTag = (ac && ac.baseBudget!=null && ac.baseBudget>0 && ac.budget!=null
+                     && Math.abs(ac.budget-ac.baseBudget)>0.005)
+      ? `<span class="origv" style="color:#94a3b8">蝦皮自動中 ${fmtMoney(ac.budget)}</span>` : '';
     const roiCell = canPick
       ? `<input type="number" step="any" min="0" data-sk="target" data-key="${esc(o.key)}" value="${target!=null?target:''}">`
         +(roiChg?`<span class="origv">原 ${fmtRoas(r.cur)}</span>`:'')
       : `<span class="muted">${r.cur!=null?fmtRoas(r.cur):'—'}</span>`;
     const budCell = canPickB
       ? `<input type="number" step="any" min="0" data-sk="btarget" data-key="${esc(o.key)}" value="${btarget!=null?btarget:''}">`
-        +(budChg?`<span class="origv">原 ${fmtMoney(ac.budget)}</span>`:'')
+        +(budChg?`<span class="origv">原 ${fmtMoney(binit)}</span>`:'')+autoTag
       : `<span class="muted">${ac&&ac.budget!=null?fmtMoney(ac.budget):'—'}</span>`;
     const outTxt = ac ? (r.out?'<span style="color:var(--bad);font-weight:700">是</span>':'否') : '—';
     const pickCell = (canPick||canPickB) ? `<input type="checkbox" data-sk="pick" data-key="${esc(o.key)}" ${pick?'checked':''}>` : '';
-    return `<tr>
+    const isAutoSum = o.key.endsWith('|AUTO');
+    const expBtn = isAutoSum ? `<button class="plain xbtn" data-exp="${esc(o.key)}">${SOP_EXPAND[o.key]?'▾ 收合明細':'▸ 展開明細'}</button>` : '';
+    let html = `<tr>
       <td><span class="bdg ${r.cls}">${r.act}</span></td>
-      <td class="l txt" title="${esc(o.name)}">${esc(o.name)}${o.type&&o.type.includes('賣場')?'<span class="typechip">賣場</span>':''}${o.type&&o.type.includes('組合')?'<span class="typechip">組合</span>':''}${o.type&&o.type.includes('自動選品')?'<span class="typechip">自動</span>':''}${o.name.startsWith('廣告群組')?'<span class="typechip">群組</span>':''}
+      <td class="l txt" title="${esc(o.name)}">${esc(o.name)}${o.type&&o.type.includes('賣場')?'<span class="typechip">賣場</span>':''}${o.type&&o.type.includes('組合')?'<span class="typechip">組合</span>':''}${o.type&&o.type.includes('自動選品')?'<span class="typechip">自動</span>':''}${o.name.startsWith('廣告群組')?'<span class="typechip">群組</span>':''}${expBtn}
         <span class="newb">${esc(o.cat)} · ${esc(o.shop)}${r.flags&&r.flags[0]?' · '+esc(r.flags[0]):''}</span></td>
       <td>${roiCell}</td>
       <td>${refTxt}</td>
@@ -1063,6 +1088,19 @@ function renderSop(){
       <td class="${roasCls(o.roas)}">${fmtRoas(o.roas)}</td>
       <td>${pickCell}</td>
     </tr>`;
+    if(isAutoSum && SOP_EXPAND[o.key]){
+      const det=autoDetail(o.shop), top=det.slice(0,20);
+      html+=top.map(d=>`<tr class="subrow">
+        <td></td>
+        <td class="l txt" style="padding-left:26px" title="${esc(d.name)}">${esc(d.name)}<span class="newb">${esc(d.pid)}</span></td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>${fmtMoney(d.cost)}</td>
+        <td>${fmtMoney(d.sale)}</td>
+        <td class="${roasCls(d.cost?d.sale/d.cost:null)}">${fmtRoas(d.cost?d.sale/d.cost:null)}</td>
+        <td></td></tr>`).join('');
+      if(det.length>20) html+=`<tr class="subrow"><td></td><td class="l muted" style="padding-left:26px">…還有 ${det.length-20} 項(佔花費 ${fmtMoney(det.slice(20).reduce((a,d)=>a+d.cost,0))});完整明細在「週期分析」開「自動選品」看</td><td colspan="8"></td></tr>`;
+    }
+    return html;
   }).join('');
   document.getElementById('sopTbl').innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
   const sn=document.getElementById('sopSelNote'); if(sn) sn.textContent = nPick?`已勾選 ${nPick} 筆`:'';
@@ -1073,6 +1111,10 @@ function renderSop(){
   }));
 }
 function bindSopInputs(){
+  document.getElementById('sopTbl').addEventListener('click',e=>{
+    const b=e.target.closest('[data-exp]'); if(!b)return;
+    SOP_EXPAND[b.dataset.exp]=!SOP_EXPAND[b.dataset.exp]; renderSop();
+  });
   document.getElementById('sopTbl').addEventListener('change',e=>{
     const k=e.target.dataset.sk, key=e.target.dataset.key; if(!k||!key)return;
     SOP_SEL[key]=SOP_SEL[key]||{};
@@ -1082,7 +1124,7 @@ function bindSopInputs(){
       const row=sopRows().find(x=>x.o.key===key);   // 有調整→自動勾選;全部改回原值→自動取消勾選
       if(row){
         const ch=(row.canPick&&row.r.cur!=null&&row.target!=null&&+row.target!==+row.r.cur)
-               ||(row.canPickB&&row.ac&&row.ac.budget!=null&&row.btarget!=null&&+row.btarget!==+row.ac.budget);
+               ||(row.canPickB&&row.binit!=null&&row.btarget!=null&&+row.btarget!==+row.binit);
         SOP_SEL[key].pick=ch;
       }
     }
@@ -1125,9 +1167,9 @@ function sopSelected(){
         title:ac.name||o.name, campaign_id:ac.cid, field:'roi',
         current:r.cur, target:+x.target,
         reason:'儀表板ROI建議'+(r.ref!=null?'(成本推算 '+fmtRoas(r.ref)+')':'(手動判斷)'), who:'dashboard'});
-    if(x.canPickB && x.btarget>0 && ac.budget!=null && +x.btarget!==+ac.budget)
+    if(x.canPickB && x.btarget>0 && x.binit!=null && +x.btarget!==+x.binit)
       out.push({_key:o.key, shop:ac.rawShop, title:ac.name||o.name, campaign_id:ac.cid, field:'budget',
-        current:ac.budget, target:+x.btarget, reason:'儀表板預算調整', who:'dashboard'});
+        current:(ac.budget!=null?ac.budget:x.binit), target:+x.btarget, reason:'儀表板預算調整', who:'dashboard'});
   });
   return out;
 }
@@ -1136,8 +1178,6 @@ const QFIELD_OK={roi:['roi','目標ROI','目標投入產出比'],budget:['budget
 async function sendQueue(){
   const sel=sopSelected();
   if(!sel.length){ qmsg('沒有要送的變更:請先在表格把「目標ROI／每日預算」改成想要的值(改了會自動勾選)',true); return; }
-  const both=Object.values(sel.reduce((a,x)=>{(a[x.campaign_id]=a[x.campaign_id]||[]).push(x);return a;},{}))
-    .filter(g=>g.length>1).length;
   const pend=document.getElementById('queuePending');
   const status=(pend&&pend.checked)?'待確認':'待執行';
   const btn=document.getElementById('sopSend'); btn.disabled=true;
@@ -1153,8 +1193,7 @@ async function sendQueue(){
     if(hit){
       sel.forEach(x=>{ delete SOP_SEL[x._key]; });
       renderSop();
-      qmsg(`已送出 ${sel.length} 筆,佇列讀回 ${hit} 筆 ✓(狀態=${status})`
-        +(both?`;⚠ ${both} 則廣告同時改了ROI+預算,節流一週一次,同週只會執行先到的一項`:''));
+      qmsg(`已送出 ${sel.length} 筆,佇列讀回 ${hit} 筆 ✓(狀態=${status})`);
     }else{
       qmsg('送出後在佇列讀不到對應列 → 檢查網路與 QUEUE_TOKEN;若下方佇列表其實已出現該列,重新整理一次即可',true);
     }
@@ -1163,6 +1202,14 @@ async function sendQueue(){
 }
 const QCOLS=['建立時間','狀態','店鋪','廣告名稱','campaign_id','欄位','目前值','目標值','理由','建立者',
              '執行時間','結果','讀回值','訊息'];
+// 試算表的日期格經 GAS 會變成 UTC ISO 字串(2026-07-27T10:50:22.000Z=台北18:50)→ 一律轉回台北時間顯示
+function fmtTs(v){
+  const s=String(v??'').trim(); if(!s) return '';
+  if(/\dT\d.*Z$/.test(s)){ try{
+    return new Date(s).toLocaleString('sv-SE',{timeZone:'Asia/Taipei'}).slice(0,16);
+  }catch(e){} }
+  return s.replace('T',' ').slice(0,16);
+}
 async function loadQueue(){
   const data=await fetchApi('queue');
   const h=data[0]||[], ix={}; QCOLS.forEach(c=>ix[c]=h.indexOf(c));
@@ -1171,6 +1218,7 @@ async function loadQueue(){
     shop:String(r[ix['店鋪']]??''), name:String(r[ix['廣告名稱']]??''),
     cid:String(r[ix['campaign_id']]??'').trim(), field:String(r[ix['欄位']]??'').trim(),
     cur:r[ix['目前值']], target:r[ix['目標值']],
+    exec:String(r[ix['執行時間']]??''),
     result:String(r[ix['結果']]??''), back:r[ix['讀回值']], msg:String(r[ix['訊息']]??''),
   })).filter(q=>q.cid||q.name);
   renderQueue();
@@ -1186,15 +1234,16 @@ function renderQueue(){
   const el=document.getElementById('queueTbl'); if(!el)return;
   if(!QROWS.length){ el.innerHTML='<tbody><tr><td class="msg">佇列目前是空的</td></tr></tbody>'; qmsg('共 0 筆'); return; }
   const list=QROWS.slice().reverse().slice(0,50);
-  const th=['建立時間','狀態','廣告名稱','欄位','目前值','目標值','結果','訊息']
-    .map((l,i)=>`<th class="${i===2||i===7?'txt':''}">${l}</th>`).join('');
+  const th=['建立時間','狀態','廣告名稱','欄位','目前值','目標值','執行時間','結果','訊息']
+    .map((l,i)=>`<th class="${i===2||i===8?'txt':''}">${l}</th>`).join('');
   const body=list.map(q=>`<tr>
-    <td>${esc(String(q.ts).replace('T',' ').slice(0,16))}</td>
+    <td>${esc(fmtTs(q.ts))}</td>
     <td><span class="qbadge ${qCls(q.status)}">${esc(q.status||'—')}</span></td>
     <td class="l" title="${esc(q.name)}">${esc(q.name)}<span class="newb">${esc(q.shop)}</span></td>
     <td>${esc(q.field)}</td>
     <td>${q.cur==null||q.cur===''?'—':esc(String(q.cur))}</td>
     <td>${q.target==null||q.target===''?'—':esc(String(q.target))}</td>
+    <td>${esc(fmtTs(q.exec))||'—'}</td>
     <td>${esc(q.result||'')}${(q.back!=null&&q.back!=='')?`<span class="newb">讀回 ${esc(String(q.back))}</span>`:''}</td>
     <td class="msg">${esc(q.msg||'')}</td></tr>`).join('');
   el.innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
@@ -1221,7 +1270,10 @@ function parseCompare(data){
     postRoas:parseNum(r[ix['後ROAS']]),
     costD:parseNum(r[ix['日均花費變化%']]), roasD:parseNum(r[ix['ROAS差']]),
     status:String(r[ix['狀態']]||''),
-  }));
+  })).map(x=>({...x,
+    // 外部+每日預算+值帶小數(200→269.33)= 蝦皮智慧預算自動調整,標出來供隱藏/區分
+    sus:(x.src==='外部'&&x.field==='每日預算'
+         &&((x.oldV!=null&&x.oldV%1!==0)||(x.newV!=null&&x.newV%1!==0)))}));
 }
 async function loadCompare(){
   const el=document.getElementById('cmpMsg'); el.textContent='讀取中…'; el.style.color='';
@@ -1235,7 +1287,10 @@ function renderCompare(){
   const el=document.getElementById('cmpTbl'); if(!el)return;
   const fF=document.getElementById('cmpField').value, fS=document.getElementById('cmpSrc').value,
         fSt=document.getElementById('cmpSt').value, q=document.getElementById('cmpQ').value.trim().toLowerCase();
+  const hideEl=document.getElementById('cmpHideAuto'), hideAuto=!hideEl||hideEl.checked;
+  const nSus=CMPDATA.filter(x=>x.sus).length;
   let list=CMPDATA.filter(x=>
+    (!(hideAuto&&x.sus))&&
     (!fF||x.field===fF)&&(!fS||x.src===fS)&&
     (!fSt||(fSt==='done'?x.status==='已滿7天':fSt==='wait'?x.status.indexOf('累計中')>=0:x.status==='等資料'))&&
     (!q||x.name.toLowerCase().includes(q)));
@@ -1252,9 +1307,7 @@ function renderCompare(){
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   const body=list.map(x=>{
     const chg=`${x.oldV??'—'} → <b>${x.newV??'—'}</b>`;
-    // 外部預算變更帶小數(如 200→269.33)幾乎都是蝦皮自動調預算,標出來與人為調整區分
-    const srcTxt=(x.src==='外部'&&x.field==='每日預算'
-      &&((x.oldV!=null&&x.oldV%1!==0)||(x.newV!=null&&x.newV%1!==0)))?'外部(疑蝦皮自動)':x.src;
+    const srcTxt=x.sus?'外部(疑蝦皮自動)':x.src;
     const cd=x.costD==null?'—':`<span class="${x.costD>0?'pos':x.costD<0?'neg':''}">${(x.costD*100).toFixed(1)}%</span>`;
     const rd=x.roasD==null?'—':`<span class="${x.roasD>0?'pos':x.roasD<0?'neg':''}">${x.roasD>0?'+':''}${x.roasD.toFixed(2)}</span>`;
     return `<tr>
@@ -1274,7 +1327,8 @@ function renderCompare(){
     </tr>`;
   }).join('');
   el.innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
-  document.getElementById('cmpMsg').textContent=`顯示 ${list.length} / ${CMPDATA.length} 筆`;
+  document.getElementById('cmpMsg').textContent=
+    `顯示 ${list.length} / ${CMPDATA.length} 筆`+(hideAuto&&nSus?`(已隱藏蝦皮自動 ${nSus} 筆)`:'');
   el.querySelectorAll('th').forEach(h=>h.addEventListener('click',()=>{
     const k=h.dataset.k; if(!sortable.has(k))return;
     csort = csort.key===k?{key:k,dir:-csort.dir}:{key:k,dir:-1};
@@ -1452,7 +1506,7 @@ function bind(){
   document.getElementById('sopSend').addEventListener('click',sendQueue);
   document.getElementById('queueReload').addEventListener('click',refreshQueue);
   document.getElementById('cmpReload').addEventListener('click',loadCompare);
-  ['cmpField','cmpSrc','cmpSt'].forEach(id=>document.getElementById(id).addEventListener('change',renderCompare));
+  ['cmpField','cmpSrc','cmpSt','cmpHideAuto'].forEach(id=>document.getElementById(id).addEventListener('change',renderCompare));
   document.getElementById('cmpQ').addEventListener('input',renderCompare);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
   document.getElementById('sopAutoSw').checked=state.sopAuto;
