@@ -59,6 +59,9 @@
                 <button id="tab-btn-small" onclick="switchTab('small')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-table-cells-large"></i> 小標籤
                 </button>
+                <button id="tab-btn-call" onclick="switchTab('call')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-bell"></i> 驗貨呼叫台
+                </button>
                 <button id="tab-btn-db" onclick="switchTab('db')" class="tab-btn px-3 py-2 text-xs md:text-sm font-semibold rounded-md transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-gear"></i> 設定與同步
                 </button>
@@ -463,6 +466,23 @@
                 </div>
             </div>
         </section>
+
+        <!-- ============ 驗貨呼叫台(內嵌外部頁面) ============ -->
+        <section id="call-view" class="hidden">
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50">
+                    <span class="text-xs text-slate-500"><i class="fa-solid fa-bell mr-1"></i>驗貨桌快捷呼叫台</span>
+                    <a href="https://bestx0114-dev.github.io/call-name/inspection.html" target="_blank" rel="noopener"
+                       class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> 開新分頁
+                    </a>
+                </div>
+                <!-- src 等切到這個分頁才載入,避免每次開標籤系統都連外 -->
+                <iframe id="call-frame" title="驗貨桌快捷呼叫台" class="w-full block"
+                        style="height: calc(100vh - 210px); min-height: 460px; border: 0;"
+                        allow="autoplay; clipboard-write"></iframe>
+            </div>
+        </section>
     </main>
 
     <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 no-print">
@@ -707,9 +727,14 @@
             activeBtn.classList.add('text-indigo-600', 'border-indigo-600', 'bg-indigo-50', 'border');
             activeBtn.classList.remove('text-slate-500');
         }
-        ['mobile', 'small', 'pc', 'db'].forEach(function (t) {
-            document.getElementById(t + '-view').classList.toggle('hidden', t !== tab);
+        ['mobile', 'small', 'pc', 'db', 'call'].forEach(function (t) {
+            var v = document.getElementById(t + '-view');
+            if (v) v.classList.toggle('hidden', t !== tab);
         });
+        if (tab === 'call') {
+            var fr = document.getElementById('call-frame');
+            if (fr && !fr.src) fr.src = 'https://bestx0114-dev.github.io/call-name/inspection.html';
+        }
         if (tab !== 'mobile') { if (html5QrcodeScanner) stopScanner(); if (batchScanner) stopBatchScan(); }
         if (tab === 'mobile') { populateStaffSelects(); }
         if (tab === 'small') { renderSmallPreviewSample(); }
@@ -1758,7 +1783,7 @@
     loadStaff();
     (function () { var ft = document.getElementById('small-flush-time'); if (ft) ft.value = flushTime(); })();
     var startPc = location.hash === '#pc';
-    switchTab(startPc ? 'pc' : 'mobile');
+    switchTab(startPc ? 'pc' : (location.hash === '#call' ? 'call' : 'mobile'));
     if (localStorage.getItem('label_autoprint') === '1') {
         document.getElementById('auto-print-toggle').checked = true;
         toggleAutoPrint();

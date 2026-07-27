@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v20 — 點貨/覆核畫面即時更新;儲位查詢搜尋忽略「-」;盤點作業紀錄顯示當時庫存 */
+/* 倉儲系統前端 SPA v21 — 標籤列印移到首頁功能區(側邊欄移除);標籤系統新增驗貨呼叫台分頁 */
 'use strict';
 
 var CONFIG = {
@@ -327,9 +327,13 @@ function bindTabBar(id, onChange) {
 function pageHome() {
   $('#pageTitle').textContent = '首頁';
   var mods = [['#/storage', '🔍 儲位查詢'], ['#/orders', '📦 一般點貨(訂貨表)'], ['#/pick346', '📦 346點貨'],
-    ['#/bigcount', '📋 盤點作業'], ['#/shortage', '❗ 缺貨單'], ['#/second-list', '🏬 第二庫存清單'], ['#/short-inv', '📝 缺貨登記']];
+    ['#/bigcount', '📋 盤點作業'], ['#/shortage', '❗ 缺貨單'], ['#/second-list', '🏬 第二庫存清單'], ['#/short-inv', '📝 缺貨登記'],
+    [CONFIG.LINKS.labelPrint, '🏷️ 標籤列印', true]];   /* true = 外部網站,開新分頁 */
   var html = '<div class="form"><h2>功能</h2><div class="person-grid">' +
-    mods.map(function (m) { return '<button data-nav="' + m[0].slice(1) + '">' + m[1] + '</button>'; }).join('') + '</div></div>';
+    mods.map(function (m) {
+      return m[2] ? '<button onclick="window.open(\'' + esc(m[0]) + '\',\'_blank\')">' + m[1] + '</button>'
+                  : '<button data-nav="' + m[0].slice(1) + '">' + m[1] + '</button>';
+    }).join('') + '</div></div>';
   html += '<div class="form" style="margin-top:10px"><h2>連結</h2><div class="person-grid">' +
     store.links.map(function (l) { return '<button onclick="window.open(\'' + esc(l.url) + '\',\'_blank\')">🔗 ' + esc(l.name) + '</button>'; }).join('') + '</div></div>';
   $('#app').innerHTML = html;
