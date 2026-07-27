@@ -123,6 +123,7 @@
   #queueTbl td.msg{text-align:left;white-space:normal;font-size:12px;color:var(--sub)}  #sopTbl td.l{text-align:left;white-space:normal;min-width:150px;max-width:240px}
   #sopTbl td.rem{text-align:left;white-space:normal;min-width:170px;font-size:12px;color:var(--sub);line-height:1.5}
   #sopTbl input[type=number]{width:74px;padding:3px 6px;font-size:12px}
+  #sopTbl .origv{display:block;font-size:10.5px;color:#d97706;white-space:nowrap;margin-top:2px}
   #sopTbl select{padding:3px 5px;font-size:12px}
   .typechip{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid var(--warn);
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
@@ -193,7 +194,7 @@
     <button data-v="all" class="on">廣告銷售</button>
     <button data-v="direct">直接銷售</button>
   </div>
-  <label class="chklab" title="Shop GMV Max 商品明細(蝦皮自動廣告);SOP 建議永遠不含"><input type="checkbox" id="autoChk" checked>自動選品</label>
+  <label class="chklab" title="Shop GMV Max 商品明細(蝦皮自動廣告);SOP 分頁另有獨立開關"><input type="checkbox" id="autoChk" checked>自動選品</label>
   <label class="chklab"><input type="checkbox" id="cmpChk" checked>與前期比較</label>
 </div>
 
@@ -251,6 +252,7 @@
         <span class="muted" id="sopPeriodNote" style="font-size:12.5px"></span>
         <span class="spacer"></span>
         <span id="sopSelNote" class="muted" style="font-size:12.5px"></span>
+        <label class="chklab" title="納入 自動選品(GMV Max,每店彙總僅觀察) 與 無商品ID的賣場/廣告群組(可直接調ROI/預算)"><input type="checkbox" id="sopAutoSw">含自動選品/群組</label>
         <label class="chklab" title="測試用:待確認不會被本機 15 分排程撿走"><input type="checkbox" id="queuePending">只加入待確認</label>
         <button id="sopSend">送出勾選到佇列</button>        <button class="plain" id="sopExport">⬇ 匯出 CSV</button>
       </div>
@@ -263,8 +265,9 @@
         <button class="plain" id="queueReload">↻ 重新整理</button>
         <span id="queueMsg" class="muted" style="font-size:12px"></span>
       </div>
-      <div class="hint">勾選上表商品 →「送出勾選到佇列」寫入試算表分頁「調整佇列」(狀態=待執行);
-        本機每 15 分輪詢執行,同一則廣告一週只准改一次(節流),執行結果會回寫到這裡。</div>
+      <div class="hint">在上表直接改「目標ROI／每日預算」的值(改了會自動勾選,並顯示原值)→「送出勾選到佇列」
+        只送<b>有變更</b>的欄位到試算表「調整佇列」(狀態=待執行);本機每 15 分輪詢執行,執行結果回寫到這裡。
+        ⚠ 同一則廣告<b>一週只准改一次</b>(節流,不分ROI/預算):同週同時送 ROI+預算,只會執行先到的一項。</div>
       <div class="tblscroll"><table id="queueTbl"></table></div>
     </div>
     <div class="card">
@@ -289,9 +292,9 @@
       <div class="note">
         <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>(取保守低值)。
         目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
-        <b>「目標值」欄預設＝目前ROI(等於不動)</b>,請自己參考「建議ROI」往下調一階再送;
+        <b>「目前ROI→目標」同一格:欄內就是目前值,改了才算調整</b>(自動勾選並顯示「原 X」),請參考「建議ROI」往下調一階;
         建議值未含賣家負擔優惠券/蝦幣回饋,偏樂觀 → <b>請分階段調整,不要一次到位</b>。
-        目標值與目前值相同時本機會回「值相同,未送出」,不會佔用一週一次的節流額度。
+        沒有改動的欄位不會送出,不佔用一週一次的節流額度。
         同一則廣告<b>一週只准改一次</b>(蝦皮 ROAS 達成率獎勵規則);本機輪詢會自動節流並回寫「已略過(節流)」。
       </div>    </div>
   </section>
@@ -310,7 +313,8 @@
       </div>
       <div class="hint">每筆設定變更（快照差異，含手動與蝦皮自動改）比「變更前 7 天 vs 變更後 7 天」成效，皆不含變更當天。
         後窗未滿 7 天顯示「累計中」；「日均花費變化%」已用日均消除天數差。每天 08:30／20:00 隨設定快照自動重算。
-        ROI 調低放量的預期：花費↑、ROAS 往目標值靠攏。</div>
+        ROI 調低放量的預期：花費↑、ROAS 往目標值靠攏。
+        「<b>外部(疑蝦皮自動)</b>」＝預算值帶小數（如 200→269.33），多為蝦皮智慧預算自動調整，非人為。</div>
     </div>
     <div class="tablecard"><div class="tblscroll"><table id="cmpTbl"></table></div></div>
   </section>
@@ -455,6 +459,7 @@ function applySettingsCss(){
 // ===== 資料 =====
 let MDATA=[], DDATA=[];          // 月列 / 日列(物件)
 let ACFG={}, ROISUG={};          // 商品ID→廣告設定(campaign_id/目前ROI/預算/已花完) / 商品ID→成本推算的建議ROI
+let ACFG_NAME={};                // 無商品ID的廣告設定(賣場/廣告群組):鍵=短店名|廣告名稱
 let months=[], allShops=[], allCats=[];
 let dataMin=null, dataMax=null;  // 日資料範圍 'YYYY-MM-DD'
 let monthlyOk=false, dailyOk=false;
@@ -465,7 +470,8 @@ const state = {
   ptcols:new Set(['花費','銷售','ROAS','直接銷售','直接ROAS','轉換','轉換成本']),
   mtcols:new Set(M_TCOLS),
   psort:{key:'cost',dir:-1}, msort:{key:'廣告花費',dir:-1}, ssort:{key:'_ord',dir:1},
-  showAuto:lsGet('adDash:showAuto',true),   // 週期分析是否含自動選品(GMV Max);SOP 一律排除
+  showAuto:lsGet('adDash:showAuto',true),   // 週期分析是否含自動選品(GMV Max)
+  sopAuto:lsGet('adDash:sopAuto',false),    // SOP 是否納入 自動選品彙總(觀察)+無商品ID賣場/群組(可調)
   sopFilter:null,
 };
 let charts={};
@@ -542,17 +548,19 @@ function parseAdcfg(data){
   const h=data[0], ix={};
   ['店鋪','廣告名稱','廣告類型','狀態','商品ID','campaign_id','每日預算','目標投入產出比',
    '可改欄位','預算已花完','花費','銷售額','ROAS'].forEach(c=>ix[c]=h.indexOf(c));
-  const m={};
+  const m={}; ACFG_NAME={};
   data.slice(1).forEach(r=>{
     const pid=String(r[ix['商品ID']]??'').trim(), cid=String(r[ix['campaign_id']]??'').trim();
-    if(!pid||!cid) return;                       // 無商品ID的賣場/全站推廣廣告不在商品列 SOP 內
-    m[pid]={
+    if(!cid) return;
+    const rec={
       cid, rawShop:String(r[ix['店鋪']]||''),     // rawShop=原始全名,送佇列要用(短名反查不到埠)
       shop:canonStore(r[ix['店鋪']]), name:String(r[ix['廣告名稱']]||''),
       type:String(r[ix['廣告類型']]||''), state:String(r[ix['狀態']]||''),
       budget:parseNum(r[ix['每日預算']]), roi:parseNum(r[ix['目標投入產出比']]),
       editable:String(r[ix['可改欄位']]||''), out:String(r[ix['預算已花完']]||'').trim(),
     };
+    if(pid) m[pid]=rec;                          // 商品廣告:一商品同時間一則,1:1
+    else ACFG_NAME[rec.shop+'|'+rec.name]=rec;   // 賣場/廣告群組:店+廣告名稱為鍵(SOP「含自動選品/群組」用)
   });
   return m;
 }
@@ -930,7 +938,7 @@ function rowFor(cost){const t=[25,50,100,200,500];for(let i=0;i<t.length;i++)if(
 function roasTier(r){const t=RULES.tiers;if(r>=t.big)return 0;if(r>=t.up)return 1;if(r>=t.hold)return 'hold6';if(r>=t.down)return 2;return 3;}
 const ORDER={"大降 / 暫停":0,"小幅降低":1,"積極放大":2,"穩健提升":3,"持平 · 觀察":4,"觀察(資料不足)":5,"先別調預算":6,"無轉換":7};
 // ROI 主軸:比「目前目標ROI(廣告設定)」與「成本推算建議ROI(保守低值)」→ 調低放量 / 偏低可調高 / 合理 / 無法調整
-const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'不可改ROI':3,'無建議值':4,'無廣告設定':5};
+const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'可調(無建議值)':3,'不可改ROI':4,'無建議值':5,'無廣告設定':6,'自動選品':7};
 function evalRoi(o, ac, rs){
   const cur = ac ? ac.roi : null;
   const ref = (rs && rs.low>0) ? rs.low : null;
@@ -938,8 +946,14 @@ function evalRoi(o, ac, rs){
   const out = !!(ac && ac.out==='是');
   const base = {cur, ref, high:(rs&&rs.high>0)?rs.high:null, out, editable,
                 cid: ac?ac.cid:null, rawShop: ac?ac.rawShop:null, adName: ac?ac.name:null, target:null};
+  if(!ac && o.type && o.type.includes('自動選品'))
+    return {...base, cls:'b-obs', act:'自動選品', flags:['Shop GMV Max 無設定欄位(蝦皮不提供),僅供成效觀察'], ord:ROI_ORDER['自動選品']};
   if(!ac)        return {...base, cls:'b-obs', act:'無廣告設定', flags:['adcfg 沒有這商品(可能非進行中或無商品ID的賣場廣告)'], ord:ROI_ORDER['無廣告設定']};
-  if(!editable)  return {...base, cls:'b-obs', act:'不可改ROI', flags:['蝦皮宣告此廣告不可改目標ROI'], ord:ROI_ORDER['不可改ROI']};
+  if(!editable)  return {...base, cls:'b-obs', act:'不可改ROI', flags:['蝦皮宣告此廣告不可改目標ROI'+(String(ac.editable).includes('budget')?';預算仍可調':'')], ord:ROI_ORDER['不可改ROI']};
+  if(ref==null && !o.pid && cur>0){
+    const fl=['廣告群組/賣場廣告無成本推算建議,請自行判斷目標值']; if(out) fl.push('預算已花完');
+    return {...base, cls:'b-hold', act:'可調(無建議值)', target:cur, flags:fl, ord:ROI_ORDER['可調(無建議值)']};
+  }
   if(ref==null)  return {...base, cls:'b-obs', act:'無建議值', flags:['目標ROI建議未算出(多規格待訂單/無成本表)'], ord:ROI_ORDER['無建議值']};
   if(!(cur>0))   return {...base, cls:'b-obs', act:'無建議值', flags:['廣告設定讀不到目前目標ROI'], ord:ROI_ORDER['無建議值']};
   const flags=[]; if(out) flags.push('預算已花完');
@@ -949,22 +963,39 @@ function evalRoi(o, ac, rs){
   else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近建議 '+fmtRoas(ref)); }
   return {...base, cls, act, target, flags, ord:ROI_ORDER[act]};
 }
-let SOP_SEL={};   // key -> {pick:bool, target:number} 勾選與目標ROI 覆蓋(session)
+let SOP_SEL={};   // key -> {pick:bool, target:目標ROI覆蓋, btarget:預算覆蓋}(session)
 function sopRows(){
-  // SOP 判斷的是「手動商品廣告的目標ROI」→ 自動選品(GMV Max)一律排除,
-  // 否則同商品的自動廣告花費/銷售會混進期間ROAS,誤導判斷
-  const rows=dailyRows(state.ps,state.pe).filter(r=>!isAuto(r));
+  // SOP 主體=手動商品廣告(自動選品混入會污染期間ROAS)。
+  // 勾「含自動選品/群組」(sopAuto):加入 無商品ID的賣場/廣告群組(join 廣告設定,可調)
+  // + 自動選品(GMV Max)彙總成每店一列(無設定欄位,僅觀察);與週期分析的「自動選品」開關互相獨立。
+  const all=DDATA.filter(r=>r.ds>=state.ps&&r.ds<=state.pe&&inFilter(r.shop,r.cat,r.name,r.pid));
+  const rows=all.filter(r=>!isAuto(r));
   const len=diffDays(state.ps,state.pe)+1, ratio=7/len;
-  return [...aggProducts(rows).values()].filter(o=>o.pid).map(o=>{
-    const ac = ACFG[o.pid]||null, rs = ROISUG[o.pid]||null;
+  const mk=o=>{
+    const ac = o.pid ? (ACFG[o.pid]||null) : (ACFG_NAME[o.shop+'|'+o.name]||null);
+    const rs = o.pid ? (ROISUG[o.pid]||null) : null;
     const r = evalRoi(o, ac, rs);
-    const canPick = !!(ac && r.editable && r.ref!=null);
+    const canPick = !!(ac && r.editable && (r.ref!=null || !o.pid));    // 群組無建議值也可手動調
+    const canPickB = !!(ac && String(ac.editable).includes('budget'));  // 每日預算可調
     const sel = SOP_SEL[o.key]||{};
     const target = sel.target!=null ? sel.target : r.target;
-    const pick = canPick && sel.pick===true;
-    const spend7=o.cost*ratio, rev7=o.sale*ratio;
-    return {o,r,ac,rs,canPick,target,pick,spend7,rev7};
-  });
+    const btarget = sel.btarget!=null ? sel.btarget : (ac?ac.budget:null);
+    const pick = (canPick||canPickB) && sel.pick===true;
+    return {o,r,ac,rs,canPick,canPickB,target,btarget,pick,spend7:o.cost*ratio,rev7:o.sale*ratio};
+  };
+  const list=[...aggProducts(rows).values()].filter(o=>o.pid||state.sopAuto).map(mk);
+  if(state.sopAuto){
+    const m=new Map();   // 自動選品(GMV Max)每店彙總一列
+    all.filter(isAuto).forEach(r=>{
+      let o=m.get(r.shop);
+      if(!o){ o={key:r.shop+'|AUTO',shop:r.shop,cat:'自動選品',pid:'',name:'Shop GMV Max(自動選品全賣場)',type:'自動選品廣告'};
+        SUMK.forEach(x=>o[x]=0); m.set(r.shop,o); }
+      SUMK.forEach(x=>o[x]+=r[x]);
+    });
+    m.forEach(o=>{ o.roas=o.cost?o.sale/o.cost:null; o.droas=o.cost?o.dsale/o.cost:null;
+      o.cpa=o.conv?o.cost/o.conv:null; list.push(mk(o)); });
+  }
+  return list;
 }
 
 function renderSop(){
@@ -994,34 +1025,38 @@ function renderSop(){
     chip('down','sc-up','調低放量',cnt.down)+
     chip('up','sc-down','偏低可調高',cnt.up)+
     chip('hold','sc-hold','合理',cnt.hold)+
-    chip('na','sc-obs','無法調整',cnt.na)+
+    chip('na','sc-obs','其他/觀察',cnt.na)+
     (F?`<span class="schip schip-x" data-fil="">✕ 清除篩選</span>`:'');
   const actF={down:'調低放量',up:'偏低可調高',hold:'合理'};
   const shown = !F ? list : list.filter(({r})=> F==='na'
     ? !['調低放量','偏低可調高','合理'].includes(r.act) : r.act===actF[F]);
-  const hd=[['_ord','建議動作'],['name','商品'],['cur','目前ROI'],['ref','建議ROI'],
-            ['target','目標值'],['budget','目前預算'],['out','已花完'],
+  const hd=[['_ord','建議動作'],['name','商品'],['cur','目前ROI→目標'],['ref','建議ROI'],
+            ['budget','每日預算→目標'],['out','已花完'],
             ['cost','期間花費'],['sale','期間銷售'],['roas','期間ROAS'],['pick','勾選']];
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   let nPick=0;
-  const body=shown.map(({o,r,ac,rs,canPick,target,pick})=>{
+  const body=shown.map(({o,r,ac,rs,canPick,canPickB,target,btarget,pick})=>{
     if(pick)nPick++;
-    const curTxt = r.cur!=null ? fmtRoas(r.cur) : '—';
     const refTxt = r.ref!=null ? ((rs&&rs.high>rs.low)?`${fmtRoas(rs.low)}~${fmtRoas(rs.high)}`:fmtRoas(r.ref)) : '—';
-    const budTxt = ac ? fmtMoney(ac.budget) : '—';
+    const roiChg = canPick && r.cur!=null && target!=null && +target!==+r.cur;
+    const budChg = canPickB && ac && ac.budget!=null && btarget!=null && +btarget!==+ac.budget;
+    const roiCell = canPick
+      ? `<input type="number" step="any" min="0" data-sk="target" data-key="${esc(o.key)}" value="${target!=null?target:''}">`
+        +(roiChg?`<span class="origv">原 ${fmtRoas(r.cur)}</span>`:'')
+      : `<span class="muted">${r.cur!=null?fmtRoas(r.cur):'—'}</span>`;
+    const budCell = canPickB
+      ? `<input type="number" step="any" min="0" data-sk="btarget" data-key="${esc(o.key)}" value="${btarget!=null?btarget:''}">`
+        +(budChg?`<span class="origv">原 ${fmtMoney(ac.budget)}</span>`:'')
+      : `<span class="muted">${ac&&ac.budget!=null?fmtMoney(ac.budget):'—'}</span>`;
     const outTxt = ac ? (r.out?'<span style="color:var(--bad);font-weight:700">是</span>':'否') : '—';
-    const targetCell = canPick
-      ? `<input type="number" step="0.1" min="0" data-sk="target" data-key="${esc(o.key)}" value="${target!=null?target:''}">`
-      : '<span class="muted">—</span>';
-    const pickCell = canPick ? `<input type="checkbox" data-sk="pick" data-key="${esc(o.key)}" ${pick?'checked':''}>` : '';
+    const pickCell = (canPick||canPickB) ? `<input type="checkbox" data-sk="pick" data-key="${esc(o.key)}" ${pick?'checked':''}>` : '';
     return `<tr>
       <td><span class="bdg ${r.cls}">${r.act}</span></td>
-      <td class="l txt" title="${esc(o.name)}">${esc(o.name)}${o.type&&o.type.includes('賣場')?'<span class="typechip">賣場</span>':''}${o.type&&o.type.includes('組合')?'<span class="typechip">組合</span>':''}
+      <td class="l txt" title="${esc(o.name)}">${esc(o.name)}${o.type&&o.type.includes('賣場')?'<span class="typechip">賣場</span>':''}${o.type&&o.type.includes('組合')?'<span class="typechip">組合</span>':''}${o.type&&o.type.includes('自動選品')?'<span class="typechip">自動</span>':''}${o.name.startsWith('廣告群組')?'<span class="typechip">群組</span>':''}
         <span class="newb">${esc(o.cat)} · ${esc(o.shop)}${r.flags&&r.flags[0]?' · '+esc(r.flags[0]):''}</span></td>
-      <td>${curTxt}</td>
+      <td>${roiCell}</td>
       <td>${refTxt}</td>
-      <td>${targetCell}</td>
-      <td>${budTxt}</td>
+      <td>${budCell}</td>
       <td>${outTxt}</td>
       <td>${fmtMoney(o.cost)}</td>
       <td>${fmtMoney(o.sale)}</td>
@@ -1032,7 +1067,7 @@ function renderSop(){
   document.getElementById('sopTbl').innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
   const sn=document.getElementById('sopSelNote'); if(sn) sn.textContent = nPick?`已勾選 ${nPick} 筆`:'';
   document.querySelectorAll('#sopTbl th').forEach(h=>h.addEventListener('click',()=>{
-    const k=h.dataset.k; if(k==='pick'||k==='target'||k==='out')return;
+    const k=h.dataset.k; if(k==='pick'||k==='out')return;
     state.ssort= state.ssort.key===k?{key:k,dir:-state.ssort.dir}:{key:k,dir:k==='name'?1:(k==='_ord'?1:-1)};
     renderSop();
   }));
@@ -1042,7 +1077,15 @@ function bindSopInputs(){
     const k=e.target.dataset.sk, key=e.target.dataset.key; if(!k||!key)return;
     SOP_SEL[key]=SOP_SEL[key]||{};
     if(k==='pick'){ SOP_SEL[key].pick=e.target.checked; }
-    if(k==='target'){ const v=+e.target.value; SOP_SEL[key].target = v>0?v:null; }
+    if(k==='target'||k==='btarget'){
+      const v=+e.target.value; SOP_SEL[key][k]= v>0?v:null;
+      const row=sopRows().find(x=>x.o.key===key);   // 有調整→自動勾選;全部改回原值→自動取消勾選
+      if(row){
+        const ch=(row.canPick&&row.r.cur!=null&&row.target!=null&&+row.target!==+row.r.cur)
+               ||(row.canPickB&&row.ac&&row.ac.budget!=null&&row.btarget!=null&&+row.btarget!==+row.ac.budget);
+        SOP_SEL[key].pick=ch;
+      }
+    }
     renderSop();
   });
 }
@@ -1071,34 +1114,49 @@ function renderRules(){ renderRulesTable(); renderTierEditor(); }
 let QROWS=[], queueLoaded=false;
 const qmsg=(m,err)=>{const el=document.getElementById('queueMsg');if(!el)return;
   el.textContent=m; el.style.color=err?'var(--bad)':'';};
-function sopSelected(){ return sopRows().filter(x=>x.pick&&x.canPick&&x.target>0); }
+function sopSelected(){
+  // 回傳要送佇列的「變更列」:同一廣告 ROI/預算 各一列;值=目前值者不送(有改才算調整)
+  const out=[];
+  sopRows().forEach(x=>{
+    if(!x.pick||!x.ac) return;
+    const {o,r,ac}=x;
+    if(x.canPick && x.target>0 && r.cur!=null && +x.target!==+r.cur)
+      out.push({_key:o.key, shop:ac.rawShop,   // ★ 原始全名;queue_run 用店名反查埠號,短名會對不上
+        title:ac.name||o.name, campaign_id:ac.cid, field:'roi',
+        current:r.cur, target:+x.target,
+        reason:'儀表板ROI建議'+(r.ref!=null?'(成本推算 '+fmtRoas(r.ref)+')':'(手動判斷)'), who:'dashboard'});
+    if(x.canPickB && x.btarget>0 && ac.budget!=null && +x.btarget!==+ac.budget)
+      out.push({_key:o.key, shop:ac.rawShop, title:ac.name||o.name, campaign_id:ac.cid, field:'budget',
+        current:ac.budget, target:+x.btarget, reason:'儀表板預算調整', who:'dashboard'});
+  });
+  return out;
+}
+// GAS 會把 roi/budget 正規化成中文欄名寫進佇列 → 讀回比對兩種都要認(修正:舊版只比 'roi' 永遠比不中)
+const QFIELD_OK={roi:['roi','目標ROI','目標投入產出比'],budget:['budget','預算','每日預算']};
 async function sendQueue(){
   const sel=sopSelected();
-  if(!sel.length){ qmsg('沒有勾選任何商品(要先勾「勾選」欄且有目標值)',true); return; }
+  if(!sel.length){ qmsg('沒有要送的變更:請先在表格把「目標ROI／每日預算」改成想要的值(改了會自動勾選)',true); return; }
+  const both=Object.values(sel.reduce((a,x)=>{(a[x.campaign_id]=a[x.campaign_id]||[]).push(x);return a;},{}))
+    .filter(g=>g.length>1).length;
   const pend=document.getElementById('queuePending');
   const status=(pend&&pend.checked)?'待確認':'待執行';
-  const rows=sel.map(({o,r,ac,target})=>({
-    shop: ac.rawShop,                       // ★ 原始全名;queue_run 用店名反查埠號,短名會對不上
-    title: ac.name||o.name, campaign_id: ac.cid, field:'roi',
-    current: r.cur, target:+target,
-    reason: '儀表板ROI建議'+(r.ref!=null?'(成本推算 '+fmtRoas(r.ref)+')':''),
-    who: 'dashboard',
-  }));
   const btn=document.getElementById('sopSend'); btn.disabled=true;
-  qmsg(`送出 ${rows.length} 筆(狀態=${status})…`);
+  qmsg(`送出 ${sel.length} 筆(狀態=${status})…`);
   try{
     // Apps Script 不給瀏覽器讀 POST 回應(CORS)→ no-cors 送出後重讀佇列比對確認
     await fetch(CONFIG.api,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({kind:'queue',token:CONFIG.queueToken,status,rows})});
+      body:JSON.stringify({kind:'queue',token:CONFIG.queueToken,status,rows:sel})});
     await loadQueue();
-    const hit=rows.filter(x=>QROWS.some(q=>String(q.cid)===String(x.campaign_id)&&q.field==='roi')).length;
+    const hit=sel.filter(x=>QROWS.some(q=>String(q.cid)===String(x.campaign_id)
+      &&(QFIELD_OK[x.field]||[x.field]).includes(q.field))).length;
     if(hit){
-      sel.forEach(({o})=>{ SOP_SEL[o.key]=SOP_SEL[o.key]||{}; SOP_SEL[o.key].pick=false; });
+      sel.forEach(x=>{ delete SOP_SEL[x._key]; });
       renderSop();
-      qmsg(`已送出 ${rows.length} 筆,佇列讀回 ${hit} 筆 ✓(狀態=${status})`);
+      qmsg(`已送出 ${sel.length} 筆,佇列讀回 ${hit} 筆 ✓(狀態=${status})`
+        +(both?`;⚠ ${both} 則廣告同時改了ROI+預算,節流一週一次,同週只會執行先到的一項`:''));
     }else{
-      qmsg('送出後在佇列找不到對應列 → 確認 Code.gs 已部署 v3.15 且 QUEUE_TOKEN 一致',true);
+      qmsg('送出後在佇列讀不到對應列 → 檢查網路與 QUEUE_TOKEN;若下方佇列表其實已出現該列,重新整理一次即可',true);
     }
   }catch(e){ qmsg('送出失敗:'+e.message,true); }
   finally{ btn.disabled=false; }
@@ -1194,6 +1252,9 @@ function renderCompare(){
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   const body=list.map(x=>{
     const chg=`${x.oldV??'—'} → <b>${x.newV??'—'}</b>`;
+    // 外部預算變更帶小數(如 200→269.33)幾乎都是蝦皮自動調預算,標出來與人為調整區分
+    const srcTxt=(x.src==='外部'&&x.field==='每日預算'
+      &&((x.oldV!=null&&x.oldV%1!==0)||(x.newV!=null&&x.newV%1!==0)))?'外部(疑蝦皮自動)':x.src;
     const cd=x.costD==null?'—':`<span class="${x.costD>0?'pos':x.costD<0?'neg':''}">${(x.costD*100).toFixed(1)}%</span>`;
     const rd=x.roasD==null?'—':`<span class="${x.roasD>0?'pos':x.roasD<0?'neg':''}">${x.roasD>0?'+':''}${x.roasD.toFixed(2)}</span>`;
     return `<tr>
@@ -1202,7 +1263,7 @@ function renderCompare(){
       <td class="l txt" title="${esc(x.name)}">${esc(x.name)}</td>
       <td>${x.field==='目標投入產出比'?'目標ROI':esc(x.field)}</td>
       <td style="white-space:nowrap">${chg}</td>
-      <td>${esc(x.src)}</td>
+      <td style="white-space:nowrap">${esc(srcTxt)}</td>
       <td>${fmtMoney(x.preCost||0)}</td>
       <td>${x.preRoas==null?'—':fmtRoas(x.preRoas)}</td>
       <td>${fmtMoney(x.postCost||0)}<span class="newb">${x.postDays||0} 天</span></td>
@@ -1224,13 +1285,13 @@ function renderCompare(){
 function sopExportCsv(){
   const list=sopRows();
   const head=['商品','分類','店鋪','campaign_id','建議動作','目前ROI','建議ROI(低)','建議ROI(高)',
-              '目標值','目前預算','已花完','期間花費','期間銷售','期間ROAS','說明'];
+              '目標值','目前預算','預算目標','已花完','期間花費','期間銷售','期間ROAS','說明'];
   const c=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
   const lines=[head.join(',')];
-  list.forEach(({o,r,ac,rs,target})=>{
+  list.forEach(({o,r,ac,rs,target,btarget})=>{
     lines.push([c(o.name),c(o.cat),c(o.shop),c(ac?ac.cid:''),c(r.act),
       c(r.cur??''),c(rs&&rs.low?rs.low:''),c(rs&&rs.high?rs.high:''),c(target??''),
-      c(ac?ac.budget:''),c(r.out?'是':'否'),
+      c(ac?ac.budget:''),c(btarget??''),c(r.out?'是':'否'),
       c(Math.round(o.cost)),c(Math.round(o.sale)),c(o.roas==null?'':o.roas.toFixed(2)),
       c((r.flags||[]).join(' / '))].join(','));
   });
@@ -1394,6 +1455,10 @@ function bind(){
   ['cmpField','cmpSrc','cmpSt'].forEach(id=>document.getElementById(id).addEventListener('change',renderCompare));
   document.getElementById('cmpQ').addEventListener('input',renderCompare);
   document.getElementById('sopExport').addEventListener('click',sopExportCsv);
+  document.getElementById('sopAutoSw').checked=state.sopAuto;
+  document.getElementById('sopAutoSw').addEventListener('change',e=>{
+    state.sopAuto=e.target.checked; lsSet('adDash:sopAuto',state.sopAuto); renderSop();
+  });
   document.getElementById('autoChk').checked=state.showAuto;
   document.getElementById('autoChk').addEventListener('change',e=>{
     state.showAuto=e.target.checked; lsSet('adDash:showAuto',state.showAuto); render();
