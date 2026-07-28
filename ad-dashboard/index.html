@@ -126,6 +126,12 @@
   #sopTbl .origv{display:block;font-size:10.5px;color:#d97706;white-space:nowrap;margin-top:2px}
   #sopTbl .subrow td{background:rgba(148,163,184,.08);font-size:12px;padding-top:4px;padding-bottom:4px}
   #sopTbl .xbtn{font-size:11px;padding:1px 8px;margin-left:8px;cursor:pointer}
+  .dcl{display:inline-block;font-size:10.5px;border-radius:6px;padding:1px 6px;margin:1px 2px;white-space:nowrap;font-weight:600}
+  #mtbl .subrow td{background:rgba(148,163,184,.08);font-size:12px;padding:6px 10px}
+  #mtbl .xbtn{font-size:11px;padding:0 6px;cursor:pointer}
+  .cmpmini{border-collapse:collapse;font-size:12px}
+  .cmpmini th,.cmpmini td{padding:2px 10px;text-align:right;border-bottom:1px solid rgba(148,163,184,.25)}
+  .cmpmini th:first-child,.cmpmini td:first-child{text-align:left}
   #sopTbl select{padding:3px 5px;font-size:12px}
   .typechip{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid var(--warn);
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
@@ -352,10 +358,14 @@
       <div class="tbar">
         <strong>明細(焦點月)</strong>
         <span id="mtblcount" class="muted"></span>
+        <label class="chklab" title="只顯示月銷比上月掉超過 15% 的商品"><input type="checkbox" id="mDeclChk">只看下滑</label>
         <span class="spacer"></span>
         <span class="muted" style="font-size:12px">顯示欄位:</span>
         <div class="coltoggle" id="mcoltoggle"></div>
       </div>
+      <div class="hint">「跌因」= 自動歸因(比上月):<b>大盤同跌</b>(整個分類都在掉)/<b>廣告減量</b>(花費-30%)/
+        <b>流量下滑</b>(曝光-20%但點擊率沒掉)/<b>點擊率降</b>(主圖或價格吸引力)/<b>轉換惡化</b>(價格/評價/競品)/
+        <b>改價</b>(當月有改價紀錄,附最近日期)。點「▸」展開本月vs上月完整對比。</div>
       <div class="tblscroll"><table id="mtbl"></table></div>
     </div>
   </section>
@@ -528,6 +538,9 @@ function parseMonthly(data){
     o['商品ID']=String(row[idx['商品ID']]||''); o['商品名稱']=String(row[idx['商品名稱']]||'');
     o['月份']=normDate(row[idx['月份']],7);
     ['月銷','漲跌','差額','廣告花費','廣告銷售','ROAS','廣告佔比','廣告成本比'].forEach(c=>{o[c]=parseNum(row[idx[c]]);});
+    // 2026-07-28 新欄(跌因歸因用;舊快照沒有這些欄 → indexOf=-1 取 undefined,安全)
+    ['曝光','點擊率','轉換率','改價次數'].forEach(c=>{const i=head.indexOf(c); o[c]=i>=0?parseNum(row[i]):null;});
+    const iLast=head.indexOf('最近改價日'); o['最近改價日']=iLast>=0?String(row[iLast]||''):'';
     return o;
   }).filter(o=>o['月份']);
 }
@@ -1417,9 +1430,64 @@ function renderMTopbar(){
         return `花費${fmtMoney(r['廣告花費'])} · ROAS${r['ROAS']} · 佔比${fmtPct(r['廣告佔比'])}`;}}}},
       scales:{x:{ticks:{callback:v=>Math.round(v/1000)+'k'}}}}});
 }
+// ===== 跌因歸因(月度整合;2026-07-28)=====
+const DECL={drop:-0.15, cat:-0.15, ad:-0.30, exp:-0.20, ctr:-0.20, cvr:-0.20};   // 門檻(小數)
+const DCL_COLOR={'大盤同跌':'#e2e8f0;color:#475569','廣告減量':'#ffedd5;color:#c2410c',
+  '流量下滑':'#dbeafe;color:#1d4ed8','點擊率降':'#ede9fe;color:#6d28d9',
+  '轉換惡化':'#fee2e2;color:#b91c1c','改價':'#fef3c7;color:#b45309','不明':'#f1f5f9;color:#64748b'};
+let M_EXPAND={};
+function prevMonthOf(m){ const y=+m.slice(0,4), mm=+m.slice(5,7);
+  return mm===1? `${y-1}-12` : `${y}-${String(mm-1).padStart(2,'0')}`; }
+function declineInfo(r, prev, catD){
+  if(r['漲跌']==null || r['漲跌']>DECL.drop) return null;
+  const d=k=>{ if(!prev||!prev[k]||r[k]==null) return null; return (r[k]-prev[k])/Math.abs(prev[k]); };
+  const adD=d('廣告花費'), expD=d('曝光'), ctrD=d('點擊率'), cvrD=d('轉換率');
+  const b=[];
+  if(catD!=null && catD<=DECL.cat) b.push('大盤同跌');
+  if(adD!=null && adD<=DECL.ad) b.push('廣告減量');
+  if(expD!=null && expD<=DECL.exp && (ctrD==null||ctrD>DECL.ctr/2)) b.push('流量下滑');
+  if(ctrD!=null && ctrD<=DECL.ctr) b.push('點擊率降');
+  if(cvrD!=null && cvrD<=DECL.cvr) b.push('轉換惡化');
+  if(r['改價次數']>0) b.push('改價');
+  if(!b.length) b.push('不明');
+  return b;
+}
+function dclChip(t,r){
+  const lab=(t==='改價'&&r['最近改價日'])?`改價(${String(r['最近改價日']).slice(5)})`:t;
+  return `<span class="dcl" style="background:${DCL_COLOR[t]||DCL_COLOR['不明']}">${lab}</span>`;
+}
+function mDetailRows(r, prev, ncols){
+  const f=(v,fn)=>v==null||v===''?'—':fn(v);
+  const dpct=(a,b)=>(a!=null&&b)?((a-b)/Math.abs(b)):null;
+  const line=(lab,cur,pv,fn)=>{const dd=dpct(cur,pv);
+    return `<tr><td>${lab}</td><td>${f(cur,fn)}</td><td>${f(pv,fn)}</td>
+      <td class="${dd==null?'':dd>=0?'pos':'neg'}">${dd==null?'—':(dd*100).toFixed(1)+'%'}</td></tr>`;};
+  const chg=r['改價次數']>0?`當月改價 ${r['改價次數']} 天,最近 ${esc(r['最近改價日'])}`:'當月無改價紀錄';
+  return `<tr class="subrow"><td colspan="${ncols}">
+    <table class="cmpmini"><tr><th></th><th>本月</th><th>上月</th><th>變化</th></tr>
+      ${line('月銷',r['月銷'],prev?prev['月銷']:null,fmtMoney)}
+      ${line('廣告花費',r['廣告花費'],prev?prev['廣告花費']:null,fmtMoney)}
+      ${line('廣告銷售',r['廣告銷售'],prev?prev['廣告銷售']:null,fmtMoney)}
+      ${line('曝光',r['曝光'],prev?prev['曝光']:null,v=>fmtMoney(v))}
+      ${line('點擊率',r['點擊率'],prev?prev['點擊率']:null,fmtPct)}
+      ${line('轉換率',r['轉換率'],prev?prev['轉換率']:null,fmtPct)}
+    </table><div class="muted" style="font-size:11.5px;margin-top:4px">${chg}${prev?'':';(上月無資料)'}</div>
+  </td></tr>`;
+}
 function renderMTable(){
-  const rows=mFiltered(state.month);
-  const cols=['商品名稱','分類','店鋪'].concat(M_TCOLS.filter(c=>state.mtcols.has(c)));
+  let rows=mFiltered(state.month);
+  const declOnly=document.getElementById('mDeclChk')&&document.getElementById('mDeclChk').checked;
+  if(declOnly) rows=rows.filter(r=>r['漲跌']!=null&&r['漲跌']<=DECL.drop);
+  const pm=prevMonthOf(state.month||'');
+  const prevBy={};
+  MDATA.forEach(r=>{ if(r['月份']===pm) prevBy[r['商品ID']]=r; });
+  const catCur={}, catPrev={};
+  MDATA.forEach(r=>{ if(!state.shops.has(r['店鋪'])) return;
+    if(r['月份']===state.month) catCur[r['分類']]=(catCur[r['分類']]||0)+(r['月銷']||0);
+    else if(r['月份']===pm) catPrev[r['分類']]=(catPrev[r['分類']]||0)+(r['月銷']||0); });
+  const catD={};
+  Object.keys(catCur).forEach(c=>{ if(catPrev[c]) catD[c]=(catCur[c]-catPrev[c])/catPrev[c]; });
+  const cols=['商品名稱','分類','店鋪'].concat(M_TCOLS.filter(c=>state.mtcols.has(c))).concat(['跌因']);
   const s=state.msort;
   rows.sort((a,b)=>{const av=a[s.key],bv=b[s.key];
     if(av==null)return 1; if(bv==null)return -1;
@@ -1427,21 +1495,33 @@ function renderMTable(){
     return (av<bv?-1:av>bv?1:0)*s.dir;});
   const th=cols.map(c=>{const cls=(M_NUMCOL[c]?'':'txt')+(s.key===c?(s.dir>0?' asc':' desc'):'');
     return `<th class="${cls}" data-k="${c}">${c}</th>`;}).join('');
-  const body=rows.map(r=>'<tr>'+cols.map(c=>{
-    let v=r[c],cls='',disp='';
-    if(c==='商品名稱'){cls='txt name';disp=esc(v);}
-    else if(c==='分類'||c==='店鋪'){cls='txt';disp=esc(v);}
-    else if(M_NUMCOL[c]==='money'){disp=fmtMoney(v); if(c==='差額'&&v!=null)cls=v>=0?'pos':'neg';}
-    else if(M_NUMCOL[c]==='pct'){disp=fmtPct(v);
-      if(c==='漲跌'&&v!=null)cls=v>=0?'pos':'neg';
-      if(c==='廣告成本比'&&v!=null&&v>=SETTINGS.costRatioBad/100)cls='cellbad';}
-    else if(M_NUMCOL[c]==='roas'){disp=fmtRoas(v);cls=roasCls(v);}
-    return `<td class="${cls}">${disp}</td>`;
-  }).join('')+'</tr>').join('');
+  const body=rows.map(r=>{
+    const prev=prevBy[r['商品ID']];
+    let html='<tr>'+cols.map(c=>{
+      let v=r[c],cls='',disp='';
+      if(c==='商品名稱'){cls='txt name';disp=esc(v);}
+      else if(c==='分類'||c==='店鋪'){cls='txt';disp=esc(v);}
+      else if(c==='跌因'){
+        const info=declineInfo(r, prev, catD[r['分類']]);
+        disp=(info?info.map(t=>dclChip(t,r)).join(''):'')
+          +`<button class="plain xbtn" data-mexp="${esc(r['商品ID'])}">${M_EXPAND[r['商品ID']]?'▾':'▸'}</button>`;
+        cls='txt';
+      }
+      else if(M_NUMCOL[c]==='money'){disp=fmtMoney(v); if(c==='差額'&&v!=null)cls=v>=0?'pos':'neg';}
+      else if(M_NUMCOL[c]==='pct'){disp=fmtPct(v);
+        if(c==='漲跌'&&v!=null)cls=v>=0?'pos':'neg';
+        if(c==='廣告成本比'&&v!=null&&v>=SETTINGS.costRatioBad/100)cls='cellbad';}
+      else if(M_NUMCOL[c]==='roas'){disp=fmtRoas(v);cls=roasCls(v);}
+      return `<td class="${cls}">${disp}</td>`;
+    }).join('')+'</tr>';
+    if(M_EXPAND[r['商品ID']]) html+=mDetailRows(r, prev, cols.length);
+    return html;
+  }).join('');
   document.getElementById('mtbl').innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
   document.getElementById('mtblcount').textContent=`${rows.length} 個商品`;
   document.querySelectorAll('#mtbl th').forEach(h=>h.addEventListener('click',()=>{
-    const k=h.dataset.k; state.msort= state.msort.key===k?{key:k,dir:-state.msort.dir}:{key:k,dir:-1};
+    const k=h.dataset.k; if(k==='跌因')return;
+    state.msort= state.msort.key===k?{key:k,dir:-state.msort.dir}:{key:k,dir:-1};
     renderMTable();
   }));
 }
@@ -1487,6 +1567,11 @@ function bind(){
     if(!e.target.dataset.col)return;
     e.target.checked?state.ptcols.add(e.target.dataset.col):state.ptcols.delete(e.target.dataset.col);
     renderPTable(dailyRows(state.ps,state.pe),dailyRows(...prevRange()));
+  });
+  document.getElementById('mDeclChk').addEventListener('change',renderMTable);
+  document.getElementById('mtbl').addEventListener('click',e=>{
+    const b=e.target.closest('[data-mexp]'); if(!b)return;
+    M_EXPAND[b.dataset.mexp]=!M_EXPAND[b.dataset.mexp]; renderMTable();
   });
   document.getElementById('mcoltoggle').addEventListener('change',e=>{
     if(!e.target.dataset.col)return;
