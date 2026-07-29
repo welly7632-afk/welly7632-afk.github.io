@@ -82,8 +82,16 @@ body { font-family: "Microsoft JhengHei", system-ui, sans-serif; background: #f4
 #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 90;
   background: #333; color: #fff; padding: 10px 22px; border-radius: 20px; font-size: 14px; }
 #toast.hidden { display: none; }
+body.has-outbox #toast { bottom: 76px; }   /* 有待送橫幅時把 toast 往上讓,不互相蓋 */
 #toast.ok { background: #2e7d32; }
 #toast.err { background: #c62828; }
+
+/* 待送清單常駐橫幅:有點貨還沒存進去就一直掛在下面,不像 toast 一閃就沒 */
+#outboxBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; cursor: pointer;
+  background: #e68a00; color: #fff; text-align: center; padding: 13px 14px; font-size: 15px; font-weight: bold;
+  box-shadow: 0 -2px 8px rgba(0,0,0,.2); }
+#outboxBar.bad { background: #c62828; }
+#outboxBar.hidden { display: none; }
 
 .person-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .person-grid button { padding: 14px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }

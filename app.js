@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v23 — 側邊欄移除舊「刪除第二庫存」外部工具(第二庫存清單頁已內建刪除) */
+/* 倉儲系統前端 SPA v24 — 三種點貨改走「待送清單」:先落地手機再送,失敗回原頁、常駐橫幅、自動補送;搭配後端 cid 冪等,不漏點也不重複點 */
 'use strict';
 
 var CONFIG = {
@@ -163,7 +163,8 @@ function fmtDate(v) {
 }
 function updateSyncInfo() {
   var d = store.ts ? new Date(store.ts) : null;
-  var pend = store.pending > 0 ? ' · 待同步 ' + store.pending : '';
+  var pendN = store.pending + obCount;
+  var pend = pendN > 0 ? ' · 待同步 ' + pendN : '';
   $('#syncInfo').textContent = (d ? '資料時間 ' + d.toLocaleTimeString() + ' · ' + store.products.length + ' 品項' : '尚未同步') + pend;
   $('#userBadge').textContent = store.user || '未登入';
   $('#topTime').textContent = d ? '更新 ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) : '';
@@ -251,11 +252,211 @@ document.getElementById('app').addEventListener('click', function (e) {
 
 /* ===================== 樂觀送出 ===================== */
 /* 總表的「實到/實點數量」是試算表公式彙總點貨紀錄,append 後公式要幾秒才算好;
- * 太快重抓會拿到「還沒算好的舊值」蓋掉畫面上本地算好的正確值,故延後重抓。 */
+ * 太快重抓會拿到「還沒算好的舊值」蓋掉畫面上本地算好的正確值,故延後重抓,
+ * 且重抓回來若比本地值「還少」就先不蓋(公式還沒算完),等下一輪 polling 再說。 */
 function reloadTotalsSoon(key) {
-  setTimeout(function () { loadData(key, true).then(function () { rerenderActive(); }); }, 5000);
+  var before = {};
+  (store[key] || []).forEach(function (r) { var k = r.id || r.sku; if (k != null) before[k] = r.doneQty; });
+  setTimeout(function () {
+    loadData(key, true).then(function () {
+      (store[key] || []).forEach(function (r) {
+        var old = before[r.id || r.sku];
+        if (old != null && (r.doneQty == null || Number(r.doneQty) < Number(old))) r.doneQty = old;
+      });
+      rerenderActive();
+    });
+  }, 5000);
 }
+
+/* ===================== 待送清單(outbox) =====================
+ * 只接管三種點貨(pickSave / pick346Save / bigcountSave);其他寫入維持原本的背景送出。
+ *
+ * 按儲存 → 先寫進手機的待送清單 → 才送出,後端確認了才移除。
+ * 送不出去(網路斷、鎖螢幕、切去 LINE、關網頁)也不會掉:
+ * 開站 / 回到前景 / 網路恢復 / 每 20 秒,都會自動補送。
+ * 每筆帶 cid,後端認 cid 只寫一次(Code.gs 的 cidSeen),所以自動重送不會變成重複點。 */
+var OUTBOX_KEY = 'outbox_pick_v1';
+var OB_ACTIONS = { pickSave: 1, pick346Save: 1, bigcountSave: 1 };
+var obKeyMap = {}, obCount = 0, obFlushing = false;
+
+function obList() { var l = lsGet(OUTBOX_KEY); return Array.isArray(l) ? l : []; }
+function obPut(list) {
+  lsSet(OUTBOX_KEY, list);
+  obCount = list.length;
+  var m = {};
+  list.forEach(function (e) {
+    var b = e.body || {};
+    if (b.action === 'pickSave') m['pick:' + b.id] = 1;
+    else if (b.action === 'pick346Save') m['pick346:' + b.sku] = 1;
+    else if (b.action === 'bigcountSave') m['bigcount:' + b.sku] = 1;
+  });
+  obKeyMap = m;
+  renderOutboxBar(); updateSyncInfo();
+}
+function obFind(cid) { var l = obList(); for (var i = 0; i < l.length; i++) if (l[i].cid === cid) return l[i]; return null; }
+function obDrop(cid) { obPut(obList().filter(function (e) { return e.cid !== cid; })); }
+function obUpdate(cid, patch) {
+  var l = obList();
+  l.forEach(function (e) { if (e.cid === cid) Object.keys(patch).forEach(function (k) { e[k] = patch[k]; }); });
+  obPut(l);
+}
+/* 這個品項還有沒有沒送成功的?(清單上顯示 ⏳,不給正式綠燈) */
+function obSyncing(it) {
+  if (!it || !obCount) return false;
+  return !!(obKeyMap['pick:' + it.id] || obKeyMap['pick346:' + it.sku] || obKeyMap['bigcount:' + it.sku]);
+}
+function newCid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function obKeyOf(action) { return action === 'pickSave' ? 'picking' : (action === 'pick346Save' ? 'picking346' : 'bigcount'); }
+
+/* 送一筆的三種結果:
+ * ok    = 後端確認寫入(或認出是同一筆 dup)→ 從清單移除
+ * retry = 不確定有沒有寫進去(網路斷、後端排隊)→ 留著自動重送,cid 保證不會寫成兩列
+ * fail  = 後端明確拒絕,重送也沒用 → 留著等人處理,不再自動重送 */
+function obSend(e) {
+  return apiPost(e.body).then(function (d) {
+    if (d && (d.ok || d.dup)) return { ok: true };
+    if (d && d.busy) return { retry: true, error: '後端排隊中' };
+    if (d && d.needPassword) return { fail: true, error: '寫入被拒:請重新登入' };
+    return { fail: true, error: (d && d.error) || '寫入失敗' };
+  }).catch(function () { return { retry: true, error: '連不到後端' }; });
+}
+function obFlush() {
+  if (obFlushing || !store.user || !obCount) return Promise.resolve();
+  var pend = obList().filter(function (e) { return !e.fail; });
+  if (!pend.length) return Promise.resolve();
+  obFlushing = true;
+  var done = [], i = 0;
+  function step() {
+    if (i >= pend.length) return Promise.resolve();
+    var e = obFind(pend[i++].cid);
+    if (!e) return step();
+    /* 一筆一筆送:後端本來就用 Script Lock 排隊,併發只會互相卡 */
+    return obSend(e).then(function (r) {
+      if (r.ok) { done.push(e.body); obDrop(e.cid); }
+      else obUpdate(e.cid, { tries: (e.tries || 0) + 1, err: r.error, fail: !!r.fail });
+      return step();
+    });
+  }
+  return step().then(function () {
+    obFlushing = false;
+    if (done.length) { toast('已補送 ' + done.length + ' 筆 ✓', 'ok'); afterPickOk(done); }
+  }).catch(function () { obFlushing = false; });
+}
+/* 後端確認寫入後才做的資料刷新 */
+function afterPickOk(bodies) {
+  var kind = {};
+  bodies.forEach(function (b) { kind[b.action] = 1; });
+  refreshProducts(true);
+  if (kind.pickSave) { loadRecords('pick', true).then(rerenderActive); reloadTotalsSoon('picking'); }
+  if (kind.pick346Save) { loadRecords('pick346', true).then(rerenderActive); reloadTotalsSoon('picking346'); }
+  if (kind.bigcountSave) { loadRecords('bigcount', true).then(rerenderActive); reloadTotalsSoon('bigcount'); }
+  apiGet('meta').then(applyMeta).catch(function () {});
+  rerenderActive();
+}
+/* 常駐橫幅:有沒送出去的就一直掛在上面,不會像 toast 一閃就沒 */
+function renderOutboxBar() {
+  var bar = document.getElementById('outboxBar'); if (!bar) return;
+  document.body.classList.toggle('has-outbox', !!obCount);   /* 讓 toast 往上讓位 */
+  if (!obCount) { bar.className = 'hidden'; bar.textContent = ''; return; }
+  var bad = obList().filter(function (e) { return e.fail; }).length;
+  bar.className = bad ? 'bad' : '';
+  bar.textContent = (bad ? '⚠ 有 ' + bad + ' 筆存不進去' : '⏳ 有 ' + obCount + ' 筆還沒存進去') + ' — 點我處理';
+}
+
+/* 待送清單頁:看還有哪幾筆沒存進去,可以再送、去看該品項、或放棄 */
+function pageOutbox() {
+  $('#pageTitle').textContent = '待送清單';
+  currentRender = render;
+  function actName(a) { return a === 'pickSave' ? '一般點貨' : (a === 'pick346Save' ? '346點貨' : '盤點作業'); }
+  function render() {
+    var l = obList();
+    /* 事件綁在 #obList 這層(不綁 #app):切頁時整塊被 innerHTML 清掉,不會殘留到別頁 */
+    $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div><div id="obList">' +
+      (l.length
+        ? '<div class="empty" style="padding:6px 0">這些是還沒被後端確認寫入的。<b>再送一次是安全的</b> — 系統認得同一筆,不會變成兩筆。</div>'
+        : '<div class="empty">全部都存進去了 ✓</div>') +
+      l.map(function (e) {
+        var b = e.body || {};
+        return '<div class="card" style="border-left:4px solid ' + (e.fail ? '#c62828' : '#e68a00') + ';border-radius:0 10px 10px 0">' +
+          '<div class="locline"><span class="name">' + esc(b.sku || b.id || '') + '</span><span class="sku">× ' + esc(b.qty) + '</span></div>' +
+          '<div class="sku">' + esc(actName(b.action)) + ' · ' + esc(fmtDate(e.ts)) + (b.note ? ' · ' + esc(b.note) : '') + '</div>' +
+          '<div class="sales">' + (e.fail ? '⚠ ' + esc(e.err || '存不進去') : '⏳ 還沒確認' + (e.err ? '(' + esc(e.err) + ')' : '')) +
+          (e.tries ? ' · 試過 ' + e.tries + ' 次' : '') + '</div>' +
+          '<div class="actions"><button data-ob-retry="' + esc(e.cid) + '">↻ 再送一次</button>' +
+          '<button data-ob-open="' + esc(e.cid) + '">📄 看這品項</button>' +
+          '<button data-ob-drop="' + esc(e.cid) + '">🗑 放棄</button></div></div>';
+      }).join('') +
+      (l.length > 1 ? '<div class="actions"><button class="primary" id="obAll">↻ 全部再送一次</button></div>' : '') + '</div>';
+    if ($('#obAll')) $('#obAll').onclick = function () { obFlush().then(render); };
+    $('#obList').onclick = function (ev) {
+      var b = ev.target.closest('button[data-ob-retry],button[data-ob-open],button[data-ob-drop]');
+      if (!b) return;
+      var cid = b.getAttribute('data-ob-retry') || b.getAttribute('data-ob-open') || b.getAttribute('data-ob-drop');
+      var e = obFind(cid); if (!e) { render(); return; }
+      if (b.hasAttribute('data-ob-open')) { location.hash = e.backHash || '#/orders'; return; }
+      if (b.hasAttribute('data-ob-drop')) {
+        if (!confirm('放棄這筆?\n若它其實已經存進去,放棄不會刪掉試算表的資料;若沒存進去,這筆點貨就沒了,要自己補點。')) return;
+        obDrop(cid); render(); return;
+      }
+      b.disabled = true; b.textContent = '送出中…';
+      obUpdate(cid, { fail: false });
+      obSend(e).then(function (r) {
+        if (r.ok) { obDrop(cid); toast('已存進去 ✓', 'ok'); afterPickOk([e.body]); }
+        else { obUpdate(cid, { tries: (e.tries || 0) + 1, err: r.error, fail: !!r.fail }); toast('⚠ ' + r.error, 'err', 5000); }
+        render();
+      });
+    };
+  }
+  render();
+}
+
+/* 點貨儲存:先落地到待送清單 → 在原頁等最多 2.5 秒
+ *   2.5 秒內成功 → 綠燈、回上一頁(常態,體感跟以前一樣快)
+ *   2.5 秒還沒回 → 回上一頁,那筆標「⏳」,交給待送清單自動補送
+ *   明確失敗     → 留在原頁,數量備註原封不動,可以直接再送一次 */
+var PICK_WAIT_MS = 2500;
+function submitPick(body, okMsg, patch, noBack) {
+  var cid = newCid(), nav = navSeq;
+  body.cid = cid;
+  var entry = { cid: cid, body: body, okMsg: okMsg, backHash: location.hash, ts: Date.now(), tries: 0 };
+  obPut(obList().concat([entry]));   /* 這一步之後這筆就丟不掉了 */
+  if (patch) { try { patch(); } catch (e) {} }
+
+  var settled = false, btn = $('#saveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '儲存中…'; }
+  var timer = setTimeout(function () {
+    if (settled) return;
+    settled = true;
+    if (!noBack) history.back();
+    toast('⏳ 網路較慢,已排入待送清單,會自動補送', '', 3000);
+  }, PICK_WAIT_MS);
+
+  obSend(entry).then(function (r) {
+    var late = settled; settled = true; clearTimeout(timer);
+    if (r.ok) {
+      obDrop(cid);
+      if (!late && !noBack) history.back();
+      toast(okMsg, 'ok');
+      afterPickOk([body]);
+      return;
+    }
+    obUpdate(cid, { tries: 1, err: r.error, fail: !!r.fail });
+    /* 後端明確拒絕 = 確定沒寫入 → 把樂觀改過的畫面用後端真值蓋回來 */
+    if (r.fail) loadData(obKeyOf(body.action), true).then(rerenderActive);
+    if (late || nav !== navSeq) { toast('⚠ ' + r.error + ' — 點上方橫幅處理', 'err', 6000); return; }
+    /* 還在原頁:留在這裡,欄位原封不動,可以直接再送一次 */
+    if (btn) { btn.disabled = false; btn.textContent = '↻ 再送一次'; }
+    var fe = $('#formErr');
+    if (fe) fe.innerHTML = '⚠ ' + esc(r.error) + (r.fail
+      ? '<br>這筆<b>沒有</b>存進去,確認後再送一次。'
+      : '<br>還<b>不確定</b>有沒有存進去 — 直接再送一次是安全的,系統認得同一筆,不會變成兩筆。');
+    else toast('⚠ ' + r.error, 'err', 6000);
+  });
+}
+
 function submitBg(body, okMsg, patch, noBack) {
+  /* 三種點貨走待送清單(不漏、不重);其他寫入維持原本的背景送出 */
+  if (OB_ACTIONS[body.action]) return submitPick(body, okMsg, patch, noBack);
   if (patch) { try { patch(); } catch (e) {} }
   store.pending++; updateSyncInfo();
   if (!noBack) history.back();
@@ -264,13 +465,11 @@ function submitBg(body, okMsg, patch, noBack) {
     store.pending--; updateSyncInfo();
     if (d.ok) {
       toast(okMsg, 'ok'); refreshProducts(true); loadData('rel', true);
-      if (body.action === 'pickSave') { loadRecords('pick', true).then(rerenderActive); reloadTotalsSoon('picking'); }
-      if (body.action === 'pick346Save') { loadRecords('pick346', true).then(rerenderActive); reloadTotalsSoon('picking346'); }
-      if (body.action === 'bigcountSave' || body.action === 'bigcountAdd') { loadRecords('bigcount', true).then(rerenderActive); reloadTotalsSoon('bigcount'); }
+      if (body.action === 'bigcountAdd') { loadRecords('bigcount', true).then(rerenderActive); reloadTotalsSoon('bigcount'); }
       apiGet('meta').then(applyMeta).catch(function () {});
     } else if (d.needPassword) { toast('⚠ 寫入被拒:請重新登入', 'err', 6000); }
     else { toast('⚠ 寫入失敗:' + (d.error || '') + '(請重新操作一次)', 'err', 6000); refreshProducts(true); }
-  }).catch(function () { store.pending--; updateSyncInfo(); toast('⚠ 網路失敗,這筆沒有寫入,請重新操作', 'err', 6000); });
+  }).catch(function () { store.pending--; updateSyncInfo(); toast('⚠ 尚未確認有沒有存進去,請重新整理確認後再決定要不要重做', 'err', 6000); });
 }
 
 /* ===================== 通用元件 ===================== */
@@ -711,8 +910,10 @@ function pickCard(it, navAttr, showBox) {
   else if (it.isBig) lines = '庫存: ' + it.stock + ' / 盤點量: ' + (it.doneQty == null ? '' : it.doneQty) + (it.user ? ' · ' + it.user : '');
   else lines = '訂貨量: ' + it.orderQty + ' / 已點數量: ' + (it.doneQty == null ? '' : it.doneQty) + (it.user ? ' · ' + it.user : '');
   var right = showBox ? ('箱 ' + (it.boxQty || 0)) : esc(it.loc);
+  /* 還沒被後端確認寫入的先標 ⏳,不給正式綠燈(見 outbox) */
+  var sync = obSyncing(it) ? ' ⏳' : '';
   return '<div class="card" style="border-left:4px solid ' + statusColor(it.status) + ';border-radius:0 10px 10px 0" ' + navAttr + '>' +
-    '<div class="locline"><span class="name" style="color:' + statusColor(it.status) + ';font-weight:bold">' + esc(it.name) + '</span><span class="sku">' + right + '</span></div>' +
+    '<div class="locline"><span class="name" style="color:' + statusColor(it.status) + ';font-weight:bold">' + esc(it.name) + sync + '</span><span class="sku">' + right + '</span></div>' +
     '<div class="sku">' + esc(it.subline || it.sku) + '</div><div class="sales">' + esc(lines) + '</div></div>';
 }
 function pickForm(opts) {
@@ -1459,12 +1660,28 @@ routes['/bigcount'] = pageBigcount; routes['/bigcountform'] = pageBigcountForm;
 routes['/shortage'] = pageShortage; routes['/shortage-add'] = pageShortageAdd; routes['/shortage-edit'] = pageShortageEdit;
 routes['/short-inv'] = pageShortInv; routes['/short-inv-detail'] = pageShortInvDetail;
 routes['/records'] = pageRecords; routes['/settings'] = pageSettings;
+routes['/outbox'] = pageOutbox;
+
+/* ===================== 待送清單:自動補送 =====================
+ * 回到前景、網路恢復、每 20 秒都補送一次;離開前還有沒送出去的就攔一下。 */
+var obBar = document.getElementById('outboxBar');
+if (obBar) obBar.onclick = function () { location.hash = '#/outbox'; };
+document.addEventListener('visibilitychange', function () { if (!document.hidden) obFlush(); });
+window.addEventListener('online', function () { obFlush(); });
+setInterval(obFlush, 20000);
+window.addEventListener('beforeunload', function (e) {
+  if (!obCount) return;
+  e.preventDefault();
+  e.returnValue = '還有 ' + obCount + ' 筆點貨沒存進去,現在關掉會漏點。';
+  return e.returnValue;
+});
 
 window.addEventListener('hashchange', router);
-loadCache(); updateSyncInfo(); router();
+loadCache(); obPut(obList()); updateSyncInfo(); router();
 fetchIp().then(function () {
   apiGet('meta').then(applyMeta).catch(function () {});
   apiPost({ action: 'staffAuth' }).then(function (d) { if (d.ok) { store.staffPw = d.staffPw || {}; lsSet('cache_staff', { staff: store.staff, staffPw: store.staffPw, links: store.links }); if ((location.hash.slice(1) || '').split('?')[0] === '/settings') pageSettings(); } }).catch(function () {});
   refreshProducts(true).then(preloadAll);
   startPolling(); startAuthRecheck();
+  obFlush();   /* 上次沒送出去的,一開站就補送 */
 });
