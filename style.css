@@ -38,6 +38,10 @@ body { font-family: "Microsoft JhengHei", system-ui, sans-serif; background: #f4
 .card .sales { color: #666; font-size: 12px; margin-top: 2px; }
 .card .btns { display: flex; gap: 8px; margin-top: 8px; }
 .card .btns button { flex: 1; padding: 8px 0; font-size: 14px; border: 1px solid #bbb; background: #fafafa; border-radius: 8px; }
+/* 卡片裡的按鈕列(待送清單用)。沒有這條的話按鈕不會排版,會壓到上面的文字 */
+.card .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.card .actions button { flex: 1 1 96px; padding: 9px 4px; font-size: 14px; border: 1px solid #bbb; background: #fafafa; border-radius: 8px; }
+.card .actions .primary { background: #5b4a72; color: #fff; border: none; }
 
 .form { background: #fff; border-radius: 10px; padding: 16px; }
 .form h2 { font-size: 17px; margin-bottom: 12px; }
@@ -95,6 +99,10 @@ body.has-outbox #toast { bottom: 76px; }   /* 有待送橫幅時把 toast 往上
 /* 待送清單頁最上面的「怎麼辦」說明 */
 .obhelp { background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px;
   padding: 10px 12px; margin-bottom: 10px; font-size: 14px; line-height: 1.9; color: #5d4037; }
+/* 待送清單頁底部的「全部再送一次」(不在 .card 內,要自己一條) */
+#obList > .actions { display: flex; gap: 8px; margin-top: 12px; }
+#obList > .actions button { flex: 1; padding: 12px 0; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
+#obList > .actions .primary { background: #5b4a72; color: #fff; border: none; }
 
 .person-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .person-grid button { padding: 14px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }

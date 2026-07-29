@@ -136,18 +136,6 @@
   .typechip{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid var(--warn);
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
   .newb{display:block;font-size:11px;color:var(--sub)}
-  /* 規則表 */
-  .tieredit{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 12px;padding:10px 12px;
-    background:var(--chip);border-radius:10px;align-items:flex-end}
-  .tieredit .tf{display:flex;flex-direction:column;gap:3px}
-  .tieredit .tf small{color:var(--sub);font-size:11px}
-  .tieredit .tf b{font-size:12px}
-  .tieredit input{width:66px;padding:5px 6px;text-align:center;font-size:13px}
-  .tieredit .arrow{align-self:center;color:var(--sub);padding-bottom:6px}
-  #rulesTbl input{width:64px;padding:4px;text-align:center;font-size:13px}
-  #rulesTbl th{position:static;text-align:center}
-  #rulesTbl td{text-align:center}
-  #rulesTbl td:first-child{text-align:left;font-weight:700}
   .note{margin-top:10px;padding:11px 14px;border-radius:10px;background:#d977060f;
     border:1px solid #d9770655;font-size:12.5px;line-height:1.7}
   .note b{color:var(--warn)}
@@ -280,24 +268,6 @@
       <div class="tblscroll"><table id="queueTbl"></table></div>
     </div>
     <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <h2 style="margin:0">調預算% 對照表(舊 SOP,可編輯)</h2>
-        <span class="muted" style="font-size:12px">存放:</span>
-        <div class="seg" id="scopeSeg">
-          <button data-scope="local" class="on">本機(這台)</button>
-          <button data-scope="global">全域(所有裝置共用)</button>
-        </div>
-        <span id="scopeMsg" class="muted" style="font-size:12px"></span>
-      </div>
-      <div class="hint">⚠ 這張表是舊的「調預算%」SOP 規則,<b>ROI 主軸的建議不使用它</b>(保留供參考、日後要切回時用)。轉換成本決定列、7天花費未達門檻→觀察。
-        「全域」= 存到雲端(GAS),所有裝置/使用者共用同一套;「本機」= 只存這台瀏覽器。</div>
-      <div class="tieredit" id="tierEdit"></div>
-      <div style="overflow-x:auto"><table id="rulesTbl"></table></div>
-      <div class="tbar" style="padding-top:12px">
-        <button id="rulesSave">💾 儲存規則</button>
-        <button class="ghost" id="rulesReset">還原預設</button>
-        <span id="rulesMsg" class="pos" style="font-size:13px"></span>
-      </div>
       <div class="note">
         <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>(取保守低值)。
         目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
@@ -671,21 +641,17 @@ function init(){
   document.getElementById('mcoltoggle').innerHTML=M_TCOLS.map(c=>
     `<label><input type="checkbox" data-col="${c}" ${state.mtcols.has(c)?'checked':''}> ${c}</label>`).join('');
 
-  renderRules();
-  setScopeUI();
   applySettingsCss();
   bind();
   document.getElementById('status').style.display='none';
   document.getElementById('board').style.display='flex';
   render();
-  // 全域模式:開頁時抓一次雲端規則(讓各裝置同步);抓不到就沿用本機快取
+  // 全域模式:開頁時抓一次雲端規則(讓各裝置同步);抓不到就沿用本機快取。
+  // 2026-07-29 起「調預算% 對照表」UI 已移除,RULES 只剩 tiers.down 供 SOP 的「問老闆」門檻用。
   if(RULES_SCOPE==='global'){
-    loadGlobalRules().then(g=>{ if(validRules(g)){ RULES=g; lsSet('adDash:rules',RULES); renderRules(); renderSop(); }})
-      .catch(()=>{ flash('scopeMsg','全域規則讀取失敗,暫用本機快取',true); });
+    loadGlobalRules().then(g=>{ if(validRules(g)){ RULES=g; lsSet('adDash:rules',RULES); renderSop(); }})
+      .catch(()=>{});
   }
-}
-function setScopeUI(){
-  document.querySelectorAll('#scopeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.scope===RULES_SCOPE));
 }
 function chkRow(kind,val,label){
   return `<label class="chk"><input type="checkbox" data-kind="${kind}" data-val="${encodeURIComponent(val)}" checked>${label}</label>`;
@@ -956,7 +922,6 @@ function renderPTable(rows,prows){
 
 // ===== SOP 建議頁 =====
 function rowFor(cost){const t=[25,50,100,200,500];for(let i=0;i<t.length;i++)if(cost<t[i])return i;return 5;}
-function roasTier(r){const t=RULES.tiers;if(r>=t.big)return 0;if(r>=t.up)return 1;if(r>=t.hold)return 'hold6';if(r>=t.down)return 2;return 3;}
 const ORDER={"大降 / 暫停":0,"小幅降低":1,"積極放大":2,"穩健提升":3,"持平 · 觀察":4,"觀察(資料不足)":5,"先別調預算":6,"無轉換":7};
 // ROI 主軸:比「目前目標ROI(廣告設定)」與「成本推算建議ROI(保守低值)」→ 調低放量 / 偏低可調高 / 合理 / 無法調整
 const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'可調(無建議值)':3,'不可改ROI':4,'無建議值':5,'無廣告設定':6,'自動選品':7};
@@ -1013,8 +978,15 @@ function sopRows(){
     // 沒動這格就不會送預算(避免把蝦皮暫時的自動值寫成設定)
     const binit = ac ? (ac.baseBudget!=null&&ac.baseBudget>0 ? ac.baseBudget : ac.budget) : null;
     const btarget = sel.btarget!=null ? sel.btarget : binit;
-    const pick = (canPick||canPickB) && sel.pick===true;
-    return {o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick,spend7:o.cost*ratio,rev7:o.sale*ratio};
+    // 加速推廣:蝦皮會把實際投放門檻打到目標ROI的 70% → 要開的話可先把 ROI ×係數補回來
+    // bsel: ''=不動 | 'on1.43' | 'on1.3' | 'onC'(自訂係數) | 'on'(不動ROI) | 'off'
+    const boostOn = ac ? String(ac.boost||'').trim()==='開' : null;
+    const canBoost = !!(ac && ac.cid);
+    const bsel = sel.boost||'';
+    const bmult = sel.bmult!=null ? sel.bmult : 1.43;
+    const pick = (canPick||canPickB||canBoost) && sel.pick===true;
+    return {o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick,
+            boostOn,canBoost,bsel,bmult,spend7:o.cost*ratio,rev7:o.sale*ratio};
   };
   const list=[...aggProducts(rows).values()].filter(o=>o.pid||state.sopAuto).map(mk);
   if(state.sopAuto){
@@ -1144,27 +1116,6 @@ function bindSopInputs(){
     renderSop();
   });
 }
-function renderTierEditor(){
-  const t=RULES.tiers;
-  const f=(k,lab)=>`<div class="tf"><small>${lab}</small><b>ROAS ≥</b>
-    <input type="number" step="0.1" data-tier="${k}" value="${t[k]}"></div>`;
-  document.getElementById('tierEdit').innerHTML=
-    f('big','積極放大')+'<span class="arrow">▸</span>'+
-    f('up','穩健提升')+'<span class="arrow">▸</span>'+
-    f('hold','持平觀察')+'<span class="arrow">▸</span>'+
-    f('down','小幅降低')+
-    `<div class="tf"><small>低於小幅降線</small><b>= 大降 / 暫停</b></div>`;
-}
-function renderRulesTable(){
-  const t=RULES.tiers;
-  const heads=['轉換成本','7天花費門檻',`ROAS ≥${t.big}`,`ROAS ${t.up}–${t.big}`,`ROAS ${t.down}–${t.hold}`,`ROAS <${t.down}`];
-  const th='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
-  const body=RULES.rows.map((row,ri)=>
-    `<tr><td>${esc(row.label)}</td><td><input data-ri="${ri}" data-f="th" value="${row.th}"></td>`+
-    row.pct.map((v,ci)=>`<td><input class="${v>=0?'pos':'neg'}" data-ri="${ri}" data-pc="${ci}" value="${v}"></td>`).join('')+'</tr>').join('');
-  document.getElementById('rulesTbl').innerHTML=`<thead>${th}</thead><tbody>${body}</tbody>`;
-}
-function renderRules(){ renderRulesTable(); renderTierEditor(); }
 // ===== 調整佇列(勾選 → 經 GAS 寫試算表「調整佇列」→ 本機 queue_run 輪詢執行) =====
 let QROWS=[], queueLoaded=false;
 const qmsg=(m,err)=>{const el=document.getElementById('queueMsg');if(!el)return;
@@ -1609,49 +1560,6 @@ function bind(){
     renderSop();
   });
   bindSopInputs();
-  // 規則編輯
-  document.getElementById('rulesTbl').addEventListener('input',e=>{
-    const ri=e.target.dataset.ri; if(ri==null)return;
-    if(e.target.dataset.f==='th')RULES.rows[ri].th=+e.target.value||0;
-    if(e.target.dataset.pc!=null){RULES.rows[ri].pct[+e.target.dataset.pc]=+e.target.value||0;}
-  });
-  // ROAS 分級門檻編輯:change(離開輸入框)才更新,避免重繪造成失焦;即時重算對照表標題+SOP
-  document.getElementById('tierEdit').addEventListener('change',e=>{
-    const k=e.target.dataset.tier; if(!k)return;
-    const v=+e.target.value; if(v>0) RULES.tiers[k]=v; else e.target.value=RULES.tiers[k];
-    renderRulesTable(); renderSop();
-  });
-  document.getElementById('rulesSave').addEventListener('click',async()=>{
-    lsSet('adDash:rules',RULES);                       // 一律也存本機當快取
-    renderSop();
-    if(RULES_SCOPE==='global'){
-      flash('rulesMsg','雲端儲存中…');
-      try{ await saveGlobalRules(RULES); flash('rulesMsg','已存到全域(所有裝置)✓'); }
-      catch(e){ flash('rulesMsg','全域儲存失敗:'+e.message,true); }
-    }else{
-      flash('rulesMsg','已存這台瀏覽器 ✓');
-    }
-  });
-  document.getElementById('rulesReset').addEventListener('click',()=>{
-    RULES=clone(DEFAULT_RULES); lsSet('adDash:rules',RULES); renderRules(); renderSop();
-    flash('rulesMsg', RULES_SCOPE==='global'?'已還原(按儲存才會寫回全域)':'已還原 ✓');
-  });
-  // 存放範圍切換:本機 ⇄ 全域
-  document.getElementById('scopeSeg').addEventListener('click',async e=>{
-    const sc=e.target.dataset.scope; if(!sc||sc===RULES_SCOPE)return;
-    if(sc==='global'){
-      flash('scopeMsg','讀取全域規則…');
-      try{
-        const g=await loadGlobalRules();
-        if(validRules(g)){ RULES=g; lsSet('adDash:rules',RULES); flash('scopeMsg','已載入雲端全域規則 ✓'); }
-        else { await saveGlobalRules(RULES); flash('scopeMsg','雲端還沒有→已用目前規則建立全域基準 ✓'); }
-      }catch(err){ flash('scopeMsg','切換全域失敗:'+err.message,true); return; }   // 失敗維持本機
-    }else{
-      flash('scopeMsg','改為只存這台瀏覽器');
-    }
-    RULES_SCOPE=sc; lsSet('adDash:rulesScope',RULES_SCOPE);
-    setScopeUI(); renderRules(); renderSop();
-  });
   // 設定面板
   document.getElementById('btnSettings').addEventListener('click',()=>{
     document.getElementById('setRoasRed').value=SETTINGS.roasRed;
