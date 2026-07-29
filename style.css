@@ -92,6 +92,9 @@ body.has-outbox #toast { bottom: 76px; }   /* 有待送橫幅時把 toast 往上
   box-shadow: 0 -2px 8px rgba(0,0,0,.2); }
 #outboxBar.bad { background: #c62828; }
 #outboxBar.hidden { display: none; }
+/* 待送清單頁最上面的「怎麼辦」說明 */
+.obhelp { background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 10px; font-size: 14px; line-height: 1.9; color: #5d4037; }
 
 .person-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .person-grid button { padding: 14px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }

@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v25 — 缺貨登記:商品名改讀「品名」、整表照品名排序、已寫「處理方式」的不顯示(v24=點貨待送清單) */
+/* 倉儲系統前端 SPA v26 — 待送清單卡住時給白話自救指示(分級提示、標死的也自動再試 3 次、要重新登入的一鍵去登入、放棄只給主管);v25=缺貨登記欄位/排序,v24=點貨待送清單 */
 'use strict';
 
 var CONFIG = {
@@ -320,10 +320,23 @@ function obSend(e) {
     return { fail: true, error: (d && d.error) || '寫入失敗' };
   }).catch(function () { return { retry: true, error: '連不到後端' }; });
 }
+/* 記下這次失敗;明確被拒的另外記 failAt/failTries,好讓它稍後還能自動再試 */
+function obFailPatch(e, r) {
+  var p = { tries: ((e && e.tries) || 0) + 1, err: r.error, fail: !!r.fail };
+  if (r.fail) { p.failTries = ((e && e.failTries) || 0) + 1; p.failAt = Date.now(); }
+  return p;
+}
+/* 這筆現在該不該送?標死的也給機會:有些「失敗」只是後端剛好在部署,
+ * 所以每 5 分鐘自動再試一次,試滿 3 次才真的停下來等人處理。 */
+function obDue(e) {
+  if (!e.fail) return true;
+  if ((e.failTries || 0) >= 3) return false;
+  return Date.now() - (e.failAt || 0) >= 300000;
+}
 function obFlush() {
   if (obFlushing || !store.user || !obCount) return Promise.resolve();
-  var pend = obList().filter(function (e) { return !e.fail; });
-  if (!pend.length) return Promise.resolve();
+  var pend = obList().filter(obDue);
+  if (!pend.length) { renderOutboxBar(); return Promise.resolve(); }
   obFlushing = true;
   var done = [], i = 0;
   function step() {
@@ -333,7 +346,7 @@ function obFlush() {
     /* 一筆一筆送:後端本來就用 Script Lock 排隊,併發只會互相卡 */
     return obSend(e).then(function (r) {
       if (r.ok) { done.push(e.body); obDrop(e.cid); }
-      else obUpdate(e.cid, { tries: (e.tries || 0) + 1, err: r.error, fail: !!r.fail });
+      else obUpdate(e.cid, obFailPatch(e, r));
       return step();
     });
   }
@@ -353,14 +366,37 @@ function afterPickOk(bodies) {
   apiGet('meta').then(applyMeta).catch(function () {});
   rerenderActive();
 }
+/* 卡住時該怎麼辦:能自己解的就講怎麼解,真的解不了才叫人找主管。
+ * level 由輕到重:ok(還在自動送) → net(沒網路) → warn(送很久了) → login(要重新登入) → boss(找主管) */
+var OB_LEVEL = { ok: 0, net: 1, warn: 2, login: 3, boss: 4 };
+function obAdvice(e) {
+  if (!e) return { level: 'ok', text: '' };
+  if (/重新登入/.test(String(e.err || ''))) return { level: 'login', text: '要重新登入才存得進去' };
+  var mins = (Date.now() - (e.ts || 0)) / 60000;
+  if (e.fail && (e.failTries || 0) >= 3) return { level: 'boss', text: '系統一直拒絕這筆,請找主管' };
+  if (e.fail) return { level: 'warn', text: '存不進去,還會自動再試幾次' };
+  if (!navigator.onLine) return { level: 'net', text: '手機沒有網路 — 開網路就會自動補送' };
+  if (mins >= 10 || (e.tries || 0) >= 20) return { level: 'boss', text: '超過 10 分鐘還送不出去,請找主管' };
+  if (mins >= 2 || (e.tries || 0) >= 5) return { level: 'warn', text: '一直送不出去 — 檢查網路,或按「再送一次」' };
+  return { level: 'ok', text: '還在自動送,不用管它' };
+}
+/* 整份清單裡最嚴重的那一筆 */
+function obWorst() {
+  var worst = { level: 'ok', text: '還在自動送,不用管它' };
+  obList().forEach(function (e) {
+    var a = obAdvice(e);
+    if (OB_LEVEL[a.level] >= OB_LEVEL[worst.level]) worst = a;
+  });
+  return worst;
+}
 /* 常駐橫幅:有沒送出去的就一直掛在上面,不會像 toast 一閃就沒 */
 function renderOutboxBar() {
   var bar = document.getElementById('outboxBar'); if (!bar) return;
   document.body.classList.toggle('has-outbox', !!obCount);   /* 讓 toast 往上讓位 */
   if (!obCount) { bar.className = 'hidden'; bar.textContent = ''; return; }
-  var bad = obList().filter(function (e) { return e.fail; }).length;
-  bar.className = bad ? 'bad' : '';
-  bar.textContent = (bad ? '⚠ 有 ' + bad + ' 筆存不進去' : '⏳ 有 ' + obCount + ' 筆還沒存進去') + ' — 點我處理';
+  var w = obWorst();
+  bar.className = OB_LEVEL[w.level] >= OB_LEVEL.warn ? 'bad' : '';
+  bar.textContent = (OB_LEVEL[w.level] >= OB_LEVEL.warn ? '⚠ ' : '⏳ ') + obCount + ' 筆還沒存進去 — ' + w.text + '(點我)';
 }
 
 /* 待送清單頁:看還有哪幾筆沒存進去,可以再送、去看該品項、或放棄 */
@@ -373,26 +409,36 @@ function pageOutbox() {
     /* 事件綁在 #obList 這層(不綁 #app):切頁時整塊被 innerHTML 清掉,不會殘留到別頁 */
     $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div><div id="obList">' +
       (l.length
-        ? '<div class="empty" style="padding:6px 0">這些是還沒被後端確認寫入的。<b>再送一次是安全的</b> — 系統認得同一筆,不會變成兩筆。</div>'
+        ? '<div class="obhelp">這些點貨<b>還沒進到試算表</b>。<br>' +
+          '① 大部分會自己送出去,等一下再看<br>' +
+          '② 沒網路就開 Wi-Fi 或行動網路,會自動補送<br>' +
+          '③ 想快一點就按「↻ 再送一次」— <b>按幾次都安全</b>,系統認得同一筆,不會變成兩筆<br>' +
+          '④ 關掉網頁也不會不見,下次開網頁會自動繼續送<br>' +
+          '⑤ 上面都試過還是紅字 → <b>找主管</b>' + '</div>'
         : '<div class="empty">全部都存進去了 ✓</div>') +
       l.map(function (e) {
-        var b = e.body || {};
-        return '<div class="card" style="border-left:4px solid ' + (e.fail ? '#c62828' : '#e68a00') + ';border-radius:0 10px 10px 0">' +
+        var b = e.body || {}, a = obAdvice(e);
+        var color = OB_LEVEL[a.level] >= OB_LEVEL.warn ? '#c62828' : '#e68a00';
+        return '<div class="card" style="border-left:4px solid ' + color + ';border-radius:0 10px 10px 0">' +
           '<div class="locline"><span class="name">' + esc(b.sku || b.id || '') + '</span><span class="sku">× ' + esc(b.qty) + '</span></div>' +
           '<div class="sku">' + esc(actName(b.action)) + ' · ' + esc(fmtDate(e.ts)) + (b.note ? ' · ' + esc(b.note) : '') + '</div>' +
-          '<div class="sales">' + (e.fail ? '⚠ ' + esc(e.err || '存不進去') : '⏳ 還沒確認' + (e.err ? '(' + esc(e.err) + ')' : '')) +
-          (e.tries ? ' · 試過 ' + e.tries + ' 次' : '') + '</div>' +
+          '<div class="sales" style="color:' + color + ';font-weight:bold">' + (OB_LEVEL[a.level] >= OB_LEVEL.warn ? '⚠ ' : '⏳ ') + esc(a.text) + '</div>' +
+          (e.err ? '<div class="sku">系統訊息:' + esc(e.err) + (e.tries ? ' · 試過 ' + e.tries + ' 次' : '') + '</div>' : '') +
           '<div class="actions"><button data-ob-retry="' + esc(e.cid) + '">↻ 再送一次</button>' +
+          (a.level === 'login' ? '<button class="primary" data-ob-login="' + esc(e.cid) + '">🔑 去重新登入</button>' : '') +
           '<button data-ob-open="' + esc(e.cid) + '">📄 看這品項</button>' +
-          '<button data-ob-drop="' + esc(e.cid) + '">🗑 放棄</button></div></div>';
+          /* 「放棄」= 這筆點貨就沒了,只給主管,員工只能重送或找主管 */
+          (isSupervisorUser() ? '<button data-ob-drop="' + esc(e.cid) + '">🗑 放棄</button>' : '') +
+          '</div></div>';
       }).join('') +
       (l.length > 1 ? '<div class="actions"><button class="primary" id="obAll">↻ 全部再送一次</button></div>' : '') + '</div>';
     if ($('#obAll')) $('#obAll').onclick = function () { obFlush().then(render); };
     $('#obList').onclick = function (ev) {
-      var b = ev.target.closest('button[data-ob-retry],button[data-ob-open],button[data-ob-drop]');
+      var b = ev.target.closest('button[data-ob-retry],button[data-ob-open],button[data-ob-drop],button[data-ob-login]');
       if (!b) return;
-      var cid = b.getAttribute('data-ob-retry') || b.getAttribute('data-ob-open') || b.getAttribute('data-ob-drop');
+      var cid = b.getAttribute('data-ob-retry') || b.getAttribute('data-ob-open') || b.getAttribute('data-ob-drop') || b.getAttribute('data-ob-login');
       var e = obFind(cid); if (!e) { render(); return; }
+      if (b.hasAttribute('data-ob-login')) { toast('重新登入後會自動補送', '', 3000); location.hash = '#/settings'; return; }
       if (b.hasAttribute('data-ob-open')) { location.hash = e.backHash || '#/orders'; return; }
       if (b.hasAttribute('data-ob-drop')) {
         if (!confirm('放棄這筆?\n若它其實已經存進去,放棄不會刪掉試算表的資料;若沒存進去,這筆點貨就沒了,要自己補點。')) return;
@@ -402,7 +448,7 @@ function pageOutbox() {
       obUpdate(cid, { fail: false });
       obSend(e).then(function (r) {
         if (r.ok) { obDrop(cid); toast('已存進去 ✓', 'ok'); afterPickOk([e.body]); }
-        else { obUpdate(cid, { tries: (e.tries || 0) + 1, err: r.error, fail: !!r.fail }); toast('⚠ ' + r.error, 'err', 5000); }
+        else { obUpdate(cid, obFailPatch(e, r)); toast('⚠ ' + r.error, 'err', 5000); }
         render();
       });
     };
@@ -440,7 +486,7 @@ function submitPick(body, okMsg, patch, noBack) {
       afterPickOk([body]);
       return;
     }
-    obUpdate(cid, { tries: 1, err: r.error, fail: !!r.fail });
+    obUpdate(cid, obFailPatch(entry, r));
     /* 後端明確拒絕 = 確定沒寫入 → 把樂觀改過的畫面用後端真值蓋回來 */
     if (r.fail) loadData(obKeyOf(body.action), true).then(rerenderActive);
     if (late || nav !== navSeq) { toast('⚠ ' + r.error + ' — 點上方橫幅處理', 'err', 6000); return; }
@@ -1645,7 +1691,7 @@ function selectUser(name) {
     }
   }).catch(function () { toast('無法連線後端', 'err'); });
 }
-function finishLogin(name) { store.user = name; localStorage.setItem('user', name); updateSyncInfo(); toast('已登入:' + name, 'ok'); location.hash = '#/storage'; }
+function finishLogin(name) { store.user = name; localStorage.setItem('user', name); updateSyncInfo(); toast('已登入:' + name, 'ok'); location.hash = '#/storage'; obFlush(); /* 因為要重新登入才卡住的,登入完自動補送 */ }
 
 /* ===================== 選單 ===================== */
 function closeDrawer() { $('#drawer').classList.add('hidden'); $('#overlay').classList.add('hidden'); }
@@ -1673,7 +1719,7 @@ var obBar = document.getElementById('outboxBar');
 if (obBar) obBar.onclick = function () { location.hash = '#/outbox'; };
 document.addEventListener('visibilitychange', function () { if (!document.hidden) obFlush(); });
 window.addEventListener('online', function () { obFlush(); });
-setInterval(obFlush, 20000);
+setInterval(function () { renderOutboxBar(); obFlush(); }, 20000);   /* 順便刷新橫幅上「卡多久了」的判斷 */
 window.addEventListener('beforeunload', function (e) {
   if (!obCount) return;
   e.preventDefault();
