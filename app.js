@@ -1,4 +1,4 @@
-/* 倉儲系統前端 SPA v24 — 三種點貨改走「待送清單」:先落地手機再送,失敗回原頁、常駐橫幅、自動補送;搭配後端 cid 冪等,不漏點也不重複點 */
+/* 倉儲系統前端 SPA v25 — 缺貨登記:商品名改讀「品名」、整表照品名排序、已寫「處理方式」的不顯示(v24=點貨待送清單) */
 'use strict';
 
 var CONFIG = {
@@ -1436,7 +1436,11 @@ function renderShortInv() {
   if (ab) ab.innerHTML = store.siAnnounce ? '<div class="siannounce">📢 ' + esc(store.siAnnounce) + '</div>' : '';
   document.body.classList.toggle('si-wide', !!siSet.wide);
   var box = $('#siList'); if (!box) return;
-  var rows = store.shortInv; if (!rows) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
+  var all = store.shortInv; if (!all) { box.innerHTML = '<div class="empty">載入中…</div>'; return; }
+  /* 「處理方式」已經有寫的 = 處理過了,先不顯示;整張表固定照品名排序,不跟試算表原本的列順序。
+   * 明確指定 -u-co-stroke(筆劃,同台灣 Excel 的中文排序),不靠瀏覽器預設 → 每台手機順序一致。 */
+  var rows = all.filter(function (r) { return !String(r.handle || '').trim(); })
+    .slice().sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant-u-co-stroke'); });
   var single = siSet.mode === 'single';
   var cols = single ? SI_KEYS : SI_KEYS.slice(1);
   var colg = '<colgroup>' + cols.map(function (k) { return '<col class="sic_' + k + '">'; }).join('') + '</colgroup>';
@@ -1455,7 +1459,8 @@ function renderShortInv() {
     return '<tr data-row="' + r.row + '" class="namerow ' + z + '"><td class="siname" colspan="5">' + esc(r.name) + mark + '</td></tr>' +
       '<tr data-row="' + r.row + '" class="datarow dr ' + z + '">' + dataCells + '</tr>';
   }).join('') + '</tbody></table>';
-  box.innerHTML = rows.length ? (html + siPanelHtml()) : '<div class="empty">沒有缺貨登記資料</div>';
+  box.innerHTML = rows.length ? (html + siPanelHtml())
+    : '<div class="empty">' + (all.length ? '目前沒有待處理的缺貨<br>(已寫「處理方式」的不顯示)' : '沒有缺貨登記資料') + '</div>';
   box.querySelectorAll('tr[data-row]').forEach(function (tr) { tr.onclick = function () { go('/short-inv-detail', 'row=' + tr.getAttribute('data-row')); }; });
   bindSiPanel();
   siApplyStyle();
