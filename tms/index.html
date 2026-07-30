@@ -453,8 +453,19 @@ let SORT={k:'tsale',d:-1}, F={g1:'',g2:'',g3:''}, R={a:0,b:0};   // R = 日期�
 let TAB='flow', SALEMODE='rank';
 
 /* ---------- 小工具：分類／廠商的顯示規則 ---------- */
-/** `01.4D` → `4D`；`002.002密封袋` → `002密封袋`（只砍最前面那段代號） */
-const nameOnly=s=>String(s||'').replace(/^\s*\d+\s*\./,'').trim();
+/** 把 `代號.名稱` 砍成只剩名稱。
+ *  `331.國振社` → `國振社`｜`01.4D` → `4D`
+ *  ⚠ TMS 的小類名稱**常常又把代號寫在名稱最前面**（`011.011濕巾`／`002.002密封袋`）
+ *    → 砍完代號後，若剩下的字**就是以同一個代號開頭**，再砍一次 → `濕巾`／`密封袋`。
+ *    只認「同一個代號」是關鍵：不能無腦砍開頭數字，否則 `01.4D` 會被砍成 `D`。 */
+function nameOnly(s){
+  const t=String(s||'').trim();
+  const m=t.match(/^(\d+)\s*\.\s*(.*)$/);
+  if(!m)return t;
+  let rest=m[2].trim();
+  if(rest.startsWith(m[1]))rest=rest.slice(m[1].length).trim();
+  return rest||t;
+}
 /** A2：分類欄只顯示**小類名稱**——不要大類、不要代號、「無小類產品」留空白 */
 function subName(g3){
   const s=String(g3||'').trim();
