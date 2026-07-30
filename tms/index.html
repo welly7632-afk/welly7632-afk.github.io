@@ -11,7 +11,13 @@
   --sale:#d32f2f; --buy:#2e7d32; --stock:#1565c0; --price:#7b1fa2;
   --ok:#237a3a; --ok-bg:#e6f4ea; --warn:#b06a10; --warn-bg:#fdf1de;
   --bad:#c0271f; --bad-bg:#fceceb; --cool:#5a6878; --cool-bg:#eceff3;
+  /* 物流三色（使用者指定：海運＝藍、海快＝綠、巧巧郎＝菊） */
+  --sea:#1565c0;   --sea-bg:#e3f0fb;
+  --fast:#2e7d32;  --fast-bg:#e6f4ea;
+  --qiao:#9a6b12;  --qiao-bg:#f7eeda;
   --aside-w:180px; --chart-h:200px;
+  /* 版面（A3：左右間距／列高可調，字級隨列高走）→ 每個分頁各自一組（B2） */
+  --cell-pad:6px; --rowh:22px; --cell-fs:11.5px;
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -20,11 +26,15 @@
     --sale:#ef5350; --buy:#66bb6a; --stock:#42a5f5; --price:#ba68c8;
     --ok:#5cc47c; --ok-bg:#16301f; --warn:#dda44a; --warn-bg:#30240f;
     --bad:#ef6b62; --bad-bg:#341917; --cool:#94a3b5; --cool-bg:#212a35;
+    --sea:#5aa9ef;  --sea-bg:#12283c;
+    --fast:#6cc47a; --fast-bg:#12301c;
+    --qiao:#d9ad55; --qiao-bg:#302509;
   }
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-size:12px;
   font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;line-height:1.45}
+body.dragging{user-select:none;cursor:crosshair}
 header{background:var(--card);border-bottom:1px solid var(--line);padding:6px 10px;
   display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 h1{margin:0;font-size:14px;font-weight:700;white-space:nowrap}
@@ -37,6 +47,7 @@ button{font:inherit;font-size:11.5px;border:1px solid var(--line);background:var
 button:hover{border-color:var(--accent);color:var(--accent)}
 button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
 button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
 .seg button{border:0;border-right:1px solid var(--line);border-radius:0;padding:3px 9px}
 .seg button:last-child{border-right:0}
@@ -97,13 +108,15 @@ svg.chart{display:block}
   border-radius:5px;padding:4px 7px;font-size:11.5px;box-shadow:0 3px 10px rgba(0,0,0,.16);
   z-index:50;display:none;white-space:nowrap}
 .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
-/* ---- 表格 ---- */
+/* ---- 表格（A3：padding／列高／字級都吃 CSS 變數） ---- */
 .tscroll{overflow:auto;border-top:1px solid var(--line)}
-table{border-collapse:separate;border-spacing:0;width:100%;font-size:11.5px;
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--cell-fs);
   font-variant-numeric:tabular-nums}
-th,td{padding:1.5px 6px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
-th{background:var(--head);position:sticky;top:0;z-index:8;font-size:11px;font-weight:600;
-  color:var(--muted);border-bottom:1.5px solid var(--line);cursor:pointer;user-select:none;padding:3px 6px}
+th,td{padding:0 var(--cell-pad);height:var(--rowh);border-bottom:1px solid var(--line);
+  white-space:nowrap;text-align:right}
+th{background:var(--head);position:sticky;top:0;z-index:8;font-size:calc(var(--cell-fs) - .5px);
+  font-weight:600;color:var(--muted);border-bottom:1.5px solid var(--line);
+  cursor:pointer;user-select:none}
 th:hover{color:var(--accent)}
 th.l,td.l{text-align:left}
 td.code{position:sticky;left:0;background:var(--card);z-index:6;font-family:Consolas,monospace;
@@ -113,27 +126,51 @@ td.code span{display:inline-block;max-width:78px;overflow:hidden;text-overflow:e
 th.code{left:0;z-index:9;background:var(--head);width:1%}
 tr:hover td{background:var(--accent-soft)}
 tr.sel td{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
+tr.msel td{background:var(--warn-bg)}
+tr.msel td.code{background:var(--warn-bg)}
 .nm{display:inline-block;max-width:210px;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;vertical-align:bottom}
 .dim{color:var(--muted)}.zero{color:var(--line)}
-.tag{display:inline-block;padding:0 5px;border-radius:4px;font-size:10.5px;font-weight:700}
+.tag{display:inline-block;padding:0 5px;border-radius:4px;font-size:calc(var(--cell-fs) - 1px);font-weight:700}
 .t-ok{background:var(--ok-bg);color:var(--ok)}.t-warn{background:var(--warn-bg);color:var(--warn)}
 .t-bad{background:var(--bad-bg);color:var(--bad)}.t-cool{background:var(--cool-bg);color:var(--cool)}
+.t-sea{background:var(--sea-bg);color:var(--sea)}
+.t-fast{background:var(--fast-bg);color:var(--fast)}
+.t-qiao{background:var(--qiao-bg);color:var(--qiao)}
+.lnk{cursor:pointer;text-decoration:underline dotted}
+.lnk:hover{color:var(--accent)}
 .foot{display:flex;justify-content:space-between;align-items:center;padding:4px 9px;
   border-top:1px solid var(--line);background:var(--head);font-size:11px;color:var(--muted);
   flex-wrap:wrap;gap:8px;border-radius:0 0 7px 7px}
 .pg{display:flex;gap:4px;align-items:center}
 .pg button{padding:1px 7px;font-size:11px}
 .empty,.load{padding:32px;text-align:center;color:var(--muted)}
-input.ordin{width:74px;font:inherit;font-size:12px;font-weight:700;text-align:right;
-  padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:var(--card);
+input.ordin{width:74px;font:inherit;font-size:var(--cell-fs);font-weight:700;text-align:right;
+  padding:0 4px;border:1px solid var(--line);border-radius:4px;background:var(--card);
   color:var(--sale);font-variant-numeric:tabular-nums}
 input.ordin:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
 input.ordin.chg{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+input.boxin{width:56px;font:inherit;font-size:var(--cell-fs);text-align:right;padding:0 3px;
+  border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--text)}
+input.boxin.chg{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
 input[type=number]{font:inherit;font-size:11.5px;padding:2px 5px;border:1px solid var(--line);
   border-radius:4px;background:var(--card);color:var(--text)}
 .err{background:var(--bad-bg);color:var(--bad);padding:10px;border-radius:7px;margin:7px}
 .hint{font-size:10.5px;color:var(--muted);margin-top:3px}
+/* ---- 篩選列（B1） ---- */
+tr.frow th{position:sticky;top:var(--rowh);z-index:7;background:var(--card);padding:1px 3px;
+  cursor:default;border-bottom:1px solid var(--line)}
+tr.frow input,tr.frow select{width:100%;min-width:52px;font:inherit;font-size:10.5px;
+  padding:1px 3px;border:1px solid var(--line);border-radius:3px;background:var(--card);
+  color:var(--text)}
+tr.frow input:not(:placeholder-shown),tr.frow select.act{border-color:var(--accent);
+  background:var(--accent-soft)}
+/* ---- 多選合計列（A6） ---- */
+.selbar{display:none;align-items:center;gap:12px;padding:4px 9px;background:var(--warn-bg);
+  border-top:1px solid var(--warn);font-size:11.5px;flex-wrap:wrap}
+.selbar.on{display:flex}
+.selbar b{font-variant-numeric:tabular-nums}
+.selbar .k{color:var(--muted);font-size:10.5px}
 /* ---- 設定面板 ---- */
 .cfgpanel{display:none;background:var(--card);border-bottom:1px solid var(--line);padding:8px 10px}
 body.cfg .cfgpanel{display:block}
@@ -141,7 +178,29 @@ body.cfg .cfgpanel{display:block}
 .cfgcol h4{margin:0 0 4px;font-size:11px;color:var(--muted)}
 .cfgcol .clist{columns:2;column-gap:16px;max-width:330px}
 .cfgnote{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.slrow{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:11px}
+.slrow label{width:64px;color:var(--muted)}
+.slrow input[type=range]{width:118px}
+.slrow b{width:44px;text-align:right;font-variant-numeric:tabular-nums}
 .page{display:none}.page.on{display:block}
+/* ---- 策略開關（B7） ---- */
+.spbox{display:flex;gap:14px;flex-wrap:wrap;padding:6px 10px;border-top:1px solid var(--line)}
+.spitem{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
+.spitem input[type=number]{width:56px}
+.spitem label{cursor:pointer}
+/* ---- 回填預覽（B4/B5/B6） ---- */
+.mask{position:fixed;inset:0;background:rgba(8,12,18,.55);z-index:90;display:none;
+  align-items:center;justify-content:center;padding:20px}
+.mask.on{display:flex}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:9px;max-width:960px;
+  width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.modal h3{margin:0;padding:10px 12px;font-size:13px;border-bottom:1px solid var(--line)}
+.modal .body{overflow:auto;padding:0 12px}
+.modal .act{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+.modal table{font-size:11px}
+.old{color:var(--muted);text-decoration:line-through}
+.new{color:var(--warn);font-weight:700}
 </style>
 </head>
 <body>
@@ -161,10 +220,17 @@ body.cfg .cfgpanel{display:block}
 
 <div class="cfgpanel">
   <div class="cfgrow">
-    <div class="cfgcol"><h4>顯示欄位</h4><div class="clist" id="colPick"></div></div>
-    <div class="cfgcol"><h4>顯示統計</h4><div class="clist" id="statPick"></div></div>
-    <div class="cfgcol"><h4>版面</h4>
-      <div class="hint">拖曳側邊欄右緣可調寬度、拖曳圖表下緣可調高度</div>
+    <div class="cfgcol"><h4 id="colPickTitle">顯示欄位</h4><div class="clist" id="colPick"></div></div>
+    <div class="cfgcol" id="statPickBox"><h4>顯示統計</h4><div class="clist" id="statPick"></div></div>
+    <div class="cfgcol"><h4>版面（<span id="layTab">產品流量分析</span>）</h4>
+      <div class="slrow"><label>左右間距</label>
+        <input type="range" id="slPad" min="1" max="20" step="1"><b id="vPad"></b></div>
+      <div class="slrow"><label>列高</label>
+        <input type="range" id="slRow" min="15" max="46" step="1"><b id="vRow"></b></div>
+      <div class="slrow"><label>字級微調</label>
+        <input type="range" id="slFs" min="70" max="140" step="2"><b id="vFs"></b></div>
+      <div class="hint">字級預設跟著列高等比縮放，微調是在那之上再乘一個倍率。<br>
+        拖曳側邊欄右緣可調寬度、拖曳圖表下緣可調高度（只有流量分析頁有）。</div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
         <button id="cfgSaveGlobal">💾 儲存為全站預設</button>
         <button id="cfgReset">↺ 還原預設</button>
@@ -227,6 +293,7 @@ body.cfg .cfgpanel{display:block}
     <div class="panel">
       <div class="tscroll" id="tscroll"><table><thead id="th"></thead><tbody id="tb">
         <tr><td class="load">載入資料中…</td></tr></tbody></table></div>
+      <div class="selbar" id="selbar"></div>
       <div class="foot"><div id="cnt"></div><div class="pg" id="pager"></div></div>
     </div>
   </div>
@@ -258,40 +325,93 @@ body.cfg .cfgpanel{display:block}
         <span class="hint" id="saleHint"></span>
       </div>
       <div class="tscroll" style="max-height:60vh"><table><thead id="th2"></thead><tbody id="tb2"></tbody></table></div>
-      <div class="foot"><div id="cnt2"></div></div>
+      <div class="foot"><div id="cnt2"></div><div id="saleNote" class="hint"></div></div>
     </div>
   </div>
 </div>
 
-<!-- ================= 分頁3：345 進貨決策（V4.12 邏輯移植） ================= -->
+<!-- ================= 分頁3：345 進貨決策（V4.12 邏輯移植＋策略可開關） ================= -->
 <div class="page" id="page-plan">
   <div style="padding:7px">
     <div class="panel" style="margin-bottom:7px">
       <div style="padding:8px 10px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">🚢 海運</div>
+        <div><div class="k" style="font-size:10.5px;color:var(--sea)">🚢 海運</div>
           <input type="number" id="ltSea" value="50" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">⛴️ 海快</div>
+        <div><div class="k" style="font-size:10.5px;color:var(--fast)">⛴️ 海快</div>
           <input type="number" id="ltFast" value="30" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">🚚 巧巧郎</div>
+        <div><div class="k" style="font-size:10.5px;color:var(--qiao)">🚚 巧巧郎</div>
           <input type="number" id="ltQiao" value="14" min="1" style="width:58px"></div>
+        <div><div class="k" style="font-size:10.5px;color:var(--muted)">其他物流</div>
+          <input type="number" id="ltOther" value="15" min="1" style="width:58px"></div>
         <div><div class="k" style="font-size:10.5px;color:var(--muted)">預設安全天數</div>
           <input type="number" id="safeDays" value="15" min="0" style="width:64px"></div>
         <div><div class="k" style="font-size:10.5px;color:var(--muted)">🛑 最高庫存上限</div>
           <input type="number" id="maxDays" value="90" min="30" style="width:70px"></div>
         <label style="font-size:11.5px"><input type="checkbox" id="keepClosed">
-          「關閉」也輸出空白列（不用先篩選就能整批貼）</label>
-        <button class="primary" id="btnRun">🚀 結算補貨建議</button>
+          「關閉」也輸出空白列</label>
+        <span class="sp"></span>
+        <button id="btnRun" title="參數一改就會自動重算，這顆只是手動再算一次">↻ 重算</button>
         <button id="btnCopy">📋 複製四欄（貼回 AR 欄）</button>
+        <button class="primary" id="btnPush">☁️ 一鍵回填試算表</button>
         <span class="hint" id="planHint"></span>
       </div>
+      <!-- B7：九條策略都可以開關，門檻數字也可以改 -->
+      <div class="spbox" id="spbox"></div>
       <div class="stats" id="planStats"></div>
     </div>
-    <div class="panel">
-      <div class="tscroll" style="max-height:calc(100vh - 250px)">
-        <table><thead id="th3"></thead><tbody id="tb3">
-          <tr><td class="load">按「結算補貨建議」開始</td></tr></tbody></table>
+
+    <!-- B8／B9：點產品代號看該品走勢、點廠商看該廠商（＝中類）整體 -->
+    <div class="panel" id="planChartBox" style="margin-bottom:7px;display:none">
+      <div class="chartbox">
+        <div class="chartbar">
+          <span class="ttl" id="pChartTitle"></span>
+          <label><input type="checkbox" id="pSale" checked><span class="dot" style="background:var(--sale)"></span>銷貨</label>
+          <label><input type="checkbox" id="pBuy"><span class="dot" style="background:var(--buy)"></span>進貨</label>
+          <label><input type="checkbox" id="pStock" checked><span class="dot" style="background:var(--stock)"></span>庫存</label>
+          <span class="sp"></span>
+          <span class="hint" id="pChartNote"></span>
+          <button id="pChartClose">✕ 收起</button>
+        </div>
+        <div class="cwrap" id="pcwrap"><svg class="chart" id="chart3"></svg></div>
+        <div class="tip" id="tip3"></div>
       </div>
+    </div>
+
+    <!-- B4：選取列之後可以一起改物流／裝箱量 -->
+    <div class="panel" id="planEditBar" style="margin-bottom:7px;display:none">
+      <div style="padding:6px 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11.5px">
+        <b id="pselN"></b>
+        <span class="k" style="color:var(--muted)">設物流（可多選，會寫成「海運/海快」）：</span>
+        <span id="shipBtns" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+        <button id="shipApply" class="primary">套用到選取列</button>
+        <span class="k" style="color:var(--muted)">｜裝箱數：</span>
+        <input type="number" id="boxSet" min="0" step="1" style="width:70px">
+        <button id="boxApply">套用</button>
+        <span class="sp"></span>
+        <button id="pselClear">清除選取</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tscroll" id="tscroll3" style="max-height:calc(100vh - 300px)">
+        <table><thead id="th3"></thead><tbody id="tb3">
+          <tr><td class="load">計算中…</td></tr></tbody></table>
+      </div>
+      <div class="selbar" id="selbar3"></div>
       <div class="foot"><div id="cnt3"></div><div id="pasteNote" class="hint"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 回填預覽（B4/B5/B6 共用） -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="mTitle">回填預覽</h3>
+    <div class="body" id="mBody"></div>
+    <div class="act">
+      <button class="primary" id="mGo">✅ 確認寫入</button>
+      <button id="mCancel">取消</button>
+      <span class="hint" id="mNote"></span>
     </div>
   </div>
 </div>
@@ -301,35 +421,67 @@ body.cfg .cfgpanel{display:block}
 /* ===== 後端設定 =====
    資料放 Google（GAS 代理），GitHub Pages 的 repo 裡不放任何商業資料。
    ⚠ 網址寫在這裡＝拿到網址的人就能取得資料；安全程度＝「網址不外流」，
-     與公司現行的倉儲網站／V4.12 相同水準。 */
+     與公司現行的倉儲網站／V4.12 相同水準。
+
+   ★ 為什麼有**兩個** GAS 網址（2026-07-30）
+     兩個都是「繫結在某一本試算表底下」的指令碼（container-bound），授權範圍只有
+     `spreadsheets.currentonly`＝「只能碰這一本」。所以要寫回另一本試算表，就必須
+     另外做一個繫結在那一本底下的專案——不是偷懶，是刻意維持最小權限：
+       API_URL  → 繫結「TMS報表」（網站資料庫）：讀 traffic/master/plan、全站設定、立即更新
+       W345_URL → 繫結「345庫存規劃」：把物流／裝箱數／AR:AU 寫回去（B4/B5/B6）
+     如果把兩件事塞進同一個專案，就得改用 openById()＋全域試算表權限，
+     授權畫面會變成「查看、編輯、建立及刪除**你所有的** Google 試算表」。 */
 const GAS_URL='https://script.google.com/macros/s/AKfycbyLUjaaQ1obt9xvQ0BqTD4GDfGMS6fcPEqvdjsMG34DAZAdNitI1yqR_k0IVjcZ66xU/exec';
+const W345_URL='https://script.google.com/macros/s/AKfycbxHDfX9bef-vMAkZ84qu3WmYSiAV1V5mFUIf3OA7x4z4xL3CsAVw7lZR1y43xg_WEVs/exec';
 // 本機開發預設讀同目錄 JSON；正式站（非 localhost）走 GAS。
 // 可用網址參數強制：?api=1 → 走 GAS｜?api=0 → 走本地檔
 const _q=new URLSearchParams(location.search).get('api');
 const API_URL = _q==='1' ? GAS_URL
               : _q==='0' ? ''
               : (/^(localhost|127\.|\[::1\])/.test(location.hostname) ? '' : GAS_URL);
+const WRITE_URL = /^https:\/\/script\.google\.com\//.test(W345_URL) ? W345_URL : '';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const N=n=>(!n)?'':Math.round(n).toLocaleString('zh-TW');
 const N1=n=>(!n)?'':n.toFixed(1);
 const deb=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
 let DATA=null,MASTER={},PLAN=null,ROWS=[],VIEW=[],PAGE=0,PER=80,GRAN='d',PICK=null;
 let SORT={k:'tsale',d:-1}, F={g1:'',g2:'',g3:''}, R={a:0,b:0};   // R = 日期索引範圍
 let TAB='flow', SALEMODE='rank';
 
-/* ---------- 欄位 / 統計定義 ---------- */
+/* ---------- 小工具：分類／廠商的顯示規則 ---------- */
+/** `01.4D` → `4D`；`002.002密封袋` → `002密封袋`（只砍最前面那段代號） */
+const nameOnly=s=>String(s||'').replace(/^\s*\d+\s*\./,'').trim();
+/** A2：分類欄只顯示**小類名稱**——不要大類、不要代號、「無小類產品」留空白 */
+function subName(g3){
+  const s=String(g3||'').trim();
+  if(!s||s==='無小類產品'||s==='無小類')return '';
+  return nameOnly(s);
+}
+/** B3：廠商是**文字**，`2` 其實是 `02`（試算表裡就只存了 "2"，前導零在這裡補回來） */
+const vend=v=>{const s=String(v??'').trim();return (/^\d+$/.test(s)&&s.length<2)?s.padStart(2,'0'):s;};
+/** 排序鍵：純數字的廠商用數字比（02 在 11 前面），非數字的排到最後照字面比 */
+const vendKey=v=>{const s=String(v??'').trim();
+  return /^\d+$/.test(s)?[0,+s,'']:[s?1:2,0,s];};
+const cmpKey=(x,y)=>{for(let i=0;i<x.length;i++){if(x[i]<y[i])return -1;if(x[i]>y[i])return 1;}return 0;};
+
+/* ---------- 欄位 / 統計定義（分頁1） ---------- */
 const COLS=[
   {k:'c',t:'產品代號',on:1,lock:1,l:1,get:p=>`<span title="${esc(p.c)}">${esc(p.c)}</span>`},
   {k:'n',t:'產品名稱',on:1,l:1,get:p=>`<span class="nm" title="${esc(p.n)}">${esc(p.n)}</span>`},
-  {k:'cat',t:'分類',on:0,l:1,get:p=>`<span class="dim">${esc(DATA.meta.cats[p.g1])}${p.g3?' · '+esc(p.g3):''}</span>`},
-  {k:'vendor',t:'廠商',on:0,get:p=>esc(p.vendor||'')},
-  {k:'cost',t:'成本',on:0,get:p=>N1(p.cost)},
-  {k:'pBEST',t:'售價BEST',on:0,get:p=>N(p.pBEST)},
+  // A2：只顯示小類名稱（去代號、去大類、無小類留白）
+  {k:'cat',t:'分類',on:0,l:1,get:p=>{const s=subName(p.g3);
+    return s?`<span class="dim" title="${esc(DATA.meta.cats[p.g1])}${p.g3?' · '+esc(p.g3):''}">${esc(s)}</span>`:'';}},
+  {k:'vendor',t:'廠商',on:0,get:p=>esc(vend(p.vendor))},
+  // A4：成本＝商品總檔 M 欄「含稅成本」→ 標題明確寫出來
+  {k:'cost',t:'成本(含稅)',on:0,get:p=>N1(p.cost)},
   {k:'pPI',t:'售價PI',on:0,get:p=>N(p.pPI)},
+  {k:'pBEST',t:'售價BEST',on:0,get:p=>N(p.pBEST)},
   {k:'pMO',t:'售價MO+',on:0,get:p=>N(p['pMO+'])},
+  // A4：毛利率＝(PI − 含稅成本) ÷ PI
   {k:'gp',t:'毛利率',on:0,get:p=>p.gp?`${(p.gp*100).toFixed(1)}%`:''},
   {k:'repriced',t:'改價時間',on:0,l:1,get:p=>p.repriced?`<span class="dim">${esc(p.repriced.slice(0,10))}</span>`:''},
   {k:'open',t:'期初庫存',on:0,get:p=>N(p.open0)},
@@ -338,6 +490,8 @@ const COLS=[
   {k:'tret',t:'退貨',on:0,get:p=>p.tret?N(p.tret):'<span class="zero">·</span>'},
   {k:'last',t:'目前庫存',on:1,get:p=>p.last>0?`<b>${N(p.last)}</b>`:'<span class="tag t-bad">0</span>'},
   {k:'avg',t:'日均銷',on:1,get:p=>p.avg>0?N1(p.avg):'<span class="zero">·</span>'},
+  // A5：月均銷＝日均銷 × 30（同一個有庫存日均銷，換算成一個月）
+  {k:'mavg',t:'月均銷',on:1,get:p=>p.mavg>0?N(p.mavg):'<span class="zero">·</span>'},
   {k:'days',t:'庫存天數',on:1,get:p=>daysCell(p)},
   {k:'oos',t:'缺貨天數',on:0,get:p=>p.oos?`<span class="tag t-bad">${p.oos}</span>`:'<span class="zero">·</span>'},
   {k:'active',t:'動銷天數',on:0,get:p=>p.active?`<span class="tag t-ok">${p.active}</span>`:'<span class="zero">·</span>'},
@@ -350,6 +504,8 @@ const STATS=[
   {k:'in',t:'期間進貨',on:1,cls:'buy',f:v=>N(sum(v,'tin'))},
   {k:'sale',t:'期間銷貨',on:1,cls:'sale',f:v=>N(sum(v,'tsale'))},
   {k:'ret',t:'期間退貨',on:0,cls:'',f:v=>N(sum(v,'tret'))},
+  {k:'avg',t:'日均銷合計',on:0,cls:'',f:v=>N1(sum(v,'avg'))},
+  {k:'mavg',t:'月均銷合計',on:0,cls:'',f:v=>N(sum(v,'mavg'))},
   {k:'days',t:'庫存天數',on:1,cls:'',f:v=>{const a=sum(v,'avg');return a>0?(sum(v,'last')/a).toFixed(1):'—';}},
   {k:'amt',t:'銷貨額',on:1,cls:'',f:v=>N(sum(v,'amt'))},
   {k:'cogs',t:'銷貨成本',on:0,cls:'',f:v=>N(sum(v,'cogs'))},
@@ -358,27 +514,54 @@ const STATS=[
 ];
 const sum=(a,k)=>a.reduce((s,p)=>s+(p[k]||0),0);
 
-/* ---------- 設定存取（目前 localStorage；全站預設要等 GAS） ---------- */
-const CFGKEY='tmsflow.cfg.v1';
-function saveCfg(){
-  try{localStorage.setItem(CFGKEY,JSON.stringify(curCfg()));}catch(e){}
+/* =========================================================================
+   設定：**每個分頁各自一組**（B2）＋版面可調（A3）
+   ========================================================================= */
+const CFGKEY='tmsflow.cfg.v2';
+const DEF_LAY={pad:6,rowh:22,fs:100};      // fs＝字級微調倍率(%)
+const LAY={flow:{...DEF_LAY,aw:'180px',ch:'200px',sb:1},
+           sale:{...DEF_LAY},
+           plan:{...DEF_LAY,pad:5,rowh:21}};
+/** 字級＝列高等比縮放（列高 22 → 11.5px）再乘微調倍率 */
+const fsOf=l=>clamp(11.5*(l.rowh/22)*(l.fs/100),8.5,22);
+function applyLayout(tab){
+  const l=LAY[tab]||DEF_LAY, s=document.documentElement.style;
+  s.setProperty('--cell-pad',l.pad+'px');
+  s.setProperty('--rowh',l.rowh+'px');
+  s.setProperty('--cell-fs',fsOf(l).toFixed(2)+'px');
+  if(tab==='flow'){
+    if(l.aw)s.setProperty('--aside-w',l.aw);
+    if(l.ch)s.setProperty('--chart-h',l.ch);
+    $('layout').classList.toggle('nosb',l.sb===0);
+  }
+}
+function curCfg(){
+  return {v:2,
+    flow:{cols:COLS.map(c=>c.on),stats:STATS.map(s=>s.on),lay:{...LAY.flow}},
+    plan:{cols:PCOLS.map(c=>c.on),lay:{...LAY.plan},sp:{...SP}},
+    sale:{lay:{...LAY.sale}}};
 }
 function applyCfg(c){
   if(!c)return;
-  if(c.cols)COLS.forEach((x,i)=>{if(!x.lock&&c.cols[i]!==undefined)x.on=c.cols[i];});
-  if(c.stats)STATS.forEach((x,i)=>{if(c.stats[i]!==undefined)x.on=c.stats[i];});
-  if(c.aw)document.documentElement.style.setProperty('--aside-w',c.aw);
-  if(c.ch)document.documentElement.style.setProperty('--chart-h',c.ch);
-  if(c.sb===0)$('layout').classList.add('nosb'); else if(c.sb===1)$('layout').classList.remove('nosb');
+  if(!c.v){                                   // v1 舊格式（只有流量分析頁）→ 搬進 flow
+    c={v:2,flow:{cols:c.cols,stats:c.stats,
+      lay:{...DEF_LAY,aw:c.aw,ch:c.ch,sb:c.sb}}};
+  }
+  const put=(defs,arr)=>{if(arr)defs.forEach((x,i)=>{if(!x.lock&&arr[i]!==undefined)x.on=arr[i];});};
+  if(c.flow){ put(COLS,c.flow.cols); put(STATS,c.flow.stats);
+    if(c.flow.lay)Object.assign(LAY.flow,c.flow.lay); }
+  if(c.plan){ put(PCOLS,c.plan.cols);
+    if(c.plan.lay)Object.assign(LAY.plan,c.plan.lay);
+    if(c.plan.sp)Object.assign(SP,c.plan.sp); }
+  if(c.sale&&c.sale.lay)Object.assign(LAY.sale,c.sale.lay);
+  applyLayout(TAB);
 }
-function curCfg(){
-  return {cols:COLS.map(c=>c.on),stats:STATS.map(s=>s.on),
-    aw:getComputedStyle(document.documentElement).getPropertyValue('--aside-w').trim(),
-    ch:getComputedStyle(document.documentElement).getPropertyValue('--chart-h').trim(),
-    sb:$('layout').classList.contains('nosb')?0:1};
-}
+function saveCfg(){ try{localStorage.setItem(CFGKEY,JSON.stringify(curCfg()));}catch(e){} }
 function loadCfg(){
-  try{ applyCfg(JSON.parse(localStorage.getItem(CFGKEY)||'null')); }catch(e){}
+  try{
+    const raw=localStorage.getItem(CFGKEY)||localStorage.getItem('tmsflow.cfg.v1');
+    applyCfg(JSON.parse(raw||'null'));
+  }catch(e){}
 }
 
 /* ---- 全站設定（存在 GAS 後端的 settings 分頁，所有人共用） ---- */
@@ -386,9 +569,8 @@ async function loadGlobalCfg(){
   try{
     const r=await fetch(`${API_URL}?action=settings`);
     const c=await r.json();
-    if(c&&c.cols){ applyCfg(c); checks('colPick',COLS,()=>{saveCfg();drawTable();});
-      checks('statPick',STATS,()=>{saveCfg();drawStats(VIEW);});
-      drawStats(VIEW); drawTable(); drawChart();
+    if(c&&(c.v||c.cols)){ applyCfg(c); buildCfgPanel(); render();
+      if(TAB==='plan')runPlan();
       $('cfgNote').textContent=`已套用全站預設（後端更新於 ${esc(c._at||'—')}）`;
     }
   }catch(e){ console.warn('全站設定讀取失敗',e); }
@@ -420,7 +602,8 @@ async function askRefresh(){
     const j=await r.json();
     b.textContent=j.ok?'✅ 已通知，約 1~3 分鐘':'✘ 失敗';
     if(j.ok)$('meta').insertAdjacentHTML('beforeend',
-      ` <span style="color:var(--warn)">· 已請 ERP 電腦重跑（${esc(j.at)}），完成後重新整理即可看到新資料</span>`);
+      ` <span style="color:var(--warn)">· 已請 ERP 電腦重跑（${esc(j.at)}）。`+
+      `ERP 端會先檢查缺哪幾天，資料已經齊全就不會白跑一趟；完成後重新整理即可看到新資料</span>`);
   }catch(e){ b.textContent='✘ '+e.message.slice(0,18); }
   setTimeout(()=>{b.disabled=0;b.textContent=o;},4000);
 }
@@ -470,17 +653,29 @@ function prep(){
   $('d1').min=$('d2').min=D[0]; $('d1').max=$('d2').max=D[nd-1];
   $('d1').value=D[0]; $('d2').value=D[nd-1];
   const hit=DATA.products.filter(p=>MASTER[p.c]).length;
+  // meta.finalized（ERP 端在 22:00 之後才會把當天標成定稿，見 A8）
+  const fin=(DATA.meta.finalized&&Object.keys(DATA.meta.finalized))||[];
+  const todayFinal=fin.includes(D[nd-1]);
+  const noPI=DATA.products.filter(p=>!(MASTER[p.c]||{}).PI).length;
   $('meta').innerHTML=`資料 <b>${D[0]}</b>~<b>${D[nd-1]}</b>（${nd}天）　`+
     `產品 <b>${DATA.products.length.toLocaleString()}</b>　`+
-    `主檔 <b>${hit.toLocaleString()}</b>　匯入 <b>${esc((DATA.meta.exported||'—').slice(0,16))}</b>`;
+    `主檔 <b>${hit.toLocaleString()}</b>　匯入 <b>${esc((DATA.meta.exported||'—').slice(0,16))}</b>`+
+    (fin.length?`　定稿 <b>${fin.length}</b> 天`+
+      (todayFinal?'':`<span style="color:var(--warn)">（最後一天還沒定稿，${
+        esc(DATA.meta.finalAfter||'22:00')} 之後才是最終值）</span>`):'')+
+    // 售價固定用 PI（A4）→ PI 空白的品項算不出銷貨額，明講出來不要讓人以為是 bug
+    (noPI?`　<span style="color:var(--warn)" title="售價一律用商品總檔的 PI（使用者指定）；PI 空白就沒有售價，銷貨額與毛利率會是空的">`
+      +`PI 空白 <b>${noPI.toLocaleString()}</b> 項</span>`:'');
   ROWS=DATA.products.map(p=>{
     const m=MASTER[p.c]||{};
     const cost=m.cost||p.cost||0;
-    const unit=m.BEST||m.PI||p.price||0;   // 算銷貨額用的單價：商品總檔 BEST 優先
+    // A4：售價一律用 **PI**（使用者指定）。實查主檔：PI 有值 3,419 筆、BEST 3,353 筆，
+    //     而且沒有「BEST 有值但 PI 空白」的情形 → 固定用 PI 不會少算。
+    const unit=m.PI||0;
     return {...p,
       vendor:m.vendor||'', cost, unit, repriced:m.repriced||'',
-      // 主檔「毛利」欄多半空白（4,250 筆只有 1,233 筆有值）→ 沒有就用售價成本自己算
-      gp: m.gp || (unit>0 ? (unit-cost)/unit : 0),
+      // A4：毛利率＝(PI − 含稅成本) ÷ PI。主檔那個「毛利」欄不用了（多半空白且算法不明）
+      gp: unit>0 ? (unit-cost)/unit : 0,
       pPI:m.PI||0, pBEST:m.BEST||0, pSH:m.SH||0, 'pMO+':m['MO+']||0, pSP:m.sp||0};
   });
   recalc();
@@ -500,6 +695,7 @@ function recalc(){
     }
     const valid=span-oos, avg=valid>0?tsale/valid:0, last=stock[stock.length-1];
     Object.assign(p,{tin,tsale,tret,oos,active,d14,valid,avg,last,stock,sale,buy,
+      mavg:avg*30,                    // A5：月均銷
       open0:p.d[a*4], amt:tsale*p.unit, cogs:tsale*p.cost,
       days:avg>0?last/avg:(last>0?Infinity:0)});
   });
@@ -509,14 +705,15 @@ function recalc(){
 function buildUI(){
   radios('f1',[{v:'',t:'全部'}].concat(DATA.meta.cats.map((c,i)=>({v:String(i),t:c}))),'g1');
   syncMid(); syncSub();
-  checks('colPick',COLS,()=>{saveCfg();drawTable();});
-  checks('statPick',STATS,()=>{saveCfg();drawStats(VIEW);});
+  buildCfgPanel();
   ['sSale','sBuy','sStock','sMark'].forEach(id=>$(id).onchange=()=>drawChart());
   ['vAmt','vQty'].forEach(id=>$(id).onchange=()=>drawSale());
+  ['pSale','pBuy','pStock'].forEach(id=>$(id).onchange=()=>drawPlanChart());
   $('q').oninput=deb(()=>{PAGE=0;render();},200);
   $('hideZero').onchange=()=>{PAGE=0;render();};
   document.querySelectorAll('#gran button').forEach(b=>b.onclick=()=>{
-    GRAN=b.dataset.g;segOn('gran',b);TAB==='flow'?drawChart():drawSale();});
+    GRAN=b.dataset.g;segOn('gran',b);
+    TAB==='flow'?drawChart():TAB==='sale'?drawSale():drawPlanChart();});
   document.querySelectorAll('#quick button').forEach(b=>b.onclick=()=>{
     segOn('quick',b);setRangeDays(+b.dataset.d);});
   $('d1').onchange=$('d2').onchange=()=>{
@@ -529,20 +726,36 @@ function buildUI(){
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
     TAB=b.dataset.p; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.page').forEach(pg=>pg.classList.toggle('on',pg.id==='page-'+TAB));
-    if(TAB==='sale')drawSale(); else if(TAB==='flow')drawChart();
+    applyLayout(TAB); buildCfgPanel();
+    // B10：切到決策頁就自動算一次（不用再按「結算補貨建議」）
+    if(TAB==='sale')drawSale(); else if(TAB==='flow')drawChart(); else runPlan();
   });
-  $('btnRun').onclick=runPlan;
+  $('btnRun').onclick=()=>runPlan();
   $('btnCopy').onclick=copyPlan;
+  $('btnPush').onclick=openPush;
   $('btnClear').onclick=()=>{PICK=null;drawChart();drawTable();};   // 回類別總覽
   document.querySelectorAll('#saleMode button').forEach(b=>b.onclick=()=>{
     SALEMODE=b.dataset.m;segOn('saleMode',b);drawSale();});
-  $('btnSb').onclick=()=>{$('layout').classList.toggle('nosb');saveCfg();setTimeout(drawChart,60);};
+  $('btnSb').onclick=()=>{$('layout').classList.toggle('nosb');
+    LAY.flow.sb=$('layout').classList.contains('nosb')?0:1;saveCfg();setTimeout(drawChart,60);};
   $('btnCfg').onclick=()=>{document.body.classList.toggle('cfg');
     $('btnCfg').classList.toggle('on',document.body.classList.contains('cfg'));setTimeout(drawChart,60);};
-  $('cfgReset').onclick=()=>{localStorage.removeItem(CFGKEY);location.reload();};
+  $('cfgReset').onclick=()=>{localStorage.removeItem(CFGKEY);
+    localStorage.removeItem('tmsflow.cfg.v1');location.reload();};
   $('cfgSaveGlobal').onclick=saveGlobalCfg;
   $('btnRefresh').onclick=askRefresh;
+  // 決策頁參數：一改就即時重算（B10）
+  ['ltSea','ltFast','ltQiao','ltOther','safeDays','maxDays'].forEach(id=>
+    $(id).oninput=deb(()=>{if(TAB==='plan')runPlan();},250));
+  $('keepClosed').onchange=()=>{if(TAB==='plan')runPlan();};
+  $('pChartClose').onclick=()=>{PPICK=null;drawPlanChart();};
+  $('pselClear').onclick=()=>{PSEL.clear();drawPlan();};
+  $('shipApply').onclick=applyShip;
+  $('boxApply').onclick=applyBox;
+  $('mCancel').onclick=()=>$('mask').classList.remove('on');
+  $('mGo').onclick=doPush;
   grips();
+  applyLayout(TAB);
   $('cfgNote').textContent=API_URL
     ? '設定會先存這台電腦；按「儲存為全站預設」則所有人共用。'
     : '尚未接上後端，設定只存在這台電腦。';
@@ -557,21 +770,23 @@ function setRangeDays(days){
 function applyRange(){
   const n=R.b-R.a+1;
   $('rangeInfo').textContent=`${DATA.meta.dates[R.a]} ~ ${DATA.meta.dates[R.b]}（${n} 天）`;
-  recalc(); render(); if(TAB==='sale')drawSale();
+  recalc(); render(); if(TAB==='sale')drawSale(); if(TAB==='plan')drawPlanChart();
 }
 function radios(box,items,key){
   $(box).innerHTML=items.map(it=>
     `<label class="${F[key]===it.v?'sel':''}"><input type="radio" name="${box}" value="${esc(it.v)}"
       ${F[key]===it.v?'checked':''}>${esc(it.t)}</label>`).join('');
   $(box).querySelectorAll('input').forEach(r=>r.onchange=()=>{
-    F[key]=r.value;PAGE=0;PICK=null;
+    F[key]=r.value;PAGE=0;PICK=null;SEL.clear();
     if(key==='g1'){F.g2='';F.g3='';syncMid();syncSub();}
     if(key==='g2'){F.g3='';syncSub();}
     $(box).querySelectorAll('label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
     render(); if(TAB==='sale')drawSale();
   });
 }
-/* 分類是一層一層的：沒選大類就不顯示中類、沒選中類就不顯示小類 */
+/* 分類是一層一層的：沒選大類就不顯示中類、沒選中類就不顯示小類
+   ⚠ 側邊欄的清單**保留代號**（跟 TMS 原畫面一致，比較好對）；
+     A2 要求「去掉代號」是指表格裡的「分類」欄。 */
 function syncMid(){
   if(F.g1===''){F.g2='';$('f2').innerHTML='';$('sec2').classList.add('hide');return;}
   $('sec2').classList.remove('hide');
@@ -594,15 +809,45 @@ function checks(box,defs,cb){
     `<label><input type="checkbox" data-i="${i}" ${d.on?'checked':''} ${d.lock?'disabled':''}>${esc(d.t)}</label>`).join('');
   $(box).querySelectorAll('input').forEach(c=>c.onchange=()=>{defs[+c.dataset.i].on=c.checked?1:0;cb();});
 }
+/** 設定面板：**顯示目前分頁**的欄位清單與版面（B2） */
+function buildCfgPanel(){
+  const names={flow:'產品流量分析',sale:'銷售分析',plan:'345 進貨決策'};
+  $('layTab').textContent=names[TAB];
+  $('statPickBox').style.display = TAB==='flow'?'':'none';
+  if(TAB==='flow'){
+    $('colPickTitle').textContent='顯示欄位（產品流量分析）';
+    checks('colPick',COLS,()=>{saveCfg();drawTable();});
+    checks('statPick',STATS,()=>{saveCfg();drawStats(VIEW);});
+  }else if(TAB==='plan'){
+    $('colPickTitle').textContent='顯示欄位（345 進貨決策）';
+    checks('colPick',PCOLS,()=>{saveCfg();drawPlan();});
+  }else{
+    $('colPickTitle').textContent='顯示欄位';
+    $('colPick').innerHTML='<div class="hint">銷售分析頁的欄位是固定的（依檢視模式而定），這裡只能調版面。</div>';
+  }
+  const l=LAY[TAB]||DEF_LAY;
+  const bind=(sl,vb,key,fmt)=>{
+    $(sl).value=l[key];
+    $(vb).textContent=fmt(l[key]);
+    $(sl).oninput=()=>{ l[key]=+$(sl).value; $(vb).textContent=fmt(l[key]);
+      applyLayout(TAB); saveCfg();
+      if(TAB==='flow')drawChart(); else if(TAB==='plan')drawPlanChart(); };
+  };
+  bind('slPad','vPad','pad',v=>v+'px');
+  bind('slRow','vRow','rowh',v=>v+'px');
+  bind('slFs','vFs','fs',v=>fsOf(l).toFixed(1)+'px');
+}
 /* 拖曳把手：只有設定模式才作用 */
 function grips(){
   drag($('gripV'),'x',e=>{
     const w=Math.min(420,Math.max(120,e.clientX-$('aside').getBoundingClientRect().left));
-    document.documentElement.style.setProperty('--aside-w',w+'px');});
+    LAY.flow.aw=w+'px';
+    document.documentElement.style.setProperty('--aside-w',LAY.flow.aw);});
   drag($('gripH'),'y',e=>{
     const top=$('cwrap').getBoundingClientRect().top;
     const h=Math.min(560,Math.max(110,e.clientY-top));
-    document.documentElement.style.setProperty('--chart-h',h+'px'); drawChart();});
+    LAY.flow.ch=h+'px';
+    document.documentElement.style.setProperty('--chart-h',LAY.flow.ch); drawChart();});
 }
 function drag(el,axis,fn){
   el.onmousedown=e=>{
@@ -724,7 +969,72 @@ function hover(svg,tip,wrap,html){
   svg.onmouseleave=()=>tip.style.display='none';
 }
 
-/* ---------- 表格 ---------- */
+/* =========================================================================
+   A6：拖曳／Shift 多選 → 下方即時顯示合計
+   ⚠ 要跟「單擊看圖」共存 → **拖曳過程中換過列＝多選；沒換列＝單擊**。
+   ========================================================================= */
+const SEL=new Set();          // 分頁1 選取的產品代號
+const PSEL=new Set();         // 分頁3 選取的試算表列號
+function mkDragSelect(tbody, keyOf, selSet, onDone){
+  let anchor=null, moved=false, active=false;
+  const rowOf=e=>e.target.closest('tr[data-k]');
+  const idxOf=tr=>[...tbody.querySelectorAll('tr[data-k]')].indexOf(tr);
+  const mark=()=>tbody.querySelectorAll('tr[data-k]').forEach(tr=>
+    tr.classList.toggle('msel',selSet.has(tr.dataset.k)));
+  const range=(i,j)=>{
+    const list=[...tbody.querySelectorAll('tr[data-k]')];
+    for(let k=Math.min(i,j);k<=Math.max(i,j);k++)selSet.add(list[k].dataset.k);
+  };
+  tbody.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;
+    if(e.target.closest('input,select,button,a'))return;
+    const tr=rowOf(e); if(!tr)return;
+    active=true; moved=false; anchor=idxOf(tr);
+    if(e.shiftKey&&selSet.size){ const list=[...tbody.querySelectorAll('tr[data-k]')];
+      const last=list.findIndex(x=>selSet.has(x.dataset.k));
+      range(last<0?anchor:last,anchor); moved=true; mark(); onDone(); e.preventDefault(); return; }
+    if(e.ctrlKey||e.metaKey){ const k=tr.dataset.k;
+      selSet.has(k)?selSet.delete(k):selSet.add(k); moved=true; mark(); onDone();
+      e.preventDefault(); return; }
+    document.body.classList.add('dragging');
+    e.preventDefault();
+  });
+  tbody.addEventListener('mouseover',e=>{
+    if(!active||anchor===null)return;
+    const tr=rowOf(e); if(!tr)return;
+    const i=idxOf(tr);
+    if(i!==anchor&&!moved){ moved=true; selSet.clear(); }
+    if(moved){ selSet.clear(); range(anchor,i); mark(); onDone(); }
+  });
+  addEventListener('mouseup',e=>{
+    if(!active)return;
+    active=false; document.body.classList.remove('dragging');
+    const tr=e.target.closest&&e.target.closest('tr[data-k]');
+    if(!moved&&tr&&tbody.contains(tr)){        // 沒拖曳＝單擊 → 交給原本的行為（看圖）
+      selSet.clear(); mark(); onDone(); keyOf(tr.dataset.k);
+    }
+    anchor=null;
+  });
+  return mark;
+}
+/** 分頁1 的多選合計列 */
+function drawSelBar(){
+  const bar=$('selbar');
+  const v=ROWS.filter(p=>SEL.has(p.c));
+  if(v.length<1){bar.classList.remove('on');bar.innerHTML='';return;}
+  bar.classList.add('on');
+  const cells=[['選取',v.length.toLocaleString()+' 項'],
+    ['銷貨量',N(sum(v,'tsale'))],['銷貨額',N(sum(v,'amt'))],
+    ['進貨量',N(sum(v,'tin'))],['目前庫存',N(sum(v,'last'))],
+    ['日均銷',N1(sum(v,'avg'))],['月均銷',N(sum(v,'mavg'))],
+    ['毛利',N(sum(v,'amt')-sum(v,'cogs'))]];
+  bar.innerHTML=cells.map(([k,x])=>`<span><span class="k">${k}</span> <b>${x}</b></span>`).join('')
+    +`<span class="sp"></span><button id="selClr">清除選取</button>`;
+  $('selClr').onclick=()=>{SEL.clear();drawTable();};
+}
+
+/* ---------- 表格（分頁1） ---------- */
+let _selMark=null;
 function drawTable(){
   const cols=COLS.filter(c=>c.on);
   $('th').innerHTML='<tr>'+cols.map(c=>
@@ -736,14 +1046,19 @@ function drawTable(){
   const pages=Math.max(1,Math.ceil(VIEW.length/PER));
   if(PAGE>=pages)PAGE=pages-1;
   const rows=VIEW.slice(PAGE*PER,(PAGE+1)*PER);
-  $('tb').innerHTML=rows.length?rows.map(p=>`<tr data-c="${esc(p.c)}" class="${PICK&&PICK.c===p.c?'sel':''}">`+
+  $('tb').innerHTML=rows.length?rows.map(p=>
+    `<tr data-k="${esc(p.c)}" class="${PICK&&PICK.c===p.c?'sel':''}${SEL.has(p.c)?' msel':''}">`+
     cols.map(c=>`<td class="${c.l?'l ':''}${c.k==='c'?'code':''}">${c.get(p)}</td>`).join('')+'</tr>').join('')
     :`<tr><td class="empty" colspan="${cols.length}">沒有符合條件的產品</td></tr>`;
-  $('tb').querySelectorAll('tr[data-c]').forEach(tr=>tr.onclick=()=>{
-    const p=VIEW.find(x=>x.c===tr.dataset.c);
-    PICK=(PICK&&PICK.c===p.c)?null:p; drawChart(); drawTable();});
+  if(!_selMark)_selMark=mkDragSelect($('tb'),code=>{
+      const p=VIEW.find(x=>x.c===code);
+      PICK=(PICK&&PICK.c===code)?null:p; drawChart(); drawTable();
+    },SEL,drawSelBar);
+  else _selMark();
+  drawSelBar();
   $('cnt').textContent=`符合 ${VIEW.length.toLocaleString()} 項`+
-    (VIEW.length>PER?`（${PAGE*PER+1}–${Math.min((PAGE+1)*PER,VIEW.length)}）`:'')+'　·　點列看單品曲線';
+    (VIEW.length>PER?`（${PAGE*PER+1}–${Math.min((PAGE+1)*PER,VIEW.length)}）`:'')+
+    '　·　單擊看單品曲線、按住拖曳（或 Shift／Ctrl 點）可多選看合計';
   $('pager').innerHTML=pages<=1?'':
     `<button ${PAGE===0?'disabled':''} data-p="0">«</button>
      <button ${PAGE===0?'disabled':''} data-p="${PAGE-1}">‹</button><span>${PAGE+1}/${pages}</span>
@@ -752,7 +1067,7 @@ function drawTable(){
   $('pager').querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{PAGE=+b.dataset.p;drawTable();});
   // 表格高度：扣掉上方圖表區
   const top=$('tscroll').getBoundingClientRect().top;
-  $('tscroll').style.maxHeight=Math.max(160,innerHeight-top-46)+'px';
+  $('tscroll').style.maxHeight=Math.max(160,innerHeight-top-70)+'px';
 }
 function daysCell(p){
   if(p.days===Infinity)return '<span class="tag t-cool">無銷</span>';
@@ -818,7 +1133,7 @@ function saleTable(head,rows,hint){
 function saleRank(v){
   const top=[...v].sort((a,b)=>b.amt-a.amt).slice(0,200);
   const tot=sum(v,'amt')||1; let acc=0;
-  saleTable([['#',''],['產品代號','l'],['品名','l'],['銷貨量',''],['單價',''],['銷貨額',''],
+  saleTable([['#',''],['產品代號','l'],['品名','l'],['銷貨量',''],['售價PI',''],['銷貨額',''],
              ['毛利',''],['佔比',''],['累計佔比','']],
     top.map((p,i)=>{acc+=p.amt;return `<tr><td class="dim">${i+1}</td>
       <td class="l code"><span>${esc(p.c)}</span></td>
@@ -828,33 +1143,50 @@ function saleRank(v){
       <td>${N(p.amt-p.cogs)}</td>
       <td>${(p.amt/tot*100).toFixed(1)}%</td>
       <td class="dim">${(acc/tot*100).toFixed(1)}%</td></tr>`;}),
-    `依銷貨額排序，取前 ${top.length} 名（單價與成本來自商品總檔）`);
+    `依銷貨額排序，取前 ${top.length} 名（售價＝商品總檔 PI、成本＝含稅成本）`);
   $('cnt2').textContent=`銷貨額合計 ${N(tot)}`;
+  $('saleNote').textContent='';
 }
+/* 改價成效：**扣掉缺貨日**才準（跟蝦皮專案 price_analyze_run.py 的做法一致）。
+   缺貨門檻依日均銷量線性內插：日均≤1 → 庫存<1 算缺貨；日均≥10 → 庫存<10 算缺貨。 */
+const oosThr=avg=>avg<=1?1:avg>=10?10:1+((avg-1)/9)*9;
 function saleReprice(v){
   const D=DATA.meta.dates, WIN=14;
   const list=v.filter(p=>p.repriced).map(p=>{
     const di=D.indexOf(p.repriced.slice(0,10));
     if(di<0)return null;
-    let before=0,bn=0,after=0,an=0;
-    for(let i=Math.max(R.a,di-WIN);i<di;i++){before+=p.d[i*4+2];bn++;}
-    for(let i=di;i<=Math.min(R.b,di+WIN);i++){after+=p.d[i*4+2];an++;}
-    if(!bn||!an)return null;
-    const b=before/bn,a=after/an;
-    return {...p,rb:b,ra:a,chg:b>0?(a-b)/b:(a>0?1:0),di};
+    const lo=Math.max(R.a,di-WIN), hi=Math.min(R.b,di+WIN);
+    let samp=0,sn=0;
+    for(let i=lo;i<=hi;i++)if(p.d[i*4]>0){samp+=p.d[i*4+2];sn++;}
+    const thr=oosThr(sn?samp/sn:0);
+    let bs=0,bn=0,bo=0,as=0,an=0,ao=0;
+    for(let i=lo;i<di;i++){ if(p.d[i*4]<thr){bo++;continue;} bs+=p.d[i*4+2];bn++; }
+    for(let i=di;i<=hi;i++){ if(p.d[i*4]<thr){ao++;continue;} as+=p.d[i*4+2];an++; }
+    if(!bn&&!an)return null;
+    const b=bn?bs/bn:0,a=an?as/an:0;
+    const bad=(bn<WIN*0.8)||(an<WIN*0.8);
+    return {...p,rb:b,ra:a,bn,an,bo,ao,thr,bad,
+      chg:b>0?(a-b)/b:(a>0?1:0),di};
   }).filter(Boolean).sort((x,y)=>y.chg-x.chg);
-  saleTable([['產品代號','l'],['品名','l'],['改價日','l'],['前14天日均',''],['後14天日均',''],
-             ['變化',''],['目前庫存',''],['售價BEST','']],
+  saleTable([['產品代號','l'],['品名','l'],['改價日','l'],['前日均',''],['後日均',''],
+             ['變化',''],['可比天數','l'],['目前庫存',''],['售價PI','']],
     list.slice(0,200).map(p=>{
       const up=p.chg>0.05,dn=p.chg<-0.05;
       return `<tr><td class="l code"><span>${esc(p.c)}</span></td>
       <td class="l"><span class="nm" title="${esc(p.n)}">${esc(p.n)}</span></td>
       <td class="l dim">${esc(p.repriced.slice(0,10))}</td>
       <td>${p.rb.toFixed(2)}</td><td>${p.ra.toFixed(2)}</td>
-      <td><span class="tag ${up?'t-ok':dn?'t-bad':'t-cool'}">${p.chg>0?'▲':p.chg<0?'▼':''}${(p.chg*100).toFixed(0)}%</span></td>
-      <td>${N(p.last)}</td><td>${N(p.pBEST)}</td></tr>`;}),
-    `改價日取自商品總檔「已完成上架」A 欄；比較改價前後各 ${WIN} 天的日均銷量（只算落在目前期間內的日子）`);
+      <td><span class="tag ${p.bad?'t-warn':up?'t-ok':dn?'t-bad':'t-cool'}">${
+        p.bad?'🟡數據不足':(p.chg>0?'▲':p.chg<0?'▼':'')+(p.chg*100).toFixed(0)+'%'}</span></td>
+      <td class="l dim" style="font-size:10.5px">前${p.bn}／後${p.an} 天${
+        (p.bo||p.ao)?`（缺 前${p.bo}後${p.ao}）`:''}</td>
+      <td>${N(p.last)}</td><td>${N(p.pPI)}</td></tr>`;}),
+    `改價日取自商品總檔「已完成上架」A 欄；比較改價前後各 ${WIN} 天的日均銷量，`+
+    `**扣掉缺貨日**（庫存低於門檻的那幾天不算），前後可比天數不足 8 成標「數據不足」`);
   $('cnt2').textContent=`有改價紀錄且可比較：${list.length} 項`;
+  $('saleNote').innerHTML='回填商品觀察區 <b>Z~AH</b> 由 ERP 電腦上的 '+
+    '<code>reprice_writeback.py</code> 執行（沿用蝦皮專案 v8.4 演算法、寫入前先備份＋只補空白列）'+
+    '；網站這一頁是快速瀏覽用。';
 }
 function saleCat(v){
   const m=new Map();
@@ -872,35 +1204,93 @@ function saleCat(v){
         fill="var(--sale)" opacity=".55" rx="2"/></svg></td></tr>`),
     '依大類彙總（銷貨額由高到低）');
   $('cnt2').textContent=`銷貨額合計 ${N(tot)}`;
+  $('saleNote').textContent='';
 }
 
-/* ================= 分頁3：345 進貨決策（V4.12 邏輯 1:1 移植） =================
+/* =========================================================================
+   分頁3：345 進貨決策
    來源：Google「345庫存規劃」/ 庫存規劃分頁；結果四欄貼回 **AR:AU**
    （V4.12 原始碼註解寫 AH 是過時的，實際欄位對照為 AR「AI參考」AS「狀態」AT「銷售狀況」AU「商品代號」）
-   ⚠ 30/90 天策略需要足夠歷史；目前資料只有 27 天時，30 天與 90 天會取到同一批，趨勢恆為 0。 */
-let CLIP='', PLANROWS=[], PLANMETA={};
 
-/** 依「試算表原始列序」組出要貼回 AR:AU 的四欄文字（含空白列，才對得齊） */
-function buildClip(){
+   ★ B7：九條策略**全部可以開關**，門檻／倍率也拉出來可以改。
+     預設值＝V4.12 原本的行為，所以不動它就跟以前一樣。
+   ★ B7：**應補貨量一律 `max(0, x)`**——訂貨量不可能是負的。
+   ★ B10：進這一頁自動算、改參數即時重算（那顆按鈕只是「手動再算一次」）。
+   ⚠ 30/90 天策略需要足夠歷史；資料只有 30 天時 30 與 90 會取到同一批，趨勢恆為 0。
+   ========================================================================= */
+let CLIP='', PLANROWS=[], PLANMETA={}, PPICK=null;
+let PSORT={k:'vendor',d:1}, PFILT={};
+const PEND={ship:{},boxn:{}};       // 待回填的修改：試算表列號 → 新值
+
+/* B7 的九條策略（`on` 可關、數字可調） */
+const SP={
+  frozen:1,                       // ❄️ 銷量結凍（30 天沒賣但有庫存 → 不補）
+  sporadic:1, sporadicDays:2,     // ❌ 暫緩進貨（30 天只賣 ≤N 天）
+  longtail:1, longtailDays:10,    // ℹ️ 長尾常態品（90 天有賣 ≥N 天就放行）
+  warm:1, warmK:85, warmGap:5,    // 🌱 斷貨回溫（有庫存沒賣 >N 天 → 用長線 ×K%）
+  spike:1, spikeTh:40,            // 📈 暴漲平滑（趨勢 ≥N% → 取 30/90 平均）
+  damage:1, damageK:80, damageOos:10, // ⚠️ 權重受損（缺貨 >N 天 → 消耗 ×K%）
+  cycle:1, cycleK:130, cycleWaves:2,  // 🔥 循環斷貨加碼（斷貨波次 ≥N → ×K%）
+  cap:1,                          // 🛑 終極防爆（裁到庫存上限）
+  fallback:1,                     // 備援：算不出來就讀試算表 S 欄「單日銷售」
+};
+const SPDEF=[
+  ['frozen','❄️ 銷量結凍',[]],
+  ['sporadic','❌ 暫緩進貨(偶發)',[['sporadicDays','30天賣≤','天',1,10]]],
+  ['longtail','ℹ️ 長尾常態品放行',[['longtailDays','90天賣≥','天',1,60]]],
+  ['warm','🌱 斷貨回溫校正',[['warmGap','有庫存沒賣>','天',0,30],['warmK','長線×','%',10,200]]],
+  ['spike','📈 暴漲平滑',[['spikeTh','趨勢≥','%',5,300]]],
+  ['damage','⚠️ 權重受損',[['damageOos','缺貨>','天',0,60],['damageK','消耗×','%',10,150]]],
+  ['cycle','🔥 循環斷貨加碼',[['cycleWaves','波次≥','次',1,10],['cycleK','應補×','%',100,300]]],
+  ['cap','🛑 終極防爆(裁到上限)',[]],
+  ['fallback','↩︎ 備援：讀原表單日銷售',[]],
+];
+function buildSpBox(){
+  $('spbox').innerHTML=SPDEF.map(([k,label,nums])=>
+    `<span class="spitem"><label><input type="checkbox" data-sp="${k}" ${SP[k]?'checked':''}> ${label}</label>`
+    +nums.map(([nk,pre,suf,mn,mx])=>
+      `<span class="k" style="color:var(--muted)">${pre}</span>`
+      +`<input type="number" data-sp="${nk}" value="${SP[nk]}" min="${mn}" max="${mx}">`
+      +`<span class="k" style="color:var(--muted)">${suf}</span>`).join('')
+    +`</span>`).join('');
+  $('spbox').querySelectorAll('[data-sp]').forEach(el=>{
+    const h=deb(()=>{ SP[el.dataset.sp]=el.type==='checkbox'?(el.checked?1:0):(+el.value||0);
+      saveCfg(); runPlan(); },200);
+    el.type==='checkbox'?el.onchange=h:el.oninput=h;
+  });
+}
+
+/** 依「試算表原始列序」組出要貼回 AR:AU 的四欄（含空白列，才對得齊）
+ *  forWrite=true（一鍵回填用）→ **每一列都輸出**（沒建議的寫空白，含「關閉」的列），
+ *    這樣 GAS 端可以整段一次寫進 AR2:AU<最後一列>，不會留下上一輪的殘值。
+ *  forWrite=false（複製貼上用）→ 沿用畫面上「關閉也輸出空白列」那個勾選。 */
+function planOut(forWrite){
   const map=new Map(PLANROWS.map(r=>[r.row,r]));
   const out=[];
   PLAN.items.forEach(it=>{
     const r=map.get(it.row);
     if(!r){
-      if((it.remark||'').includes('關閉')){ if(PLANMETA.keepClosed)out.push('\t\t\t'); }
-      else out.push('\t\t\t');
+      const closed=(it.remark||'').includes('關閉');
+      if(!closed||forWrite||PLANMETA.keepClosed)out.push({row:it.row,v:['','','','']});
       return;
     }
-    const val=(r.suitable&&r.order>0)?r.order:'';
-    out.push(`${val}\t${r.status}\t${r.strategy}\t${r.c}`);
+    // ★ 負數一律 0（B7）：訂貨量不可能是負的
+    const q=Math.max(0,Math.round(r.order||0));
+    out.push({row:it.row,v:[(r.suitable&&q>0)?q:'',r.status,r.strategy,r.c]});
   });
-  CLIP=out.join('\n');
+  return out;
+}
+function buildClip(){
+  const out=planOut(false);
+  CLIP=out.map(o=>o.v.join('\t')).join('\n');
   return out.length;
 }
 
 function runPlan(){
   if(!PLAN||!PLAN.items){ $('tb3').innerHTML='<tr><td class="empty">讀不到 plan.json（345庫存規劃）</td></tr>'; return; }
+  if(!$('spbox').innerHTML)buildSpBox();
   const ltSea=+$('ltSea').value||50, ltFast=+$('ltFast').value||30, ltQiao=+$('ltQiao').value||14;
+  const ltOther=+$('ltOther').value||15;
   const maxDaysLimit=+$('maxDays').value||90, fallbackSafety=+$('safeDays').value||0;
   const keepClosed=$('keepClosed').checked;
   const D=DATA.meta.dates, nd=D.length;
@@ -923,9 +1313,10 @@ function runPlan(){
     const currentStock=it.qty, inTransit=it.o1+it.o2+it.o3, totalAvailable=currentStock+inTransit;
     const itemSafetyDays=it.safe||fallbackSafety;
 
-    // 物流別 → 前置期
-    const first=(it.ship||'').split('/')[0].split('、')[0];
-    let activeLT=15, logi='無標記';
+    // 物流別 → 前置期（PEND.ship 有改過就用改過的）
+    const shipRaw=(PEND.ship[it.row]!==undefined?PEND.ship[it.row]:(it.ship||''));
+    const first=shipRaw.split('/')[0].split('、')[0];
+    let activeLT=ltOther, logi='無標記';
     if(first.includes('海快')){activeLT=ltFast;logi='海快';}
     else if(first.includes('海運')){activeLT=ltSea;logi='海運';}
     else if(first.includes('巧巧郎')||first.includes('巧郎')){activeLT=ltQiao;logi='巧巧郎';}
@@ -944,43 +1335,45 @@ function runPlan(){
     const d90=valid90>0?sales90/valid90:0;
     const trend=d90>0?((d30-d90)/d90)*100:0;
 
-    // 進貨適性
+    // ---- 進貨適性（策略可開關） ----
     let suitable=true, final=d30, txt='', warm=false, spike=false;
-    const longTail=(sales30>0&&saleDays30<=2&&saleDays90>=10);
-    if(sales30===0&&currentStock>0){ final=0; txt+='[❄️銷量結凍] '; }
-    if(sales30>0&&saleDays30<=2){
-      if(!longTail){ suitable=false; final=0; txt+=`[❌暫緩進貨(偶發)] `; }
+    const longTail=SP.longtail&&(sales30>0&&saleDays30<=SP.sporadicDays&&saleDays90>=SP.longtailDays);
+    if(SP.frozen&&sales30===0&&currentStock>0){ final=0; txt+='[❄️銷量結凍] '; }
+    if(SP.sporadic&&sales30>0&&saleDays30<=SP.sporadicDays){
+      if(!longTail){ suitable=false; final=0; txt+='[❌暫緩進貨(偶發)] '; }
       else txt+='[ℹ️長尾常態品] ';
     }
     // 互斥策略一：斷貨回溫 / 暴漲平滑
-    if(sales30>0&&noSale30>5&&d90>final){
-      if(!longTail&&trend>=-50){ final=d90*0.85; warm=true; txt+='[🌱斷貨回溫校正] '; }
-    }else if(sales30>0&&trend>=40&&d90>0){
+    if(SP.warm&&sales30>0&&noSale30>SP.warmGap&&d90>final){
+      if(!longTail&&trend>=-50){ final=d90*(SP.warmK/100); warm=true; txt+='[🌱斷貨回溫校正] '; }
+    }else if(SP.spike&&sales30>0&&trend>=SP.spikeTh&&d90>0){
       final=(d30+d90)/2; spike=true; txt+='[📈暴漲平滑] ';
     }
     if(oos30>0)txt+=`[缺貨:${oos30}天] `;
     if(noSale30>0)txt+=`[有庫存無銷售:${noSale30}天] `;
     // 流量表算不出來 → 退回試算表自己的「單日銷售」
     let formula = final>0?`${sales30}÷${valid30}天`:'—';
-    if(final===0&&sales30>0&&suitable&&it.daily>0){ final=it.daily; formula=`直讀原表 ${it.daily}`; }
-    if(warm)formula=`長線 ${d90.toFixed(1)}×85%`;
+    if(SP.fallback&&final===0&&sales30>0&&suitable&&it.daily>0){ final=it.daily; formula=`直讀原表 ${it.daily}`; }
+    if(warm)formula=`長線 ${d90.toFixed(1)}×${SP.warmK}%`;
     if(spike)formula='30/90天平均';
 
-    // 需求預算
+    // ---- 需求預算 ----
     let consume=final*activeLT;
-    if(suitable&&oos30>10&&consume>0){ consume*=0.8; txt+='[⚠️權重受損x0.8] '; }
+    if(SP.damage&&suitable&&oos30>SP.damageOos&&consume>0){
+      consume*=(SP.damageK/100); txt+=`[⚠️權重受損x${(SP.damageK/100).toFixed(2)}] `; }
     const safety=final*itemSafetyDays, cap=final*maxDaysLimit;
     const target=Math.min(consume+safety,cap);
     let order=suitable?Math.ceil(target-totalAvailable):0;
     // 互斥策略二：循環斷貨加碼
-    if(suitable&&waves>=2&&order>0&&!longTail&&trend>=-50){
-      order=Math.ceil(order*1.3); txt+='[🔥循環斷貨x1.3] ';
+    if(SP.cycle&&suitable&&waves>=SP.cycleWaves&&order>0&&!longTail&&trend>=-50){
+      order=Math.ceil(order*(SP.cycleK/100)); txt+=`[🔥循環斷貨x${(SP.cycleK/100).toFixed(2)}] `;
     }
     // 終極防爆：不得穿透 maxDays 天上限
-    if(suitable&&(totalAvailable+order)>cap){
+    if(SP.cap&&suitable&&(totalAvailable+order)>cap){
       const o0=order; order=Math.max(0,Math.ceil(cap-totalAvailable));
       if(order<o0)txt+='[🛑終極防爆] ';
     }
+    order=Math.max(0,order);         // ★ 負數一律 0（B7）
     // 趨勢標籤（放最前，同 V4.12）
     let trendTag = d90>0 ? (trend>5?`▲暴漲+${trend.toFixed(0)}%`:trend<-5?`▼放緩${trend.toFixed(0)}%`:`持平${trend.toFixed(0)}%`)
                          : (d30>0?'▲新爆發':'無數據');
@@ -994,86 +1387,207 @@ function runPlan(){
     else if(totalAvailable<=consume&&final>0)status='🔴 緊急補貨';
     else if(order>0)status='🟡 建議下單';
 
-    rows.push({...it,logi,activeLT,currentStock,inTransit,totalAvailable,itemSafetyDays,
-      d30,d90,trend,final,formula,consume,safety,target,order,status,strategy,suitable,
+    const boxn=(PEND.boxn[it.row]!==undefined?PEND.boxn[it.row]:it.boxn);
+    rows.push({...it,ship:shipRaw,boxn,logi,activeLT,currentStock,inTransit,totalAvailable,
+      itemSafetyDays,d30,d90,trend,final,formula,consume,safety,target,order,status,strategy,suitable,
       order0:order,                       // 系統原始建議（改過之後還能對照）
+      boxes:(boxn>0&&order>0)?order/boxn:0,
       days:final>0?totalAvailable/final:(totalAvailable>0?Infinity:0),hasTraffic:!!tr});
   });
 
   PLANROWS=rows;
-  PLANMETA={keepClosed, nd, closed};
-  drawPlan(closed, noTraffic);
+  PLANMETA={keepClosed, nd, closed, noTraffic};
+  drawPlan();
 }
 
-/** 畫決策表格（排序：廠商 → 產品代號；補貨量可手動改） */
-function drawPlan(closed, noTraffic){
-  const rows=PLANROWS;
-  const need=rows.filter(r=>r.order>0);
+/* ---------- 決策頁的欄位定義（B1 排序／篩選、B2 可開關） ---------- */
+const shipTag=r=>{
+  const cls=r.logi==='海運'?'t-sea':r.logi==='海快'?'t-fast':r.logi==='巧巧郎'?'t-qiao':'t-cool';
+  const extra=(r.ship||'').includes('/')||(r.ship||'').includes('、')
+    ? `<span class="dim" style="font-size:10px"> ${esc(r.ship)}</span>`:'';
+  return `<span class="tag ${cls}">${esc(r.logi)} ${r.activeLT}天</span>${extra}`;
+};
+const PCOLS=[
+  {k:'vendor',t:'廠商',on:1,l:1,filt:'enum',
+   sv:r=>vendKey(r.vendor),fv:r=>vend(r.vendor),
+   get:r=>`<span class="lnk dim" data-vendor="${esc(r.vendor)}" title="看這個廠商（＝中類）整體">${esc(vend(r.vendor))||'—'}</span>`},
+  {k:'c',t:'產品代號',on:1,l:1,code:1,filt:'text',sv:r=>[0,0,r.c],fv:r=>r.c,
+   get:r=>`<span class="lnk" data-code="${esc(r.c)}" title="看這個產品的走勢（再點一下收起）">${esc(r.c)}</span>`},
+  {k:'n',t:'品名',on:1,l:1,filt:'text',sv:r=>[0,0,r.n],fv:r=>r.n,
+   get:r=>`<span class="nm" title="${esc(r.n)}">${esc(r.n)}</span>`},
+  {k:'logi',t:'物流',on:1,l:1,filt:'enum',sv:r=>[0,0,r.logi],fv:r=>r.logi,get:shipTag},
+  {k:'boxqty',t:'裝箱量',on:1,l:1,filt:'text',sv:r=>[0,r.boxn||0,''],fv:r=>r.boxqty,
+   get:r=>`<span class="dim" style="font-size:calc(var(--cell-fs) - 1px)" title="${esc(r.boxqty)}">${
+     esc((r.boxqty||'').replace(/\n/g,' ').slice(0,14))}</span>`
+     +` <input type="number" class="boxin${PEND.boxn[r.row]!==undefined?' chg':''}" data-box="${r.row}"
+        value="${r.boxn||''}" min="0" step="1" title="AA 欄「裝箱數」，改了可回填">`},
+  {k:'final',t:'動態日均銷',on:1,filt:'num',sv:r=>[0,r.final,''],fv:r=>r.final,
+   get:r=>`<b>${r.final.toFixed(1)}</b>`},
+  {k:'formula',t:'均銷計算式',on:1,l:1,filt:'text',sv:r=>[0,0,r.formula],fv:r=>r.formula,
+   get:r=>`<span class="dim" style="font-size:calc(var(--cell-fs) - 1px)">${esc(r.formula)}</span>`},
+  {k:'currentStock',t:'現有庫存',on:1,filt:'num',sv:r=>[0,r.currentStock,''],fv:r=>r.currentStock,
+   get:r=>`<b>${N(r.currentStock)}</b>`},
+  {k:'inTransit',t:'在途',on:1,filt:'num',sv:r=>[0,r.inTransit,''],fv:r=>r.inTransit,
+   get:r=>r.inTransit?`<span style="color:var(--buy)">+${N(r.inTransit)}</span>`:'<span class="zero">·</span>'},
+  {k:'itemSafetyDays',t:'安全天數',on:1,filt:'num',sv:r=>[0,r.itemSafetyDays,''],fv:r=>r.itemSafetyDays,
+   get:r=>r.itemSafetyDays},
+  {k:'days',t:'預估天數',on:1,filt:'num',sv:r=>[0,r.days===Infinity?9e15:r.days,''],
+   fv:r=>r.days===Infinity?9999:r.days,
+   get:r=>r.days===Infinity?'<span class="tag t-cool">∞</span>':Math.round(r.days)},
+  {k:'target',t:'需求目標',on:1,filt:'num',sv:r=>[0,r.target,''],fv:r=>r.target,
+   get:r=>`<span class="dim">${N(Math.round(r.target))}</span>`},
+  {k:'order',t:'應補貨量',on:1,lock:1,filt:'num',sv:r=>[0,r.order,''],fv:r=>r.order,
+   get:r=>{const chg=r.order!==r.order0;
+     return `<input type="number" class="ordin${chg?' chg':''}" data-row="${r.row}" value="${r.order||0}"
+       min="0" step="1" title="${chg?'系統原建議 '+N(r.order0):'可直接改（負數會自動變 0）'}">`;}},
+  {k:'boxes',t:'需幾箱',on:1,filt:'num',sv:r=>[0,r.boxes,''],fv:r=>r.boxes,
+   get:r=>r.boxes?(Number.isInteger(r.boxes)?r.boxes:r.boxes.toFixed(2)):'<span class="zero">·</span>'},
+  {k:'status',t:'健康狀態',on:1,l:1,filt:'enum',sv:r=>[0,0,r.status],fv:r=>r.status,
+   get:r=>esc(r.status)},
+  {k:'strategy',t:'趨勢與策略',on:1,l:1,filt:'text',sv:r=>[0,0,r.strategy],fv:r=>r.strategy,
+   get:r=>`<span class="dim" style="font-size:calc(var(--cell-fs) - 1px);display:inline-block;
+     max-width:300px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom"
+     title="${esc(r.strategy)}">${esc(r.strategy)}</span>`},
+  {k:'cost',t:'平均成本',on:0,filt:'num',sv:r=>[0,r.cost,''],fv:r=>r.cost,get:r=>N1(r.cost)},
+  {k:'amount',t:'預估金額',on:0,filt:'num',sv:r=>[0,r.order*r.cost,''],fv:r=>r.order*r.cost,
+   get:r=>N(r.order*r.cost)},
+  {k:'remark',t:'備註',on:0,l:1,filt:'text',sv:r=>[0,0,r.remark],fv:r=>r.remark,
+   get:r=>`<span class="dim">${esc(r.remark)}</span>`},
+  {k:'row',t:'表列',on:0,filt:'num',sv:r=>[0,r.row,''],fv:r=>r.row,get:r=>`<span class="dim">${r.row}</span>`},
+];
+/** 數值篩選語法：`>100` `<10` `>=5` `<=5` `=0` `10-20`，純數字＝等於 */
+function numMatch(v,expr){
+  const s=String(expr||'').trim();
+  if(!s)return true;
+  const v2=+v||0;
+  let m=s.match(/^(>=|<=|>|<|=)\s*(-?[\d.]+)$/);
+  if(m){const n=+m[2];
+    return m[1]==='>'?v2>n:m[1]==='<'?v2<n:m[1]==='>='?v2>=n:m[1]==='<='?v2<=n:v2===n;}
+  m=s.match(/^(-?[\d.]+)\s*[-~]\s*(-?[\d.]+)$/);
+  if(m)return v2>=+m[1]&&v2<=+m[2];
+  if(/^-?[\d.]+$/.test(s))return v2===+s;
+  return String(v).includes(s);
+}
+function planFiltered(){
+  const cols=PCOLS.filter(c=>c.on);
+  let rows=PLANROWS.filter(r=>cols.every(c=>{
+    const f=PFILT[c.k]; if(!f)return true;
+    if(c.filt==='num')return numMatch(c.fv(r),f);
+    if(c.filt==='enum')return String(c.fv(r)||'')===f;
+    return String(c.fv(r)||'').toLowerCase().includes(f.toLowerCase());
+  }));
+  const col=PCOLS.find(c=>c.k===PSORT.k)||PCOLS[0];
+  rows.sort((a,b)=>{
+    const r=cmpKey(col.sv(a),col.sv(b))*PSORT.d;
+    // 同鍵值時固定用「廠商（數字優先）→ 產品代號」當第二層（使用者指定的預設排序）
+    return r || cmpKey(vendKey(a.vendor),vendKey(b.vendor))
+             || String(a.c).localeCompare(String(b.c),'zh-Hant',{numeric:true});
+  });
+  return rows;
+}
+
+/** 畫決策表格 */
+function drawPlan(){
+  if(!PLANROWS.length){$('tb3').innerHTML='<tr><td class="empty">沒有資料</td></tr>';return;}
+  const cols=PCOLS.filter(c=>c.on);
+  const rows=PLANROWS, show=planFiltered();
+  const need=show.filter(r=>r.order>0);
   const edited=rows.filter(r=>r.order!==r.order0).length;
+  const pend=Object.keys(PEND.ship).length+Object.keys(PEND.boxn).length;
   $('planStats').innerHTML=[
     ['參與計算',rows.length.toLocaleString(),''],
-    ['排除「關閉」',(closed??PLANMETA.closed??0).toLocaleString(),''],
+    ['排除「關閉」',(PLANMETA.closed||0).toLocaleString(),''],
+    ['篩選後',show.length.toLocaleString(),''],
     ['建議下單',need.length.toLocaleString(),'sale'],
     ['建議總量',N(need.reduce((s,r)=>s+r.order,0)),'sale'],
     ['預估金額',N(need.reduce((s,r)=>s+r.order*r.cost,0)),''],
-    ['緊急補貨',rows.filter(r=>r.status.includes('緊急')).length,''],
+    ['緊急補貨',show.filter(r=>r.status.includes('緊急')).length,''],
     ['手動調整',edited?`<span style="color:var(--warn)">${edited}</span>`:'0',''],
+    ['待回填',pend?`<span style="color:var(--warn)">${pend}</span>`:'0',''],
   ].map(([k,v,c])=>`<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
 
-  const H=['廠商','產品代號','品名','物流','裝箱量','動態日均銷','均銷計算式','現有庫存','在途',
-           '安全天數','預估天數','需求目標','應補貨量','需幾箱','健康狀態','趨勢與策略'];
-  const L=new Set([0,1,2,3,4,6,14,15]);
-  $('th3').innerHTML='<tr>'+H.map((h,i)=>`<th class="${L.has(i)?'l':''}">${h}</th>`).join('')+'</tr>';
+  // 表頭＋篩選列
+  $('th3').innerHTML='<tr>'+cols.map(c=>
+      `<th class="${c.l?'l ':''}${c.code?'code':''}" data-k="${c.k}">${esc(c.t)}${
+        PSORT.k===c.k?(PSORT.d<0?' ▾':' ▴'):''}</th>`).join('')+'</tr>'
+    +'<tr class="frow">'+cols.map(c=>{
+      if(c.filt==='enum'){
+        const vals=[...new Set(PLANROWS.map(x=>String(c.fv(x)||'')))].sort((a,b)=>
+          c.k==='vendor'?cmpKey(vendKey(a),vendKey(b)):a.localeCompare(b,'zh-Hant',{numeric:true}));
+        return `<th><select data-f="${c.k}" class="${PFILT[c.k]?'act':''}"><option value="">全部</option>`
+          +vals.map(v=>`<option value="${esc(v)}" ${PFILT[c.k]===v?'selected':''}>${
+            esc(c.k==='vendor'?(vend(v)||'（空白）'):(v||'（空白）'))}</option>`).join('')+'</select></th>';
+      }
+      const ph=c.filt==='num'?'>0':'含…';
+      return `<th><input type="text" data-f="${c.k}" placeholder="${ph}" value="${esc(PFILT[c.k]||'')}"></th>`;
+    }).join('')+'</tr>';
+  $('th3').querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k, c=PCOLS.find(x=>x.k===k);
+    // 第一次點：數字欄由大到小（要看的是「哪些最多」）、文字欄由小到大
+    PSORT.k===k?PSORT.d*=-1:(PSORT.k=k,PSORT.d=(c&&c.filt==='num')?-1:1); drawPlan();});
+  $('th3').querySelectorAll('[data-f]').forEach(el=>{
+    const h=deb(()=>{const v=el.value.trim();
+      v?PFILT[el.dataset.f]=v:delete PFILT[el.dataset.f];
+      PSEL.clear();               // 篩選變了就清選取，免得「套用到選取列」動到看不見的列
+      drawPlan();},220);
+    el.tagName==='SELECT'?el.onchange=h:el.oninput=h;
+    el.onclick=e=>e.stopPropagation();
+  });
 
-  // ★ 排序：廠商（數字優先）→ 產品代號
-  const vnum=v=>{const m=String(v||'').match(/\d+/);return m?+m[0]:Number.MAX_SAFE_INTEGER;};
-  const show=[...rows].sort((a,b)=>
-    (vnum(a.vendor)-vnum(b.vendor)) ||
-    String(a.vendor).localeCompare(String(b.vendor)) ||
-    String(a.c).localeCompare(String(b.c), 'zh-Hant', {numeric:true}));
+  $('tb3').innerHTML=show.length?show.map(r=>
+    `<tr data-k="${r.row}" class="${PSEL.has(String(r.row))?'msel':''}${
+      PPICK&&PPICK.kind==='code'&&PPICK.key===r.c?' sel':''}">`
+    +cols.map(c=>`<td class="${c.l?'l ':''}${c.code?'code':''}">${c.get(r)}</td>`).join('')+'</tr>').join('')
+    :`<tr><td class="empty" colspan="${cols.length}">沒有符合篩選條件的項目</td></tr>`;
 
-  $('tb3').innerHTML=show.map(r=>{
-    const boxes=r.boxn>0&&r.order>0 ? (r.order/r.boxn) : 0;
-    const chg=r.order!==r.order0;
-    return `<tr data-row="${r.row}">
-    <td class="l dim">${esc(r.vendor)}</td>
-    <td class="l code"><span title="${esc(r.c)}">${esc(r.c)}</span></td>
-    <td class="l"><span class="nm" title="${esc(r.n)}">${esc(r.n)}</span></td>
-    <td class="l"><span class="tag t-cool">${esc(r.logi)} ${r.activeLT}天</span></td>
-    <td class="l dim" style="font-size:10.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis"
-        title="${esc(r.boxqty)}">${esc((r.boxqty||'').replace(/\n/g,' '))}${
-        r.boxn?`<b style="color:var(--text)"> (${N(r.boxn)})</b>`:''}</td>
-    <td><b>${r.final.toFixed(1)}</b></td>
-    <td class="l dim" style="font-size:10.5px">${esc(r.formula)}</td>
-    <td><b>${N(r.currentStock)}</b></td>
-    <td>${r.inTransit?`<span style="color:var(--buy)">+${N(r.inTransit)}</span>`:'<span class="zero">·</span>'}</td>
-    <td>${r.itemSafetyDays}</td>
-    <td>${r.days===Infinity?'<span class="tag t-cool">∞</span>':Math.round(r.days)}</td>
-    <td class="dim">${N(Math.round(r.target))}</td>
-    <td><input type="number" class="ordin${chg?' chg':''}" data-row="${r.row}" value="${r.order||0}"
-         min="0" step="1" title="${chg?'系統原建議 '+N(r.order0):'可直接改'}"></td>
-    <td class="dim">${boxes?(Number.isInteger(boxes)?boxes:boxes.toFixed(2)):'<span class="zero">·</span>'}</td>
-    <td class="l">${esc(r.status)}</td>
-    <td class="l dim" style="font-size:10.5px;max-width:300px;overflow:hidden;text-overflow:ellipsis"
-        title="${esc(r.strategy)}">${esc(r.strategy)}</td>
-  </tr>`;}).join('')||'<tr><td class="empty" colspan="16">沒有資料</td></tr>';
-
-  // 手動改補貨量 → 立即重算統計與要貼回的內容
+  // 手動改補貨量 → 立即重算統計與要貼回的內容（負數一律 0）
   $('tb3').querySelectorAll('input.ordin').forEach(inp=>{
     inp.onchange=()=>{
       const r=PLANROWS.find(x=>x.row==inp.dataset.row);
       if(!r)return;
       const v=Math.max(0,Math.round(+inp.value||0));
-      r.order=v;
+      inp.value=v;
+      r.order=v; r.boxes=(r.boxn>0&&v>0)?v/r.boxn:0;
       if(v>0)r.suitable=true;            // 人工指定就照人工的
-      buildClip(); drawPlan(closed, noTraffic);
+      drawPlan();
     };
     inp.onclick=e=>e.stopPropagation();
+    inp.onmousedown=e=>e.stopPropagation();
   });
+  // B5：裝箱數可改（記進 PEND，回填時寫 AA 欄）
+  $('tb3').querySelectorAll('input.boxin').forEach(inp=>{
+    inp.onchange=()=>{
+      const row=+inp.dataset.box, it=PLAN.items.find(x=>x.row===row);
+      const v=inp.value.trim()===''?0:Math.max(0,+inp.value||0);
+      if(it&&v===(it.boxn||0))delete PEND.boxn[row]; else PEND.boxn[row]=v;
+      runPlan();
+    };
+    inp.onclick=e=>e.stopPropagation();
+    inp.onmousedown=e=>e.stopPropagation();
+  });
+  // B8／B9：點產品代號看走勢、點廠商看該廠商（＝中類）整體
+  $('tb3').querySelectorAll('[data-code]').forEach(el=>{
+    el.onmousedown=e=>e.stopPropagation();
+    el.onclick=e=>{e.stopPropagation();
+      const k=el.dataset.code;
+      PPICK=(PPICK&&PPICK.kind==='code'&&PPICK.key===k)?null:{kind:'code',key:k};
+      drawPlanChart(); drawPlan();};
+  });
+  $('tb3').querySelectorAll('[data-vendor]').forEach(el=>{
+    el.onmousedown=e=>e.stopPropagation();
+    el.onclick=e=>{e.stopPropagation();
+      const k=el.dataset.vendor;
+      PPICK=(PPICK&&PPICK.kind==='vendor'&&PPICK.key===k)?null:{kind:'vendor',key:k};
+      drawPlanChart(); drawPlan();};
+  });
+  if(!_pselMark)_pselMark=mkDragSelect($('tb3'),()=>{},PSEL,drawPlanSel);
+  else _pselMark();
+  drawPlanSel();
 
   const lines=buildClip();
-  $('cnt3').textContent=`共 ${rows.length.toLocaleString()} 項參與計算，其中 ${need.length} 項建議下單`+
-    (edited?`　·　已手動調整 ${edited} 項`:'');
+  $('cnt3').textContent=`共 ${rows.length.toLocaleString()} 項參與計算，篩選後 ${show.length.toLocaleString()} 項，`
+    +`其中 ${need.length} 項建議下單`+(edited?`　·　已手動調整 ${edited} 項`:'')
+    +`　·　點代號看走勢、點廠商看中類、拖曳可多選`;
   $('pasteNote').innerHTML=`複製內容共 <b>${lines.toLocaleString()}</b> 行 →
     貼回「庫存規劃」的 <b>AR</b> 欄（AI參考／狀態／銷售狀況／商品代號）`+
     (PLANMETA.keepClosed?'；已含「關閉」空白列，可直接整批貼'
@@ -1082,9 +1596,130 @@ function drawPlan(closed, noTraffic){
   $('planHint').innerHTML=nd<90?`⚠ 目前只有 <b>${nd}</b> 天資料，30/90 天策略會取到同一批
     （趨勢恆為 0）。等每日自動匯出累積滿 90 天以上才準。`:'';
 }
+let _pselMark=null;
+/** 決策頁選取列 → 顯示合計＋開啟「一起改物流／裝箱數」工具列（B4/B5） */
+function drawPlanSel(){
+  const rows=PLANROWS.filter(r=>PSEL.has(String(r.row)));
+  const bar=$('selbar3'), edit=$('planEditBar');
+  if(!rows.length){bar.classList.remove('on');bar.innerHTML='';edit.style.display='none';return;}
+  bar.classList.add('on');
+  bar.innerHTML=[['選取',rows.length+' 項'],
+    ['應補貨量',N(rows.reduce((s,r)=>s+r.order,0))],
+    ['預估金額',N(rows.reduce((s,r)=>s+r.order*r.cost,0))],
+    ['現有庫存',N(rows.reduce((s,r)=>s+r.currentStock,0))],
+    ['在途',N(rows.reduce((s,r)=>s+r.inTransit,0))],
+    ['日均銷',N1(rows.reduce((s,r)=>s+r.final,0))]]
+    .map(([k,v])=>`<span><span class="k">${k}</span> <b>${v}</b></span>`).join('');
+  edit.style.display='';
+  $('pselN').textContent=`已選 ${rows.length} 項`;
+  if(!$('shipBtns').innerHTML){
+    const set=new Set();
+    PLAN.items.forEach(it=>String(it.ship||'').split(/[\/、]/).forEach(s=>{s=s.trim();if(s)set.add(s);}));
+    // 固定「海運 → 海快 → 巧巧郎 → 其他」的順序：寫回 C 欄的字串才會跟人工習慣一致
+    const rank=s=>s.includes('海運')?0:s.includes('海快')?1:(s.includes('巧巧郎')||s.includes('巧郎'))?2:3;
+    SHIPOPTS=[...set].sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b,'zh-Hant'));
+    $('shipBtns').innerHTML=SHIPOPTS.map(s=>{
+      const cls=s.includes('海運')?'t-sea':s.includes('海快')?'t-fast':s.includes('巧巧郎')?'t-qiao':'t-cool';
+      return `<button data-ship="${esc(s)}" class="shipopt"><span class="tag ${cls}">${esc(s)}</span></button>`;
+    }).join('')+`<button data-ship="" class="shipopt">（清空）</button>`;
+    $('shipBtns').querySelectorAll('.shipopt').forEach(b=>b.onclick=()=>{
+      if(b.dataset.ship==='')$('shipBtns').querySelectorAll('.shipopt').forEach(x=>x.classList.remove('on'));
+      else b.classList.toggle('on');});
+  }
+}
+let SHIPOPTS=[];
+function applyShip(){
+  const picked=[...$('shipBtns').querySelectorAll('.shipopt.on')].map(b=>b.dataset.ship);
+  const val=picked.join('/');
+  const rows=[...PSEL];
+  if(!rows.length)return;
+  rows.forEach(k=>{
+    const row=+k, it=PLAN.items.find(x=>x.row===row);
+    if(it&&(it.ship||'')===val)delete PEND.ship[row]; else PEND.ship[row]=val;
+  });
+  runPlan();
+}
+function applyBox(){
+  const v=$('boxSet').value.trim();
+  if(v==='')return;
+  const n=Math.max(0,+v||0);
+  [...PSEL].forEach(k=>{
+    const row=+k, it=PLAN.items.find(x=>x.row===row);
+    if(it&&(it.boxn||0)===n)delete PEND.boxn[row]; else PEND.boxn[row]=n;
+  });
+  runPlan();
+}
+
+/* ---------- 決策頁的走勢圖（B8 產品／B9 廠商＝中類） ---------- */
+function drawPlanChart(){
+  const box=$('planChartBox');
+  if(!PPICK){box.style.display='none';return;}
+  box.style.display='';
+  const tmap=new Map(DATA.products.map(p=>[p.c,p]));
+  let src=[],title='',note='';
+  if(PPICK.kind==='code'){
+    const p=tmap.get(PPICK.key);
+    if(p)src=[p];
+    const r=PLANROWS.find(x=>x.c===PPICK.key);
+    title=`${PPICK.key}　${r?r.n:(p?p.n:'')}`;
+    if(!p)note='流量表裡沒有這個代號（可能是新品或已停用）';
+  }else{
+    const v=PPICK.key;
+    const codes=PLANROWS.filter(r=>String(r.vendor)===String(v)).map(r=>r.c);
+    src=codes.map(c=>tmap.get(c)).filter(Boolean);
+    // 這個廠商的品項落在哪些分類。使用者說「我的中類就是廠商」，實際比對資料是
+    // **廠商代號 ↔ 小類代號**（廠商 02 → 小類 002.002密封袋、11 → 011.011濕巾），
+    // 所以這裡把中類與小類都列出來，兩種說法都對得上。
+    const cats=[...new Set(src.map(p=>{
+      const mid=((DATA.meta.mids||[])[p.g1]||[])[p.g2]||'';
+      return DATA.meta.cats[p.g1]+(mid?' / '+mid:'')+(p.g3?' / '+p.g3:'');}))];
+    title=`廠商 ${vend(v)||'（空白）'}　整體`;
+    note=`${codes.length} 項（流量表對到 ${src.length} 項）`+(cats.length?`　·　${cats.slice(0,3).join('、')}${cats.length>3?'…':''}`:'');
+  }
+  $('pChartTitle').textContent=title;
+  $('pChartNote').textContent=note;
+
+  const B=buckets();
+  const sale=[],buy=[],stock=[];
+  B.forEach(b=>{let s=0,i2=0,st=0;
+    src.forEach(p=>{const {a}=R;
+      b.idx.forEach(i=>{s+=p.d[(a+i)*4+2];i2+=p.d[(a+i)*4+1];});
+      st+=p.d[(a+b.idx[b.idx.length-1])*4];});
+    sale.push(s);buy.push(i2);stock.push(st);});
+
+  const show={sale:$('pSale').checked,buy:$('pBuy').checked,stock:$('pStock').checked};
+  const H=190,W=Math.max($('pcwrap').clientWidth-4,B.length*(GRAN==='d'?46:90));
+  const PL=52,PR=show.stock&&(show.sale||show.buy)?46:14,PT=12,PB=24;
+  const iw=W-PL-PR,ih=H-PT-PB, xs=i=>PL+(B.length===1?iw/2:i*(iw/(B.length-1)));
+  const maxL=Math.max(1,...(show.sale?sale:[]),...(show.buy?buy:[])), maxR=Math.max(1,...stock);
+  const yL=v=>PT+ih-(v/maxL)*ih, yR=v=>PT+ih-(v/maxR)*ih;
+  let g='';
+  for(let i=0;i<=4;i++){const y=PT+ih*(i/4);
+    g+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="var(--line)" ${i<4?'stroke-dasharray="2,3"':''}/>`
+     +`<text x="${PL-6}" y="${y+3.5}" font-size="10" fill="var(--muted)" text-anchor="end">${N(maxL*(1-i/4))||0}</text>`;
+    if(show.stock&&(show.sale||show.buy))
+      g+=`<text x="${W-PR+6}" y="${y+3.5}" font-size="10" fill="var(--stock)">${N(maxR*(1-i/4))||0}</text>`;}
+  const step=Math.max(1,Math.ceil(B.length/Math.max(6,Math.floor(iw/64))));
+  B.forEach((b,i)=>{if(i%step===0||i===B.length-1)
+    g+=`<text x="${xs(i)}" y="${H-7}" font-size="10" fill="var(--muted)" text-anchor="middle">${esc(b.label)}</text>`;});
+  const poly=(a,fy,c,w)=>`<polyline points="${a.map((v,i)=>xs(i)+','+fy(v)).join(' ')}" fill="none"
+      stroke="${c}" stroke-width="${w}" stroke-linejoin="round"/>`;
+  if(show.stock)g+=poly(stock,yR,'var(--stock)',1.6);
+  if(show.buy)  g+=poly(buy,yL,'var(--buy)',1.8);
+  if(show.sale) g+=poly(sale,yL,'var(--sale)',2.1);
+  const hz=B.map((b,i)=>{const w=iw/B.length;
+    return `<rect x="${(xs(i)-w/2).toFixed(1)}" y="${PT}" width="${w.toFixed(1)}" height="${ih}"
+      fill="transparent" data-i="${i}"/>`;}).join('');
+  const svg=$('chart3');
+  svg.setAttribute('width',W);svg.setAttribute('height',H);svg.innerHTML=g+hz;
+  hover(svg,$('tip3'),$('pcwrap'),i=>`<b>${esc(B[i].full)}</b><br>`+
+    `<span class="dot" style="background:var(--sale)"></span>銷貨 <b>${N(sale[i])||0}</b><br>`+
+    `<span class="dot" style="background:var(--buy)"></span>進貨 <b>${N(buy[i])||0}</b><br>`+
+    `<span class="dot" style="background:var(--stock)"></span>庫存 <b>${N(stock[i])||0}</b>`);
+}
 
 function copyPlan(){
-  if(!CLIP)return alert('請先按「結算補貨建議」');
+  if(!CLIP)return alert('還沒有計算結果');
   navigator.clipboard.writeText(CLIP).then(()=>{
     const b=$('btnCopy'),o=b.textContent;
     b.textContent='✅ 已複製，請到 AR 欄頂端貼上';b.classList.add('on');
@@ -1092,7 +1727,81 @@ function copyPlan(){
   }).catch(()=>alert('複製失敗，請改用手動選取'));
 }
 
-addEventListener('resize',deb(()=>{if(DATA){TAB==='sale'?drawSale():drawChart();drawTable();}},220));
+/* =========================================================================
+   B4/B5/B6：一鍵回填「345庫存規劃」
+   ★ 寫入正式試算表，所以一定要**先預覽差異、按確認才寫**，寫完回報筆數。
+   ★ 走的是繫結在「345庫存規劃」底下的 GAS（W345_URL），權限只有那一本。
+   ========================================================================= */
+let PUSHPLAN=null;
+function openPush(){
+  if(!PLANROWS.length)return alert('還沒有計算結果');
+  const ar=planOut(true);
+  const ship=Object.entries(PEND.ship).map(([row,v])=>{
+    const it=PLAN.items.find(x=>x.row===+row)||{};
+    return {row:+row,c:it.c||'',n:it.n||'',old:it.ship||'',now:v};});
+  const boxn=Object.entries(PEND.boxn).map(([row,v])=>{
+    const it=PLAN.items.find(x=>x.row===+row)||{};
+    return {row:+row,c:it.c||'',n:it.n||'',old:it.boxn||0,now:v};});
+  PUSHPLAN={ar,ship,boxn};
+  const nz=ar.filter(o=>o.v[0]!=='').length;
+  $('mTitle').textContent='回填預覽（確認後才會寫入試算表）';
+  let h=`<p class="hint" style="margin:8px 0">目標試算表：<b>345庫存規劃 / 庫存規劃</b>　`
+    +`（回填走的是繫結在那一本底下的 GAS，權限只有那一本）</p>`;
+  h+=`<h4 style="margin:10px 0 4px">① AR:AU 四欄（AI參考／狀態／銷售狀況／商品代號）</h4>`
+    +`<p class="hint"><b>整段覆蓋 AR${ar.length?ar[0].row:2}:AU${ar.length?ar[ar.length-1].row:2}</b>`
+    +`（${ar.length.toLocaleString()} 列，其中有下單量的 <b>${nz}</b> 列）。`
+    +`沒有建議的列會寫成<b>空白</b>——包含「關閉」的列，這樣才不會留下上一輪的殘值。`
+    +`<br>（畫面上那個「關閉也輸出空白列」勾選只影響「📋 複製四欄」，回填一律整段對齊寫。）</p>`;
+  h+=`<h4 style="margin:10px 0 4px">② C 欄「貨運方式」${ship.length?`（${ship.length} 筆）`:'（沒有修改）'}</h4>`;
+  if(ship.length)h+=diffTable(ship);
+  h+=`<h4 style="margin:10px 0 4px">③ AA 欄「裝箱數」${boxn.length?`（${boxn.length} 筆）`:'（沒有修改）'}</h4>`;
+  if(boxn.length)h+=diffTable(boxn)
+    +`<p class="hint">⚠ 只寫 <b>AA 欄（數字）</b>；Z 欄「裝箱量」的文字原樣不動（那一欄混了非裝箱資訊，`
+    +`硬改會弄壞人工註記）。</p>`;
+  $('mBody').innerHTML=h;
+  $('mNote').textContent=WRITE_URL?'':'⚠ 尚未設定 345 的回填後端網址（W345_URL），現在只能預覽。';
+  $('mGo').disabled=!WRITE_URL;
+  $('mask').classList.add('on');
+}
+const diffTable=list=>`<table><thead><tr><th class="l">列</th><th class="l">產品代號</th>
+  <th class="l">品名</th><th class="l">原值</th><th class="l">改成</th></tr></thead><tbody>`
+  +list.map(x=>`<tr><td class="l dim">${x.row}</td><td class="l">${esc(x.c)}</td>
+    <td class="l"><span class="nm">${esc(x.n)}</span></td>
+    <td class="l old">${esc(String(x.old===0?'':x.old))||'（空白）'}</td>
+    <td class="l new">${esc(String(x.now===0?'':x.now))||'（空白）'}</td></tr>`).join('')
+  +'</tbody></table>';
+
+async function doPush(){
+  if(!PUSHPLAN||!WRITE_URL)return;
+  const b=$('mGo'), o=b.textContent;
+  b.disabled=1; b.textContent='寫入中…';
+  try{
+    const r=await fetch(WRITE_URL,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'writeback',ar:PUSHPLAN.ar,ship:PUSHPLAN.ship,boxn:PUSHPLAN.boxn})});
+    const j=await r.json();
+    if(j.ok){
+      PEND.ship={}; PEND.boxn={};
+      $('mBody').innerHTML=`<p style="padding:14px 0"><b style="color:var(--ok)">✅ 寫入完成</b><br>`
+        +`AR:AU ${j.ar||0} 列　·　C 欄貨運方式 ${j.ship||0} 筆　·　AA 欄裝箱數 ${j.boxn||0} 筆`
+        +`<br><span class="hint">試算表端時間 ${esc(j.at||'')}</span></p>`;
+      b.style.display='none'; $('mCancel').textContent='關閉';
+      $('mCancel').onclick=()=>{$('mask').classList.remove('on');b.style.display='';
+        $('mCancel').textContent='取消';$('mCancel').onclick=()=>$('mask').classList.remove('on');
+        runPlan();};
+    }else{
+      $('mNote').textContent='✘ 寫入失敗：'+(j.error||'未知錯誤');
+      b.disabled=0; b.textContent=o;
+    }
+  }catch(e){
+    $('mNote').textContent='✘ 寫入失敗：'+e.message;
+    b.disabled=0; b.textContent=o;
+  }
+}
+
+addEventListener('resize',deb(()=>{if(DATA){
+  if(TAB==='sale')drawSale(); else if(TAB==='plan')drawPlanChart(); else {drawChart();drawTable();}
+}},220));
 boot();
 </script>
 </body>
