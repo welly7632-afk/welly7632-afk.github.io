@@ -1195,8 +1195,8 @@ function saleReprice(v){
     `改價日取自商品總檔「已完成上架」A 欄；比較改價前後各 ${WIN} 天的日均銷量，`+
     `**扣掉缺貨日**（庫存低於門檻的那幾天不算），前後可比天數不足 8 成標「數據不足」`);
   $('cnt2').textContent=`有改價紀錄且可比較：${list.length} 項`;
-  $('saleNote').innerHTML='回填商品觀察區 <b>Z~AH</b> 由 ERP 電腦上的 '+
-    '<code>reprice_writeback.py</code> 執行（沿用蝦皮專案 v8.4 演算法、寫入前先備份＋只補空白列）'+
+  $('saleNote').innerHTML='回填商品觀察區 <b>Z~AH</b> 由開發機的 '+
+    '<code>reprice_writeback.py</code> 執行（沿用蝦皮專案 v8.4 演算法、寫入前先備份、只補空白列）'+
     '；網站這一頁是快速瀏覽用。';
 }
 function saleCat(v){
