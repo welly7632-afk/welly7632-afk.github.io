@@ -136,6 +136,9 @@
   .typechip{display:inline-block;font-size:10.5px;color:var(--warn);border:1px solid var(--warn);
     border-radius:6px;padding:0 5px;margin-left:5px;vertical-align:1px}
   .newb{display:block;font-size:11px;color:var(--sub)}
+  /* SOP 表的加速推廣格 */
+  select.bsel{font-size:12px;padding:3px 4px;max-width:132px}
+  input.bmult{width:58px;padding:3px;text-align:center;font-size:12px}
   .note{margin-top:10px;padding:11px 14px;border-radius:10px;background:#d977060f;
     border:1px solid #d9770655;font-size:12.5px;line-height:1.7}
   .note b{color:var(--warn)}
@@ -249,7 +252,6 @@
         <span class="spacer"></span>
         <span id="sopSelNote" class="muted" style="font-size:12.5px"></span>
         <label class="chklab" title="納入 自動選品(GMV Max,每店彙總僅觀察) 與 無商品ID的賣場/廣告群組(可直接調ROI/預算)"><input type="checkbox" id="sopAutoSw">含自動選品/群組</label>
-        <label class="chklab" title="測試用:待確認不會被本機 15 分排程撿走"><input type="checkbox" id="queuePending">只加入待確認</label>
         <button id="sopSend">送出勾選到佇列</button>        <button class="plain" id="sopExport">⬇ 匯出 CSV</button>
       </div>
     </div>
@@ -264,12 +266,18 @@
       <div class="hint">在上表直接改「目標ROI／每日預算」的值(改了會自動勾選,並顯示原值)→「送出勾選到佇列」
         只送<b>有變更</b>的欄位到試算表「調整佇列」(狀態=待執行);本機每 15 分輪詢執行,執行結果回寫到這裡。
         節流:<b>目標ROI 同一則一週一次</b>(蝦皮獎勵方案規則);<b>預算不設限</b>。
+        <b>加速推廣</b>:蝦皮會把實際投放門檻降到目標ROI的 <b>70%</b>(最高降 30%),所以要開的時候可以選
+        「開 · ROI×1.43」(完全抵銷,實際門檻不變)、「×1.3」(小幅放量)、「×自訂」或「不動ROI」(直接吃放量)。
+        <b>帶係數 = 會先真的改一次 ROI</b> → 佔掉這則本週的 ROI 額度;若被節流擋下<b>整列中止、不會只開推廣</b>。
         調整成功會自動把該廣告<b>結束日延長到今天+2個月</b>(只延不縮;需先跑過 endtime_probe 攔截格式)。</div>
       <div class="tblscroll"><table id="queueTbl"></table></div>
     </div>
     <div class="card">
       <div class="note">
-        <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>(取保守低值)。
+        <b>ROI SOP 提醒</b>:上表「建議動作」比較的是<b>目前目標ROI</b>(廣告設定)與<b>成本推算建議ROI</b>。
+        多規格商品會算出一個區間(便宜規格成本率低→建議值低、貴規格成本率高→建議值高),
+        <b>兩端各判一次:同向才給建議(顯示用較保守的高值),方向相反就標「待確認(規格差異)」不給建議</b>
+        ——那要訂單資料(實際成交的規格分佈)才判得準。
         目標ROI 設太高 → 蝦皮不給量、預算花不完,所以「調低放量」是主要情況;調低後預算才花得出去。
         <b>「目前ROI→目標」同一格:欄內就是目前值,改了才算調整</b>(自動勾選並顯示「原 X」),請參考「建議ROI」往下調一階;
         建議值未含賣家負擔優惠券/蝦幣回饋,偏樂觀 → <b>請分階段調整,不要一次到位</b>。
@@ -923,11 +931,21 @@ function renderPTable(rows,prows){
 // ===== SOP 建議頁 =====
 function rowFor(cost){const t=[25,50,100,200,500];for(let i=0;i<t.length;i++)if(cost<t[i])return i;return 5;}
 const ORDER={"大降 / 暫停":0,"小幅降低":1,"積極放大":2,"穩健提升":3,"持平 · 觀察":4,"觀察(資料不足)":5,"先別調預算":6,"無轉換":7};
-// ROI 主軸:比「目前目標ROI(廣告設定)」與「成本推算建議ROI(保守低值)」→ 調低放量 / 偏低可調高 / 合理 / 無法調整
-const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'可調(無建議值)':3,'不可改ROI':4,'無建議值':5,'無廣告設定':6,'自動選品':7};
+// ROI 主軸:比「目前目標ROI(廣告設定)」與「成本推算建議ROI」→ 調低放量 / 偏低可調高 / 合理 / 待確認 / 無法調整
+// ★ 2026-07-30 修正:原本只拿「建議ROI 低值」當基準並誤稱它「保守」。實際上
+//   低值=成本率最低(最好賺)那個規格算出來的 → 門檻最寬 → 最樂觀;真正保守的是高值
+//   (target_roi_run.py:152 的註解就是「用建議區間的高值(保守)」)。
+//   多規格商品兩者可能差很多(例:不鏽鋼盤 低 2.3 / 高 21.19),用低值會把「其實該調高」的
+//   判成「調低放量」。實測 176 則裡 27 則兩基準結論相反,且全部是被高估成「該調低」。
+//   → 現在**兩個基準都算**:結論一致才給建議(顯示用較保守的高值);
+//     不一致就標「待確認(規格差異)」且不可勾選——真相要訂單資料才知道,不猜。
+const ROI_ORDER={'調低放量':0,'偏低可調高':1,'合理':2,'待確認(規格差異)':2.5,
+                 '可調(無建議值)':3,'不可改ROI':4,'無建議值':5,'無廣告設定':6,'自動選品':7};
 function evalRoi(o, ac, rs){
   const cur = ac ? ac.roi : null;
-  const ref = (rs && rs.low>0) ? rs.low : null;
+  const refLo = (rs && rs.low>0) ? rs.low : null;
+  const refHi = (rs && rs.high>0) ? rs.high : refLo;
+  const ref = refHi;                       // 給明確建議時用保守值(高值)
   const editable = !!(ac && String(ac.editable).includes('roi_two_target'));
   const out = !!(ac && ac.out==='是');
   const base = {cur, ref, high:(rs&&rs.high>0)?rs.high:null, out, editable,
@@ -943,10 +961,22 @@ function evalRoi(o, ac, rs){
   if(ref==null)  return {...base, cls:'b-obs', act:'無建議值', flags:['目標ROI建議未算出(多規格待訂單/無成本表)'], ord:ROI_ORDER['無建議值']};
   if(!(cur>0))   return {...base, cls:'b-obs', act:'無建議值', flags:['廣告設定讀不到目前目標ROI'], ord:ROI_ORDER['無建議值']};
   const flags=[]; if(out) flags.push('預算已花完');
+  // 兩個成本基準各判一次:refLo=便宜規格(樂觀)、refHi=貴規格(保守)
+  const judge = r => cur > r*1.15 ? '調低放量' : (cur < r*0.85 ? '偏低可調高' : '合理');
+  const actLo = judge(refLo), actHi = judge(refHi);
+  if(actLo !== actHi){
+    // 同一商品的便宜規格與貴規格得到相反結論 → 取決於實際成交的是哪個規格,沒有訂單資料就不猜
+    return {...base, cls:'b-obs', act:'待確認(規格差異)', target:cur, noAdvice:true,
+      flags:[`規格成本差異大:以便宜規格算(建議 ${fmtRoas(refLo)})判「${actLo}」、`
+        +`以貴規格算(建議 ${fmtRoas(refHi)})判「${actHi}」,方向相反`,
+        '要確定該往哪調需要訂單資料(實際成交的規格分佈),故不給建議、不可勾選'].concat(flags),
+      ord:ROI_ORDER['待確認(規格差異)']};
+  }
   let cls, act, target=cur;   // 預設帶「目前ROI」= 不動;要調的人自己往建議值方向分段調
-  if(cur > ref*1.15){ cls='b-up'; act='調低放量'; flags.unshift('目前 '+fmtRoas(cur)+' 高於建議 '+fmtRoas(ref)+',目標設太高,調低可放量'); }
-  else if(cur < ref*0.85){ cls='b-down'; act='偏低可調高'; flags.unshift('目前 '+fmtRoas(cur)+' 低於建議 '+fmtRoas(ref)+',獲利可能不足'); }
-  else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近建議 '+fmtRoas(ref)); }
+  const spec = (refHi>refLo) ? `(便宜~貴規格 ${fmtRoas(refLo)}~${fmtRoas(refHi)} 同向)` : '';
+  if(actHi==='調低放量'){ cls='b-up'; act='調低放量'; flags.unshift('目前 '+fmtRoas(cur)+' 高於保守建議 '+fmtRoas(ref)+spec+',目標設太高,調低可放量'); }
+  else if(actHi==='偏低可調高'){ cls='b-down'; act='偏低可調高'; flags.unshift('目前 '+fmtRoas(cur)+' 低於保守建議 '+fmtRoas(ref)+spec+',獲利可能不足'); }
+  else { cls='b-hold'; act='合理'; flags.unshift('目前 '+fmtRoas(cur)+' 接近保守建議 '+fmtRoas(ref)+spec); }
   return {...base, cls, act, target, flags, ord:ROI_ORDER[act]};
 }
 let SOP_SEL={};    // key -> {pick:bool, target:目標ROI覆蓋, btarget:預算覆蓋}(session)
@@ -970,13 +1000,17 @@ function sopRows(){
     const ac = o.pid ? (ACFG[o.pid]||null) : (ACFG_NAME[o.shop+'|'+o.name]||null);
     const rs = o.pid ? (ROISUG[o.pid]||null) : null;
     const r = evalRoi(o, ac, rs);
-    const canPick = !!(ac && r.editable && (r.ref!=null || !o.pid));    // 群組無建議值也可手動調
+    // noAdvice=兩種成本基準結論相反(待確認) → 不給 ROI 建議也不讓勾;預算仍可調(不受規格成本影響)
+    const canPick = !!(ac && r.editable && !r.noAdvice && (r.ref!=null || !o.pid));
     const canPickB = !!(ac && String(ac.editable).includes('budget'));  // 每日預算可調
     const sel = SOP_SEL[o.key]||{};
     const target = sel.target!=null ? sel.target : r.target;
     // 預算格顯示「使用者設定的基準值」;蝦皮自動生效值(常帶小數)只當參考標籤,
     // 沒動這格就不會送預算(避免把蝦皮暫時的自動值寫成設定)
-    const binit = ac ? (ac.baseBudget!=null&&ac.baseBudget>0 ? ac.baseBudget : ac.budget) : null;
+    // 2026-08-02:推不出基準值時(目前 190 則全推不出)退回生效值,但**四捨五入成整數**才好調——
+    // 蝦皮智慧預算會把它改成 2371.04 這種小數,直接當輸入框初值很難用。真實生效值仍在右邊標籤顯示。
+    const binit = ac ? (ac.baseBudget!=null&&ac.baseBudget>0 ? ac.baseBudget
+                        : (ac.budget!=null ? Math.round(ac.budget) : null)) : null;
     const btarget = sel.btarget!=null ? sel.btarget : binit;
     // 加速推廣:蝦皮會把實際投放門檻打到目標ROI的 70% → 要開的話可先把 ROI ×係數補回來
     // bsel: ''=不動 | 'on1.43' | 'on1.3' | 'onC'(自訂係數) | 'on'(不動ROI) | 'off'
@@ -1006,7 +1040,7 @@ function sopRows(){
 function renderSop(){
   const len=diffDays(state.ps,state.pe)+1;
   document.getElementById('sopPeriodNote').textContent=
-    `週期 ${state.ps} ~ ${state.pe}(${len}天);建議 = 比「目前目標ROI」與「成本推算建議ROI(保守低值)」,與期間長度無關;期間ROAS 供參考`;
+    `週期 ${state.ps} ~ ${state.pe}(${len}天);建議 = 比「目前目標ROI」與「成本推算建議ROI」的便宜/貴規格兩端(同向才給建議),與期間長度無關;期間ROAS 供參考`;
   const bn=document.getElementById('bossNote'); if(bn) bn.textContent='NT$'+fmtMoney(SETTINGS.sopBoss);
   const dn=document.getElementById('downNote'); if(dn) dn.textContent=RULES.tiers.down;
   const list=sopRows();
@@ -1020,9 +1054,9 @@ function renderSop(){
     const av=g(a,s.key), bv=g(b,s.key), an=av==null?-Infinity:av, bn2=bv==null?-Infinity:bv;
     return (an<bn2?-1:an>bn2?1:0)*s.dir;
   });
-  const cnt={down:0,up:0,hold:0,na:0};
+  const cnt={down:0,up:0,hold:0,spec:0,na:0};
   list.forEach(({r})=>{ if(r.act==='調低放量')cnt.down++; else if(r.act==='偏低可調高')cnt.up++;
-    else if(r.act==='合理')cnt.hold++; else cnt.na++; });
+    else if(r.act==='合理')cnt.hold++; else if(r.act==='待確認(規格差異)')cnt.spec++; else cnt.na++; });
   const F=state.sopFilter;
   const chip=(fil,cls,lab,n)=>`<span class="schip ${cls}${F===fil?' on':''}" data-fil="${fil}">${lab}<b>${n}</b></span>`;
   document.getElementById('sopChips').innerHTML=
@@ -1030,23 +1064,25 @@ function renderSop(){
     chip('down','sc-up','調低放量',cnt.down)+
     chip('up','sc-down','偏低可調高',cnt.up)+
     chip('hold','sc-hold','合理',cnt.hold)+
+    chip('spec','sc-obs','待確認規格',cnt.spec)+
     chip('na','sc-obs','其他/觀察',cnt.na)+
     (F?`<span class="schip schip-x" data-fil="">✕ 清除篩選</span>`:'');
-  const actF={down:'調低放量',up:'偏低可調高',hold:'合理'};
+  const actF={down:'調低放量',up:'偏低可調高',hold:'合理',spec:'待確認(規格差異)'};
   const shown = !F ? list : list.filter(({r})=> F==='na'
-    ? !['調低放量','偏低可調高','合理'].includes(r.act) : r.act===actF[F]);
+    ? !['調低放量','偏低可調高','合理','待確認(規格差異)'].includes(r.act) : r.act===actF[F]);
   const hd=[['_ord','建議動作'],['name','商品'],['cur','目前ROI→目標'],['ref','建議ROI'],
-            ['budget','每日預算→目標'],['out','已花完'],
+            ['budget','每日預算→目標'],['out','已花完'],['boost','加速推廣'],
             ['cost','期間花費'],['sale','期間銷售'],['roas','期間ROAS'],['pick','勾選']];
   const th=hd.map(([k,lab])=>`<th data-k="${k}" class="${k==='name'?'txt ':''}${s.key===k?(s.dir>0?'asc':'desc'):''}">${lab}</th>`).join('');
   let nPick=0;
-  const body=shown.map(({o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick})=>{
+  const body=shown.map(({o,r,ac,rs,canPick,canPickB,target,btarget,binit,pick,
+                         boostOn,canBoost,bsel,bmult})=>{
     if(pick)nPick++;
     const refTxt = r.ref!=null ? ((rs&&rs.high>rs.low)?`${fmtRoas(rs.low)}~${fmtRoas(rs.high)}`:fmtRoas(r.ref)) : '—';
     const roiChg = canPick && r.cur!=null && target!=null && +target!==+r.cur;
     const budChg = canPickB && binit!=null && btarget!=null && +btarget!==+binit;
-    const autoTag = (ac && ac.baseBudget!=null && ac.baseBudget>0 && ac.budget!=null
-                     && Math.abs(ac.budget-ac.baseBudget)>0.005)
+    // 生效值與輸入框初值不同就標出來(基準值推得出來時=基準 vs 自動;推不出來時=取整 vs 小數)
+    const autoTag = (ac && ac.budget!=null && binit!=null && Math.abs(ac.budget-binit)>0.005)
       ? `<span class="origv" style="color:#94a3b8">蝦皮自動中 ${fmtMoney(ac.budget)}</span>` : '';
     const roiCell = canPick
       ? `<input type="number" step="any" min="0" data-sk="target" data-key="${esc(o.key)}" value="${target!=null?target:''}">`
@@ -1057,6 +1093,19 @@ function renderSop(){
         +(budChg?`<span class="origv">原 ${fmtMoney(binit)}</span>`:'')+autoTag
       : `<span class="muted">${ac&&ac.budget!=null?fmtMoney(ac.budget):'—'}</span>`;
     const outTxt = ac ? (r.out?'<span style="color:var(--bad);font-weight:700">是</span>':'否') : '—';
+    // 加速推廣格:目前是關 → 可選「開」並決定要不要先把 ROI 提上去;目前是開 → 只能選關
+    const bopt=(v,lab)=>`<option value="${v}"${bsel===v?' selected':''}>${lab}</option>`;
+    const boostCell = canBoost
+      ? `<select data-sk="boost" data-key="${esc(o.key)}" class="bsel">`
+        + (boostOn
+            ? bopt('','開(不動)')+bopt('off','改成關')
+            : bopt('','關(不動)')+bopt('on1.43','開 · ROI×1.43')+bopt('on1.3','開 · ROI×1.3')
+              +bopt('onC','開 · ROI×自訂')+bopt('on','開 · 不動ROI'))
+        + `</select>`
+        + (bsel==='onC'
+            ? `<input type="number" step="0.01" min="1" max="3" class="bmult" data-sk="bmult" data-key="${esc(o.key)}" value="${bmult}">` : '')
+        + (bsel ? `<span class="origv">原 ${boostOn?'開':'關'}</span>` : '')
+      : `<span class="muted">${ac?(boostOn?'開':'關'):'—'}</span>`;
     const pickCell = (canPick||canPickB) ? `<input type="checkbox" data-sk="pick" data-key="${esc(o.key)}" ${pick?'checked':''}>` : '';
     const isAutoSum = o.key.endsWith('|AUTO');
     const expBtn = isAutoSum ? `<button class="plain xbtn" data-exp="${esc(o.key)}">${SOP_EXPAND[o.key]?'▾ 收合明細':'▸ 展開明細'}</button>` : '';
@@ -1068,6 +1117,7 @@ function renderSop(){
       <td>${refTxt}</td>
       <td>${budCell}</td>
       <td>${outTxt}</td>
+      <td>${boostCell}</td>
       <td>${fmtMoney(o.cost)}</td>
       <td>${fmtMoney(o.sale)}</td>
       <td class="${roasCls(o.roas)}">${fmtRoas(o.roas)}</td>
@@ -1078,19 +1128,19 @@ function renderSop(){
       html+=top.map(d=>`<tr class="subrow">
         <td></td>
         <td class="l txt" style="padding-left:26px" title="${esc(d.name)}">${esc(d.name)}<span class="newb">${esc(d.pid)}</span></td>
-        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
         <td>${fmtMoney(d.cost)}</td>
         <td>${fmtMoney(d.sale)}</td>
         <td class="${roasCls(d.cost?d.sale/d.cost:null)}">${fmtRoas(d.cost?d.sale/d.cost:null)}</td>
         <td></td></tr>`).join('');
-      if(det.length>20) html+=`<tr class="subrow"><td></td><td class="l muted" style="padding-left:26px">…還有 ${det.length-20} 項(佔花費 ${fmtMoney(det.slice(20).reduce((a,d)=>a+d.cost,0))});完整明細在「週期分析」開「自動選品」看</td><td colspan="8"></td></tr>`;
+      if(det.length>20) html+=`<tr class="subrow"><td></td><td class="l muted" style="padding-left:26px">…還有 ${det.length-20} 項(佔花費 ${fmtMoney(det.slice(20).reduce((a,d)=>a+d.cost,0))});完整明細在「週期分析」開「自動選品」看</td><td colspan="9"></td></tr>`;
     }
     return html;
   }).join('');
   document.getElementById('sopTbl').innerHTML=`<thead><tr>${th}</tr></thead><tbody>${body}</tbody>`;
   const sn=document.getElementById('sopSelNote'); if(sn) sn.textContent = nPick?`已勾選 ${nPick} 筆`:'';
   document.querySelectorAll('#sopTbl th').forEach(h=>h.addEventListener('click',()=>{
-    const k=h.dataset.k; if(k==='pick'||k==='out')return;
+    const k=h.dataset.k; if(k==='pick'||k==='out'||k==='boost')return;
     state.ssort= state.ssort.key===k?{key:k,dir:-state.ssort.dir}:{key:k,dir:k==='name'?1:(k==='_ord'?1:-1)};
     renderSop();
   }));
@@ -1104,12 +1154,15 @@ function bindSopInputs(){
     const k=e.target.dataset.sk, key=e.target.dataset.key; if(!k||!key)return;
     SOP_SEL[key]=SOP_SEL[key]||{};
     if(k==='pick'){ SOP_SEL[key].pick=e.target.checked; }
-    if(k==='target'||k==='btarget'){
-      const v=+e.target.value; SOP_SEL[key][k]= v>0?v:null;
+    if(k==='boost'){ SOP_SEL[key].boost=e.target.value; }
+    if(k==='bmult'){ const v=+e.target.value; SOP_SEL[key].bmult=(v>=1&&v<=3)?v:1.43; }
+    if(k==='target'||k==='btarget'||k==='boost'||k==='bmult'){
+      if(k==='target'||k==='btarget'){ const v=+e.target.value; SOP_SEL[key][k]= v>0?v:null; }
       const row=sopRows().find(x=>x.o.key===key);   // 有調整→自動勾選;全部改回原值→自動取消勾選
       if(row){
         const ch=(row.canPick&&row.r.cur!=null&&row.target!=null&&+row.target!==+row.r.cur)
-               ||(row.canPickB&&row.binit!=null&&row.btarget!=null&&+row.btarget!==+row.binit);
+               ||(row.canPickB&&row.binit!=null&&row.btarget!=null&&+row.btarget!==+row.binit)
+               ||(row.canBoost&&!!row.bsel);
         SOP_SEL[key].pick=ch;
       }
     }
@@ -1134,16 +1187,39 @@ function sopSelected(){
     if(x.canPickB && x.btarget>0 && x.binit!=null && +x.btarget!==+x.binit)
       out.push({_key:o.key, shop:ac.rawShop, title:ac.name||o.name, campaign_id:ac.cid, field:'budget',
         current:(ac.budget!=null?ac.budget:x.binit), target:+x.btarget, reason:'儀表板預算調整', who:'dashboard'});
+    // 加速推廣:目標值寫成 開×1.43 / 開 / 關,本機 queue_run 解析;帶係數=先改ROI再開(佔本週ROI節流額度)
+    if(x.canBoost && x.bsel){
+      const mult = x.bsel==='onC' ? x.bmult : (x.bsel==='on1.43'?1.43 : x.bsel==='on1.3'?1.3 : null);
+      const tgt = x.bsel==='off' ? '關' : (mult ? '開×'+mult : '開');
+      out.push({_key:o.key, shop:ac.rawShop, title:ac.name||o.name, campaign_id:ac.cid,
+        field:'rapid_boost', current:(x.boostOn?'開':'關'), target:tgt,
+        reason: mult ? `儀表板開加速推廣(先提目標ROI ×${mult} 抵銷 30% 降幅)`
+                     : (x.bsel==='off' ? '儀表板關閉加速推廣' : '儀表板開加速推廣(不動ROI)'),
+        who:'dashboard'});
+    }
   });
   return out;
 }
 // GAS 會把 roi/budget 正規化成中文欄名寫進佇列 → 讀回比對兩種都要認(修正:舊版只比 'roi' 永遠比不中)
-const QFIELD_OK={roi:['roi','目標ROI','目標投入產出比'],budget:['budget','預算','每日預算']};
+const QFIELD_OK={roi:['roi','目標ROI','目標投入產出比'],budget:['budget','預算','每日預算'],
+                 rapid_boost:['rapid_boost','加速推廣']};
 async function sendQueue(){
   const sel=sopSelected();
-  if(!sel.length){ qmsg('沒有要送的變更:請先在表格把「目標ROI／每日預算」改成想要的值(改了會自動勾選)',true); return; }
-  const pend=document.getElementById('queuePending');
-  const status=(pend&&pend.checked)?'待確認':'待執行';
+  if(!sel.length){ qmsg('沒有要送的變更:請先在表格把「目標ROI／每日預算」改成想要的值,或把「加速推廣」選成要的狀態(改了會自動勾選)',true); return; }
+  // 同一則同時「改ROI」+「開推廣×係數」→ 兩者都會動 ROI,一週只准改一次,後送那筆必被節流擋掉
+  const byCid={};
+  sel.forEach(x=>{ (byCid[x.campaign_id]=byCid[x.campaign_id]||[]).push(x); });
+  const clash=Object.values(byCid).filter(g=>
+    g.some(x=>x.field==='roi') && g.some(x=>x.field==='rapid_boost'&&String(x.target).includes('×')));
+  if(clash.length){
+    qmsg(`${clash.length} 則同時要「改目標ROI」和「開加速推廣×係數」——兩個動作都會改 ROI,`
+      +`同一則一週只准改一次,後送的必被節流擋下。請擇一(要開推廣就別另外改ROI,係數會幫你調):`
+      +clash.map(g=>g[0].title.slice(0,14)).join('、'), true);
+    return;
+  }
+  // 送出一律「待執行」(2026-08-02 移除「只加入待確認」測試勾選框——它會讓送出的列變成
+  // 「待確認」,本機 queue_run 只撿「待執行」,結果是送出去卻永遠不執行,而說明文字又寫「狀態=待執行」)。
+  const status='待執行';
   const btn=document.getElementById('sopSend'); btn.disabled=true;
   qmsg(`送出 ${sel.length} 筆(狀態=${status})…`);
   try{
