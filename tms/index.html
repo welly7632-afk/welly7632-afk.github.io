@@ -94,14 +94,20 @@ aside{position:relative;height:100%;overflow:hidden;display:flex;flex-direction:
 .sec:last-child{border-bottom:0}
 .sec.grow{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .sec.grow .rlist{flex:1 1 auto;min-height:0}
-/* 焦點層：吃掉剩餘空間、最後才被壓，且**至少佔側邊欄 62%**
-   （2026-08-05 使用者：「中類可以上下滑，但至少要顯示 60~70%」）。
-   ⚠️ `flex-shrink` **不可以小於 1**：flex 規範規定「未凍結項的 shrink 總和 < 1 時，
-      只壓縮 (總和×需要量)」——設 0.01 等於幾乎不壓，清單就撐破側邊欄
-      （09.紅點 64 個中類實測佔到 124%）。保底改用 min-height 就好。 */
-.sec.grow.pri1{flex-grow:1;flex-shrink:1;min-height:min(62%,calc(100% - 150px))}
-.sec.grow.pri2{flex-shrink:60;min-height:76px}               /* 上一層：先讓位，但保有 3 行 */
-.sec.grow.pri3{flex-shrink:400;min-height:52px}              /* 更上層：最先被壓到最小 */
+/* 空間怎麼分（2026-08-06 使用者修正）：
+   ▸ **沒有人硬佔比例**——每一層的基準高度就是它自己的內容高度（`flex-basis:auto`）。
+     焦點層用不到那麼多就不要留白（以前寫死 min-height:62%，中類只有兩項時下面一片空白）。
+   ▸ **多出來的空間一律給大類**（只有 #sec1 有 flex-grow）——大類是「返回上一層」的入口，
+     空間夠時就讓它整份列出來。
+   ▸ 空間不夠時才壓縮，順序是「離焦點越遠越先被壓」；焦點層最後才被壓，
+     所以清單很長時它自然拿到最大的一塊（實測 83%），不必也不該寫死比例。
+   ▸ 被壓到最小的那層至少留得下「標題＋一行」＝ 看得到 **【全部】** 這個返回選項。
+   ⚠️ `flex-shrink` 不可以小於 1：規範規定「未凍結項的 shrink 總和 < 1 時只壓縮
+      (總和×需要量)」，設 0.01 等於幾乎不壓，清單會撐破側邊欄（實測佔到 124%）。 */
+#sec1{flex-grow:1}                                           /* 剩餘空間都給大類 */
+.sec.grow.pri1{flex-shrink:1}                                /* 焦點層：最後才被壓 */
+.sec.grow.pri2{flex-shrink:60;min-height:74px}               /* 上一層：先讓位，保有 2~3 行 */
+.sec.grow.pri3{flex-shrink:400;min-height:52px}              /* 更上層：壓到剩「全部」一行 */
 /* ⚠️ 焦點層**不能**設 flex-shrink:0：清單很長時（例如 09.紅點 有 64 個中類＝1195px）
    會把 aside 撐破，而 aside 是 overflow:hidden → 下半截看不到也捲不到（2026-08-05 量到）。
    正解是「焦點層也能被壓，只是最後才輪到它」，壓到極限就由 .rlist 自己捲。 */
@@ -870,8 +876,11 @@ function buildUI(){
   $('btnClear').onclick=()=>{PICK=null;drawChart();drawTable();};   // 回類別總覽
   document.querySelectorAll('#saleMode button').forEach(b=>b.onclick=()=>{
     SALEMODE=b.dataset.m;segOn('saleMode',b);drawSale();});
-  $('btnSb').onclick=()=>{$('layout').classList.toggle('nosb');
-    LAY.flow.sb=$('layout').classList.contains('nosb')?0:1;saveCfg();setTimeout(drawChart,60);};
+  // ⚠️ 側邊欄的容器 id 已由 `layout` 改成 `applayout`（側邊欄提升為分頁共用元件時）——
+  //   這裡忘了跟著改，按鈕就靜靜地失效了（2026-08-06 使用者回報「側邊欄收不起來」）
+  $('btnSb').onclick=()=>{LAY.flow.sb=LAY.flow.sb===0?1:0; saveCfg();
+    applyLayout(TAB); setTimeout(()=>{
+      TAB==='flow'?drawChart():TAB==='sale'?drawSale():drawPlanChart();},60);};
   $('btnCfg').onclick=()=>{document.body.classList.toggle('cfg');
     $('btnCfg').classList.toggle('on',document.body.classList.contains('cfg'));setTimeout(drawChart,60);};
   $('cfgReset').onclick=()=>{localStorage.removeItem(CFGKEY);
@@ -986,6 +995,10 @@ function keepSelVisible(){
   ['f1','f2','f3'].forEach(b=>{
     const rl=$(b), sel=rl&&rl.querySelector('label.sel');
     if(!rl||!sel||rl.scrollHeight<=rl.clientHeight) return;
+    // ★ 被壓到只剩一兩行時，改成捲到最上面顯示 **【全部】**（＝返回上一層的入口）。
+    //   2026-08-06 使用者：「如果空間不夠，大類列出【全部】的選項就好，等於是返回的意思」。
+    //   那麼小的空間裡「能不能退回去」比「現在選了什麼」有用——選了什麼在下一層與圖表標題都看得到。
+    if(rl.clientHeight < sel.offsetHeight*2.5){ rl.scrollTop=0; return; }
     const a=sel.getBoundingClientRect(), r=rl.getBoundingClientRect();
     if(a.top>=r.top-1 && a.bottom<=r.bottom+1) return;        // 已經看得到就別亂捲
     rl.scrollTop = Math.max(0, rl.scrollTop + (a.top-r.top) - (r.height-a.height)/2);
