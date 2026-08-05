@@ -32,8 +32,15 @@
   }
 }
 *{box-sizing:border-box}
+/* ⭐ 整站固定在一個螢幕內（2026-08-05 使用者指定）：**外層永遠不捲**——
+   不管選 7 天還是 120 天，左右都不要出現橫向捲軸，上下也不要捲整頁。
+   做法：body 撐滿視窗高度 `overflow:hidden`，內部用 flex 分配，
+   **需要捲的只有各自的小區塊**（分類清單、表格），使用者在區塊內捲沒問題。 */
+html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--text);font-size:12px;
-  font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;line-height:1.45}
+  font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;line-height:1.45;
+  overflow:hidden;display:flex;flex-direction:column}
+header,.bar{flex:none}
 body.dragging{user-select:none;cursor:crosshair}
 header{background:var(--card);border-bottom:1px solid var(--line);padding:6px 10px;
   display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -63,10 +70,13 @@ button:disabled{opacity:.5;cursor:default}
 input[type=date]{font:inherit;font-size:11.5px;padding:2px 5px;border:1px solid var(--line);
   border-radius:4px;background:var(--card);color:var(--text)}
 /* ---- 版面 ---- */
-.layout{display:grid;grid-template-columns:var(--aside-w) 1fr;gap:7px;padding:7px;align-items:start}
-.layout.nosb{grid-template-columns:1fr}
-.layout.nosb aside{display:none}
-@media(max-width:860px){.layout{grid-template-columns:1fr}.layout aside{display:none}}
+/* 側邊欄＋分頁區：側邊欄由「流量分析／銷售分析」共用，決策頁自動隱藏 */
+.applayout{display:grid;grid-template-columns:var(--aside-w) 1fr;gap:7px;padding:7px;
+  align-items:stretch;flex:1;min-height:0}
+.applayout.nosb{grid-template-columns:1fr}
+.applayout.nosb aside{display:none}
+.pagewrap{display:flex;flex-direction:column;min-height:0;min-width:0}
+@media(max-width:860px){.applayout{grid-template-columns:1fr}.applayout aside{display:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:7px}
 /* 側邊欄：撐滿視窗高度。三個分類清單**依「現在要選哪一層」動態分配高度**
    （2026-08-05 使用者指定，取代原本的「平分」）：
@@ -76,15 +86,22 @@ input[type=date]{font:inherit;font-size:11.5px;padding:2px 5px;border:1px solid 
      按「全部」＝退一步 → 焦點自動回到上一層（大類改全部就回到第一種情況）
    做法：flex-basis 用內容自然高度（`0 1 auto`），空間夠時大家都完整列出；
    不夠時**只壓非焦點層**（焦點層 flex-shrink:0），離焦點越遠壓得越兇。 */
-aside{position:sticky;top:7px;height:calc(100vh - 14px);overflow:hidden;
-  display:flex;flex-direction:column}
+/* ⚠️ 一定要 position:relative——拖曳把手 `.grip.v` 是 absolute right:-4px，
+   以前靠 `position:sticky` 當定位基準；改成 flex 版面後沒了基準會跑到視窗外，
+   撐出 4px 的橫向捲軸（2026-08-05 量到）。 */
+aside{position:relative;height:100%;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .sec{border-bottom:1px solid var(--line);padding:6px 8px;flex:none}
 .sec:last-child{border-bottom:0}
 .sec.grow{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .sec.grow .rlist{flex:1 1 auto;min-height:0}
-.sec.grow.pri1{flex-grow:1;flex-shrink:.01;min-height:104px} /* 焦點層：吃掉剩餘空間、最後才被壓 */
-.sec.grow.pri2{flex-shrink:60;min-height:96px}               /* 上一層：先讓位，但保有 3~4 行 */
-.sec.grow.pri3{flex-shrink:400;min-height:54px}              /* 更上層：最先被壓到最小 */
+/* 焦點層：吃掉剩餘空間、最後才被壓，且**至少佔側邊欄 62%**
+   （2026-08-05 使用者：「中類可以上下滑，但至少要顯示 60~70%」）。
+   ⚠️ `flex-shrink` **不可以小於 1**：flex 規範規定「未凍結項的 shrink 總和 < 1 時，
+      只壓縮 (總和×需要量)」——設 0.01 等於幾乎不壓，清單就撐破側邊欄
+      （09.紅點 64 個中類實測佔到 124%）。保底改用 min-height 就好。 */
+.sec.grow.pri1{flex-grow:1;flex-shrink:1;min-height:min(62%,calc(100% - 150px))}
+.sec.grow.pri2{flex-shrink:60;min-height:76px}               /* 上一層：先讓位，但保有 3 行 */
+.sec.grow.pri3{flex-shrink:400;min-height:52px}              /* 更上層：最先被壓到最小 */
 /* ⚠️ 焦點層**不能**設 flex-shrink:0：清單很長時（例如 09.紅點 有 64 個中類＝1195px）
    會把 aside 撐破，而 aside 是 overflow:hidden → 下半截看不到也捲不到（2026-08-05 量到）。
    正解是「焦點層也能被壓，只是最後才輪到它」，壓到極限就由 .rlist 自己捲。 */
@@ -98,6 +115,10 @@ aside{position:sticky;top:7px;height:calc(100vh - 14px);overflow:hidden;
 .rlist label.sel{background:var(--accent-soft);color:var(--accent);font-weight:600}
 input[type=text]{font:inherit;font-size:11.5px;padding:3px 6px;border:1px solid var(--line);
   border-radius:4px;background:var(--card);color:var(--text);width:100%}
+/* 只在設定模式（⚙）展開的區塊：345 的物流前置期與九條策略門檻 */
+.cfgonly{display:none}
+body.cfg .cfgonly{display:block}
+body.cfg #planParamHint{display:none}
 /* 拖曳把手（設定模式才出現） */
 .grip{position:absolute;background:transparent;z-index:40}
 .grip.v{top:0;right:-4px;width:8px;height:100%;cursor:col-resize}
@@ -110,8 +131,12 @@ body.cfg .grip:hover{opacity:.5}
      ②**黏在視窗頂端**（`position:sticky`）——以前捲動去看圖表時整條會捲出畫面，
        只剩被切一半的數字。表頭 `th` 的 top 改成讓開統計列高度（`--stats-h`，JS 量測），
        兩者才不會疊在一起。 */
+/* ⚠️ 整站改成不捲之後，統計列**不需要也不可以** sticky：
+   它跟表格在不同的 panel，sticky 會讓表頭 `th` 被迫讓開一段距離，
+   捲動表格時表頭就浮在資料列中間（2026-08-05 使用者截圖的「標題欄跑掉」）。
+   現在外層不捲、統計列本來就一直在畫面上，表頭只要黏在表格自己的捲動容器頂端就好。 */
 .stats{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border-radius:7px 7px 0 0;
-  overflow:hidden;position:sticky;top:0;z-index:14}
+  overflow:hidden;flex:none}
 .stat{background:var(--card);padding:6px 11px;flex:1;min-width:92px}
 .stat .k{font-size:11px;color:var(--muted);line-height:1.3}
 .stat .v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.35}
@@ -121,22 +146,35 @@ body.cfg .grip:hover{opacity:.5}
 .chartbar{display:flex;align-items:center;gap:9px;margin-bottom:3px;flex-wrap:wrap}
 .chartbar .ttl{font-size:12px;font-weight:700;color:var(--accent)}
 .chartbar label{font-size:11.5px;cursor:pointer;white-space:nowrap}
-.cwrap{overflow-x:auto;overflow-y:hidden;position:relative}
+/* 圖表永遠塞進容器寬度（2026-08-05）：以前是 `Math.max(容器寬, 天數×46)`，
+   選 120 天就撐出橫向捲軸要一直往右滑。現在天數多就自己壓縮。 */
+.cwrap{overflow:hidden;position:relative}
 svg.chart{display:block}
 .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--accent);
   border-radius:5px;padding:4px 7px;font-size:11.5px;box-shadow:0 3px 10px rgba(0,0,0,.16);
   z-index:50;display:none;white-space:nowrap}
 .dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
 /* ---- 表格（A3：padding／列高／字級都吃 CSS 變數） ---- */
-.tscroll{overflow:auto;border-top:1px solid var(--line)}
+/* 表格區＝唯一會上下捲的地方（填滿剩餘高度、內部捲）。橫向一律不捲：欄位自己縮。 */
+.tscroll{overflow-y:auto;overflow-x:hidden;border-top:1px solid var(--line);flex:1;min-height:0}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--cell-fs);
   font-variant-numeric:tabular-nums}
 th,td{padding:0 var(--cell-pad);height:var(--rowh);border-bottom:1px solid var(--line);
   white-space:nowrap;text-align:right}
-th{background:var(--head);position:sticky;top:var(--stats-h,0px);z-index:8;font-size:calc(var(--cell-fs) - .5px);
+th{background:var(--head);position:sticky;top:0;z-index:8;font-size:calc(var(--cell-fs) - .5px);
   font-weight:600;color:var(--muted);border-bottom:1.5px solid var(--line);
   cursor:pointer;user-select:none}
 th:hover{color:var(--accent)}
+/* 設定模式下可以像 Excel 一樣拖曳欄位邊界調寬度（2026-08-05 使用者第 3 項）。
+   把手只在設定模式出現，平常不干擾點擊排序。 */
+th{position:sticky}
+.colgrip{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;
+  display:none;z-index:9}
+body.cfg .colgrip{display:block;background:var(--accent);opacity:.18}
+body.cfg .colgrip:hover{opacity:.55}
+body.cfg th{position:sticky}
+table{table-layout:auto}
+table.fixw{table-layout:fixed}
 th.l,td.l{text-align:left}
 td.code{position:sticky;left:0;background:var(--card);z-index:6;font-family:Consolas,monospace;
   font-weight:600;color:var(--accent);width:1%}
@@ -201,7 +239,11 @@ body.cfg .cfgpanel{display:block}
 .slrow label{width:64px;color:var(--muted)}
 .slrow input[type=range]{width:118px}
 .slrow b{width:44px;text-align:right;font-variant-numeric:tabular-nums}
-.page{display:none}.page.on{display:block}
+/* 分頁本身就是「剩下的整個畫面」；內部再用 flex 切成 圖表區(固定高)＋表格區(填滿、自己捲) */
+.page{display:none}
+.page.on{display:flex;flex-direction:column;flex:1;min-height:0}
+.page.on>.pad{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;gap:7px}
+.page.on>.pad>.panel:last-child{flex:1;min-height:0;display:flex;flex-direction:column}
 /* ---- 策略開關（B7） ---- */
 .spbox{display:flex;gap:14px;flex-wrap:wrap;padding:6px 10px;border-top:1px solid var(--line)}
 .spitem{display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap}
@@ -278,9 +320,10 @@ body.cfg .cfgpanel{display:block}
 
 <div id="err"></div>
 
-<!-- ================= 分頁1：產品流量分析 ================= -->
-<div class="page on" id="page-flow">
-<div class="layout" id="layout">
+<!-- ⭐ 側邊欄提升成「產品流量分析／銷售分析」共用的版面元件（2026-08-05 使用者第 11 項）：
+     以前它長在流量分析頁裡，切到銷售分析就看不到也改不了，只能沿用前一頁選的品項。
+     現在 DOM 只有一份，但**篩選狀態每個分頁各自記一組**（見 JS 的 FS），互不影響。 -->
+<div class="applayout" id="applayout">
   <aside class="panel" id="aside">
     <div class="sec"><h4>搜尋</h4><input type="text" id="q" placeholder="代號或品名"></div>
     <div class="sec grow" id="sec1"><h4>商品大類</h4><div class="rlist" id="f1"></div></div>
@@ -290,8 +333,11 @@ body.cfg .cfgpanel{display:block}
     <div class="grip v" id="gripV"></div>
   </aside>
 
-  <div>
-    <div class="panel" style="margin-bottom:7px;position:relative">
+<div class="pagewrap">
+<!-- ================= 分頁1：產品流量分析 ================= -->
+<div class="page on" id="page-flow">
+  <div class="pad">
+    <div class="panel" style="position:relative;flex:none">
       <div class="stats" id="stats"></div>
       <div class="chartbox">
         <div class="chartbar">
@@ -317,12 +363,11 @@ body.cfg .cfgpanel{display:block}
     </div>
   </div>
 </div>
-</div>
 
 <!-- ================= 分頁2：銷售分析 ================= -->
 <div class="page" id="page-sale">
-  <div style="padding:7px">
-    <div class="panel" style="margin-bottom:7px">
+  <div class="pad">
+    <div class="panel" style="flex:none">
       <div class="stats" id="saleStats"></div>
       <div class="chartbox">
         <div class="chartbar"><span class="ttl">銷售趨勢（依目前篩選）</span>
@@ -343,7 +388,7 @@ body.cfg .cfgpanel{display:block}
         </div>
         <span class="hint" id="saleHint"></span>
       </div>
-      <div class="tscroll" style="max-height:60vh"><table><thead id="th2"></thead><tbody id="tb2"></tbody></table></div>
+      <div class="tscroll"><table><thead id="th2"></thead><tbody id="tb2"></tbody></table></div>
       <div class="foot"><div id="cnt2"></div><div id="saleNote" class="hint"></div></div>
     </div>
   </div>
@@ -351,36 +396,44 @@ body.cfg .cfgpanel{display:block}
 
 <!-- ================= 分頁3：345 進貨決策（V4.12 邏輯移植＋策略可開關） ================= -->
 <div class="page" id="page-plan">
-  <div style="padding:7px">
-    <div class="panel" style="margin-bottom:7px">
-      <div style="padding:8px 10px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
-        <div><div class="k" style="font-size:10.5px;color:var(--sea)">🚢 海運</div>
-          <input type="number" id="ltSea" value="50" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--fast)">⛴️ 海快</div>
-          <input type="number" id="ltFast" value="30" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--qiao)">🚚 巧巧郎</div>
-          <input type="number" id="ltQiao" value="14" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">其他物流</div>
-          <input type="number" id="ltOther" value="15" min="1" style="width:58px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">預設安全天數</div>
-          <input type="number" id="safeDays" value="15" min="0" style="width:64px"></div>
-        <div><div class="k" style="font-size:10.5px;color:var(--muted)">🛑 最高庫存上限</div>
-          <input type="number" id="maxDays" value="90" min="30" style="width:70px"></div>
-        <label style="font-size:11.5px"><input type="checkbox" id="keepClosed">
-          「關閉」也輸出空白列</label>
-        <span class="sp"></span>
+  <div class="pad">
+    <div class="panel" style="flex:none">
+      <!-- ⚙ 只在設定模式展開：物流前置期／安全天數／上限／九條策略門檻
+           （2026-08-05 使用者：「這些原則問題跟設定模式一樣先收起來，需要時一起打開」） -->
+      <div class="cfgonly" id="planParams">
+        <div style="padding:8px 10px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="k" style="font-size:10.5px;color:var(--sea)">🚢 海運</div>
+            <input type="number" id="ltSea" value="50" min="1" style="width:58px"></div>
+          <div><div class="k" style="font-size:10.5px;color:var(--fast)">⛴️ 海快</div>
+            <input type="number" id="ltFast" value="30" min="1" style="width:58px"></div>
+          <div><div class="k" style="font-size:10.5px;color:var(--qiao)">🚚 巧巧郎</div>
+            <input type="number" id="ltQiao" value="14" min="1" style="width:58px"></div>
+          <div><div class="k" style="font-size:10.5px;color:var(--muted)">其他物流</div>
+            <input type="number" id="ltOther" value="15" min="1" style="width:58px"></div>
+          <div><div class="k" style="font-size:10.5px;color:var(--muted)">預設安全天數</div>
+            <input type="number" id="safeDays" value="15" min="0" style="width:64px"></div>
+          <div><div class="k" style="font-size:10.5px;color:var(--muted)">🛑 最高庫存上限</div>
+            <input type="number" id="maxDays" value="90" min="30" style="width:70px"></div>
+          <label style="font-size:11.5px"><input type="checkbox" id="keepClosed">
+            「關閉」也輸出空白列</label>
+        </div>
+        <!-- B7：九條策略都可以開關，門檻數字也可以改 -->
+        <div class="spbox" id="spbox"></div>
+      </div>
+      <!-- 平常就要用的操作鈕：留在外面 -->
+      <div style="padding:6px 10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button id="btnRun" title="參數一改就會自動重算，這顆只是手動再算一次">↻ 重算</button>
         <button id="btnCopy">📋 複製四欄（貼回 AR 欄）</button>
         <button class="primary" id="btnPush">☁️ 一鍵回填試算表</button>
         <span class="hint" id="planHint"></span>
+        <span class="sp"></span>
+        <span class="hint" id="planParamHint">⚙ 設定模式可調物流前置期與九條策略</span>
       </div>
-      <!-- B7：九條策略都可以開關，門檻數字也可以改 -->
-      <div class="spbox" id="spbox"></div>
       <div class="stats" id="planStats"></div>
     </div>
 
     <!-- B8／B9：點產品代號看該品走勢、點廠商看該廠商（＝中類）整體 -->
-    <div class="panel" id="planChartBox" style="margin-bottom:7px;display:none">
+    <div class="panel" id="planChartBox" style="display:none;flex:none">
       <div class="chartbox">
         <div class="chartbar">
           <span class="ttl" id="pChartTitle"></span>
@@ -397,7 +450,7 @@ body.cfg .cfgpanel{display:block}
     </div>
 
     <!-- B4：選取列之後可以一起改物流／裝箱量 -->
-    <div class="panel" id="planEditBar" style="margin-bottom:7px;display:none">
+    <div class="panel" id="planEditBar" style="display:none;flex:none">
       <div style="padding:6px 10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11.5px">
         <b id="pselN"></b>
         <span class="k" style="color:var(--muted)">設物流（可多選，會寫成「海運/海快」）：</span>
@@ -412,7 +465,7 @@ body.cfg .cfgpanel{display:block}
     </div>
 
     <div class="panel">
-      <div class="tscroll" id="tscroll3" style="max-height:calc(100vh - 300px)">
+      <div class="tscroll" id="tscroll3">
         <table><thead id="th3"></thead><tbody id="tb3">
           <tr><td class="load">計算中…</td></tr></tbody></table>
       </div>
@@ -421,6 +474,8 @@ body.cfg .cfgpanel{display:block}
     </div>
   </div>
 </div>
+</div><!-- /pagewrap -->
+</div><!-- /applayout -->
 
 <!-- 回填預覽（B4/B5/B6 共用） -->
 <div class="mask" id="mask">
@@ -468,7 +523,19 @@ const deb=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
 let DATA=null,MASTER={},PLAN=null,ROWS=[],VIEW=[],PAGE=0,PER=80,GRAN='d',PICK=null;
-let SORT={k:'tsale',d:-1}, F={g1:'',g2:'',g3:''}, R={a:0,b:0};   // R = 日期索引範圍
+/* ★ 兩層資料庫（2026-08-05 使用者第 6 項）：
+     日庫 `DAILY`（試算表 traffic 分頁，滾動 120 天）＝ 顆粒「日／週」用
+     月庫 `MONTHLY`（monthly 分頁，**2024-01 起永久**）＝ 顆粒「月」用
+   切到「月」時 `DATA` 換成月庫（包裝成同一種結構，後面所有邏輯不用改），
+   期間選擇也跟著從「幾月幾號～幾月幾號」變成「幾月～幾月」。 */
+let DAILY=null, MONTHLY=null;
+let SORT={k:'tsale',d:-1}, R={a:0,b:0};   // R = 日期索引範圍
+/* ★ 篩選狀態**每個分頁各一組**（2026-08-05 使用者第 11 項）：
+   以前三個分頁共用一個 F，在流量分析選了 4 個品項再切到銷售分析，那邊就只剩那 4 項、
+   而且側邊欄不在銷售分頁上，改都改不了，只能切出去再切回來。
+   現在 `F` 指向「目前分頁」的那一組，切分頁時換指標並重畫側邊欄。 */
+const FS={flow:{g1:'',g2:'',g3:'',q:''}, sale:{g1:'',g2:'',g3:'',q:''}};
+let F=FS.flow;
 let TAB='flow', SALEMODE='rank';
 
 /* ---------- 小工具：分類／廠商的顯示規則 ---------- */
@@ -549,9 +616,10 @@ const sum=(a,k)=>a.reduce((s,p)=>s+(p[k]||0),0);
    ========================================================================= */
 const CFGKEY='tmsflow.cfg.v2';
 const DEF_LAY={pad:6,rowh:22,fs:100};      // fs＝字級微調倍率(%)
-const LAY={flow:{...DEF_LAY,aw:'180px',ch:'200px',sb:1},
-           sale:{...DEF_LAY},
-           plan:{...DEF_LAY,pad:5,rowh:21}};
+// cw＝欄寬（{欄位key: px}，設定模式拖曳出來的，key-based 不怕欄位增刪）
+const LAY={flow:{...DEF_LAY,aw:'180px',ch:'200px',sb:1,cw:{}},
+           sale:{...DEF_LAY,cw:{}},
+           plan:{...DEF_LAY,pad:5,rowh:21,cw:{}}};
 /** 字級＝列高等比縮放（列高 22 → 11.5px）再乘微調倍率 */
 const fsOf=l=>clamp(11.5*(l.rowh/22)*(l.fs/100),8.5,22);
 function applyLayout(tab){
@@ -559,16 +627,27 @@ function applyLayout(tab){
   s.setProperty('--cell-pad',l.pad+'px');
   s.setProperty('--rowh',l.rowh+'px');
   s.setProperty('--cell-fs',fsOf(l).toFixed(2)+'px');
-  if(tab==='flow'){
-    if(l.aw)s.setProperty('--aside-w',l.aw);
-    if(l.ch)s.setProperty('--chart-h',l.ch);
-    $('layout').classList.toggle('nosb',l.sb===0);
-  }
+  if(l.aw)s.setProperty('--aside-w',l.aw);
+  if(tab==='flow'&&l.ch)s.setProperty('--chart-h',l.ch);
+  // 側邊欄：流量分析／銷售分析都要（第 11 項）；決策頁沒有分類篩選 → 隱藏
+  const wantSb = (tab!=='plan') && (LAY.flow.sb!==0);
+  $('applayout').classList.toggle('nosb',!wantSb);
 }
+/* ⭐⭐⭐ **使用者存的「全站預設」是唯一真相，改版不可以把它蓋回程式碼裡的預設值**
+   （2026-08-05 使用者明確要求，說已經被弄掉好幾次）。
+
+   以前為什麼會被弄掉：設定是用「**索引陣列**」存的（`COLS.map(c=>c.on)`），還原時
+   `defs.forEach((x,i)=>x.on=arr[i])` 依索引對回去。只要我在欄位清單**中間插入或刪掉**
+   一個欄位，之後所有欄位就整排錯位——使用者看到的就是「我設好的又被改回預設了」。
+
+   ⇒ 改成 **key→值 的物件**（每個欄位本來就有唯一的 `k`）。這樣以後不管怎麼
+     增加、刪除、調換欄位順序，已存的設定都還是套到正確的欄位上。
+   ⇒ 舊的陣列格式仍讀得懂（`put()` 會自動辨識），使用者不用重存。 */
+const onMap=defs=>Object.fromEntries(defs.map(d=>[d.k,d.on?1:0]));
 function curCfg(){
-  return {v:2,
-    flow:{cols:COLS.map(c=>c.on),stats:STATS.map(s=>s.on),lay:{...LAY.flow}},
-    plan:{cols:PCOLS.map(c=>c.on),lay:{...LAY.plan},sp:{...SP}},
+  return {v:3,
+    flow:{cols:onMap(COLS),stats:onMap(STATS),lay:{...LAY.flow}},
+    plan:{cols:onMap(PCOLS),lay:{...LAY.plan},sp:{...SP}},
     sale:{lay:{...LAY.sale}}};
 }
 function applyCfg(c){
@@ -577,7 +656,12 @@ function applyCfg(c){
     c={v:2,flow:{cols:c.cols,stats:c.stats,
       lay:{...DEF_LAY,aw:c.aw,ch:c.ch,sb:c.sb}}};
   }
-  const put=(defs,arr)=>{if(arr)defs.forEach((x,i)=>{if(!x.lock&&arr[i]!==undefined)x.on=arr[i];});};
+  // v3＝{k:on} 物件（不怕欄位增刪）；v1/v2＝索引陣列（舊資料，依索引還原）
+  const put=(defs,saved)=>{
+    if(!saved)return;
+    if(Array.isArray(saved)) defs.forEach((x,i)=>{if(!x.lock&&saved[i]!==undefined)x.on=saved[i];});
+    else defs.forEach(x=>{if(!x.lock&&saved[x.k]!==undefined)x.on=saved[x.k];});
+  };
   if(c.flow){ put(COLS,c.flow.cols); put(STATS,c.flow.stats);
     if(c.flow.lay)Object.assign(LAY.flow,c.flow.lay); }
   if(c.plan){ put(PCOLS,c.plan.cols);
@@ -660,18 +744,26 @@ async function boot(){
       say('主檔載入中…');
       try{ MASTER=(await get('master')).items||{}; }catch(e){ console.warn('master',e); }
       try{ PLAN=await get('plan'); }catch(e){ console.warn('plan',e); }
+      // 月庫（2024-01 起）：選「月」顆粒時用它，日庫只有滾動 120 天
+      try{ MONTHLY=await get('monthly'); }catch(e){ console.warn('monthly',e); }
     }else{                                      // ③ 本機開發：直接讀同目錄 JSON
-      const [a,b,c]=await Promise.all([fetch('traffic.json?_='+Date.now()),
+      const [a,b,c,d]=await Promise.all([fetch('traffic.json?_='+Date.now()),
         fetch('master.json?_='+Date.now()).catch(()=>null),
-        fetch('plan.json?_='+Date.now()).catch(()=>null)]);
+        fetch('plan.json?_='+Date.now()).catch(()=>null),
+        fetch('monthly.json?_='+Date.now()).catch(()=>null)]);
       if(!a.ok)throw new Error('traffic.json HTTP '+a.status);
       DATA=await a.json();
       if(b&&b.ok){ try{MASTER=(await b.json()).items||{};}catch(e){} }
       if(c&&c.ok){ try{PLAN=await c.json();}catch(e){} }
+      if(d&&d.ok){ try{MONTHLY=await d.json();}catch(e){} }
     }
   }catch(e){ return fail('讀不到資料：'+esc(e.message)+
     '<br>本機開發請透過網址開啟（不是雙擊檔案）；離線請改用單檔版。'); }
-  loadCfg(); prep(); buildUI(); render();
+  DAILY=DATA;                                   // 日庫留一份，切「月」時要換回來
+  loadCfg(); prep(); buildUI(); buildQuick(); render();
+  if(MONTHLY&&MONTHLY.meta&&MONTHLY.meta.months)
+    $('gran').querySelector('[data-g="m"]').title=
+      `月＝讀月庫（${MONTHLY.meta.months[0]} 起共 ${MONTHLY.meta.months.length} 個月）`;
   if(API_URL&&!emb)loadGlobalCfg();             // 全站設定（後端）覆蓋本機設定
 }
 const fail=m=>{ $('err').innerHTML='<div class="err">'+m+'</div>'; $('tb').innerHTML=''; };
@@ -680,6 +772,9 @@ const fail=m=>{ $('err').innerHTML='<div class="err">'+m+'</div>'; $('tb').inner
 function prep(){
   const D=DATA.meta.dates,nd=D.length;
   R={a:0,b:nd-1};
+  // ★ 月模式：期間選擇器改成「年月」（input[type=month] 的值格式剛好就是 YYYY-MM）
+  const mm=!!DATA.meta.monthMode;
+  $('d1').type=$('d2').type = mm?'month':'date';
   $('d1').min=$('d2').min=D[0]; $('d1').max=$('d2').max=D[nd-1];
   $('d1').value=D[0]; $('d2').value=D[nd-1];
   const hit=DATA.products.filter(p=>MASTER[p.c]).length;
@@ -687,7 +782,7 @@ function prep(){
   const fin=(DATA.meta.finalized&&Object.keys(DATA.meta.finalized))||[];
   const todayFinal=fin.includes(D[nd-1]);
   const noPI=DATA.products.filter(p=>!(MASTER[p.c]||{}).PI).length;
-  $('meta').innerHTML=`資料 <b>${D[0]}</b>~<b>${D[nd-1]}</b>（${nd}天）　`+
+  $('meta').innerHTML=`資料 <b>${D[0]}</b>~<b>${D[nd-1]}</b>（${nd}${mm?' 個月':'天'}）　`+
     `產品 <b>${DATA.products.length.toLocaleString()}</b>　`+
     `主檔 <b>${hit.toLocaleString()}</b>　匯入 <b>${esc((DATA.meta.exported||'—').slice(0,16))}</b>`+
     (fin.length?`　定稿 <b>${fin.length}</b> 天`+
@@ -733,16 +828,19 @@ function recalc(){
 
 /* ---------- UI ---------- */
 function buildUI(){
-  radios('f1',[{v:'',t:'全部'}].concat(DATA.meta.cats.map((c,i)=>({v:String(i),t:c}))),'g1');
+  syncCat();
   syncMid(); syncSub();
   buildCfgPanel();
   ['sSale','sBuy','sStock','sMark'].forEach(id=>$(id).onchange=()=>drawChart());
   ['vAmt','vQty'].forEach(id=>$(id).onchange=()=>drawSale());
   ['pSale','pBuy','pStock'].forEach(id=>$(id).onchange=()=>drawPlanChart());
-  $('q').oninput=deb(()=>{PAGE=0;render();},200);
+  $('q').oninput=deb(()=>{PAGE=0;F.q=$('q').value;render();
+    if(TAB==='sale')drawSale();},200);
   $('hideZero').onchange=()=>{PAGE=0;render();};
   document.querySelectorAll('#gran button').forEach(b=>b.onclick=()=>{
-    GRAN=b.dataset.g;segOn('gran',b);
+    const was=GRAN; GRAN=b.dataset.g; segOn('gran',b);
+    // 「月」用月庫（看得到 2024 年起）、「日／週」用日庫（滾動 120 天）→ 換資料源要整份重算
+    if((was==='m')!==(GRAN==='m')){ switchSource(); return; }
     TAB==='flow'?drawChart():TAB==='sale'?drawSale():drawPlanChart();});
   document.querySelectorAll('#quick button').forEach(b=>b.onclick=()=>{
     segOn('quick',b);setRangeDays(+b.dataset.d);});
@@ -756,9 +854,15 @@ function buildUI(){
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
     TAB=b.dataset.p; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.page').forEach(pg=>pg.classList.toggle('on',pg.id==='page-'+TAB));
-    applyLayout(TAB); buildCfgPanel(); syncStatsH();   // 決策頁沒有統計列 → 要歸零，表頭才不會空一截
+    // ★ 換分頁＝換一組篩選狀態（流量分析／銷售分析各自記住自己選到哪裡）
+    if(FS[TAB]){
+      F=FS[TAB];
+      $('q').value=F.q||'';
+      syncCat(); syncMid(); syncSub();          // 用這一頁的狀態重畫側邊欄
+    }
+    applyLayout(TAB); buildCfgPanel();
     // B10：切到決策頁就自動算一次（不用再按「結算補貨建議」）
-    if(TAB==='sale')drawSale(); else if(TAB==='flow')drawChart(); else runPlan();
+    if(TAB==='sale'){render();drawSale();} else if(TAB==='flow'){render();drawChart();} else runPlan();
   });
   $('btnRun').onclick=()=>runPlan();
   $('btnCopy').onclick=copyPlan;
@@ -791,6 +895,40 @@ function buildUI(){
     : '尚未接上後端，設定只存在這台電腦。';
 }
 const segOn=(box,b)=>document.querySelectorAll('#'+box+' button').forEach(x=>x.classList.toggle('on',x===b));
+const isMonth=()=>GRAN==='m'&&DATA&&DATA.meta.monthMode;
+/** 月庫包裝成跟日庫一樣的結構（`dates`＝月份、`d`＝每月四格），
+    這樣 recalc／render／buckets／圖表全都不用改就能吃月資料。 */
+function monthlyAsDaily(){
+  if(!MONTHLY||!MONTHLY.products||!MONTHLY.products.length)return null;
+  const md=MONTHLY.meta||{};
+  return {meta:{...md, monthMode:1, dates:md.months||[],
+                cats:md.cats||DAILY.meta.cats, mids:md.mids||DAILY.meta.mids,
+                exported:md.exported||DAILY.meta.exported},
+          products:MONTHLY.products.map(p=>({...p,d:p.m}))};
+}
+/** 在「日庫」與「月庫」之間切換資料源，並把期間控制項換成對應的單位 */
+function switchSource(){
+  if(GRAN==='m'){
+    const m=monthlyAsDaily();
+    if(!m){ alert('目前沒有月庫資料（monthly 分頁）；仍用日資料顯示。'); GRAN='w';
+      segOn('gran',document.querySelector('#gran button[data-g="w"]')); return; }
+    DATA=m;
+  }else DATA=DAILY;
+  prep();                                  // 重建 ROWS、期間上下限、標題列資訊
+  syncCat(); syncMid(); syncSub();          // 分類清單可能不同（月庫的 cats/mids）
+  setRangeDays(0);                          // 預設看全部
+  buildQuick();
+}
+/** 快捷期間鈕：日模式＝近 7/15/30/90 天；月模式＝近 3/6/12/24 個月 */
+function buildQuick(){
+  const defs=isMonth()
+    ? [[3,'近3月'],[6,'近6月'],[12,'近12月'],[24,'近24月'],[0,'全部']]
+    : [[7,'近7天'],[15,'近15天'],[30,'近30天'],[90,'近90天'],[0,'全部']];
+  $('quick').innerHTML=defs.map(([d,t],i)=>
+    `<button data-d="${d}"${d===0?' class="on"':''}>${t}</button>`).join('');
+  document.querySelectorAll('#quick button').forEach(b=>b.onclick=()=>{
+    segOn('quick',b);setRangeDays(+b.dataset.d);});
+}
 function setRangeDays(days){
   const nd=DATA.meta.dates.length;
   R = days<=0 ? {a:0,b:nd-1} : {a:Math.max(0,nd-days),b:nd-1};
@@ -799,7 +937,8 @@ function setRangeDays(days){
 }
 function applyRange(){
   const n=R.b-R.a+1;
-  $('rangeInfo').textContent=`${DATA.meta.dates[R.a]} ~ ${DATA.meta.dates[R.b]}（${n} 天）`;
+  $('rangeInfo').textContent=`${DATA.meta.dates[R.a]} ~ ${DATA.meta.dates[R.b]}`
+    +(isMonth()?`（${n} 個月）`:`（${n} 天）`);
   recalc(); render(); if(TAB==='sale')drawSale(); if(TAB==='plan')drawPlanChart();
 }
 function radios(box,items,key){
@@ -812,6 +951,7 @@ function radios(box,items,key){
     if(key==='g2'){F.g3='';syncSub();}
     $(box).querySelectorAll('label').forEach(l=>l.classList.toggle('sel',l.querySelector('input').checked));
     render(); if(TAB==='sale')drawSale();
+    layoutSecs();          // 焦點層可能換了（例：大類改「全部」＝退一步）
   });
 }
 /** 側邊欄三個分類清單的高度分配（2026-08-05 使用者指定）。
@@ -860,18 +1000,23 @@ function armSelWatch(){
   _selWatch=new ResizeObserver(()=>keepSelVisible());
   ['f1','f2','f3'].forEach(b=>$(b)&&_selWatch.observe($(b)));
 }
-/** 統計列黏在頂端後，要把它的實際高度告訴表頭（`th{top:var(--stats-h)}`），
-    否則捲動時表頭會躲到統計列底下。換分頁／改視窗寬度都要重算。 */
-function syncStatsH(){
-  const box=$('page-flow').classList.contains('on')?$('stats')
-           :($('page-sale')&&$('page-sale').classList.contains('on')?$('saleStats'):null);
-  const h=box&&box.offsetHeight?box.offsetHeight:0;
-  document.documentElement.style.setProperty('--stats-h',h+'px');
-}
-addEventListener('resize',syncStatsH);
+/** 視窗大小變了要重畫圖表（圖表寬度＝容器寬，不再靠橫向捲軸） */
+function syncStatsH(){ /* 版面改成「整站不捲」後不再需要讓位計算，保留空函式避免呼叫端出錯 */ }
+let _rsz=null;
+addEventListener('resize',()=>{
+  clearTimeout(_rsz);
+  _rsz=setTimeout(()=>{
+    if(TAB==='flow')drawChart(); else if(TAB==='sale')drawSale(); else drawPlanChart&&drawPlanChart();
+  },180);
+});
 /* 分類是一層一層的：沒選大類就不顯示中類、沒選中類就不顯示小類
    ⚠ 側邊欄的清單**保留代號**（跟 TMS 原畫面一致，比較好對）；
      A2 要求「去掉代號」是指表格裡的「分類」欄。 */
+/** 大類清單（換分頁時要用該分頁的 F 重畫，勾選狀態才會對） */
+function syncCat(){
+  if(!DATA)return;
+  radios('f1',[{v:'',t:'全部'}].concat(DATA.meta.cats.map((c,i)=>({v:String(i),t:c}))),'g1');
+}
 function syncMid(){
   if(F.g1===''){F.g2='';$('f2').innerHTML='';$('sec2').classList.add('hide');layoutSecs();return;}
   $('sec2').classList.remove('hide');
@@ -964,7 +1109,7 @@ function buckets(){
 
 /* ---------- 主流程 ---------- */
 function render(){
-  const q=$('q').value.trim().toLowerCase();
+  const q=(F.q||'').trim().toLowerCase();     // 搜尋字串也是每個分頁各自記一份
   VIEW=ROWS.filter(p=>{
     if(F.g1!==''&&p.g1!=F.g1)return false;
     if(F.g2!==''&&p.g2!=F.g2)return false;
@@ -987,10 +1132,15 @@ const drawStats=v=>{
 
 /* ---------- 圖表 ---------- */
 function drawChart(){
-  const B=buckets(), src=PICK?[PICK]:VIEW;
+  // ★ 2026-08-05 使用者：「拖曳多選的時候，上面的報表也要一起更新」
+  //   優先序：單擊看單品(PICK) → 拖曳多選(SEL) → 目前篩選(VIEW)
+  const B=buckets();
+  const msel=SEL.size?ROWS.filter(p=>SEL.has(p.c)):null;
+  const src=PICK?[PICK]:(msel||VIEW);
   $('chartTitle').textContent=(PICK?`${PICK.c}　${PICK.n}`:
-    (F.g3!==''?F.g3:F.g2!==''?midName(F.g1,+F.g2):F.g1!==''?DATA.meta.cats[F.g1]:'全部類別'))
-    +`　（${src.length.toLocaleString()} 項）`;
+    (msel?`選取的 ${msel.length.toLocaleString()} 項`:
+    (F.g3!==''?F.g3:F.g2!==''?midName(F.g1,+F.g2):F.g1!==''?DATA.meta.cats[F.g1]:'全部類別')))
+    +(PICK||msel?'':`　（${src.length.toLocaleString()} 項）`);
   $('btnClear').style.display=PICK?'':'none';
 
   const sale=[],buy=[],stock=[];
@@ -1000,7 +1150,7 @@ function drawChart(){
 
   const show={sale:$('sSale').checked,buy:$('sBuy').checked,stock:$('sStock').checked};
   const H=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--chart-h'))||200;
-  const W=Math.max($('cwrap').clientWidth-4,B.length*(GRAN==='d'?46:90));
+  const W=Math.max(320,$('cwrap').clientWidth-4);      // ★ 一律等於容器寬，不再撐出橫向捲軸
   const PL=52,PR=show.stock&&(show.sale||show.buy)?46:14,PT=12,PB=24;
   const iw=W-PL-PR,ih=H-PT-PB, xs=i=>PL+(B.length===1?iw/2:i*(iw/(B.length-1)));
   const maxL=Math.max(1,...(show.sale?sale:[]),...(show.buy?buy:[])), maxR=Math.max(1,...stock);
@@ -1120,9 +1270,40 @@ function drawSelBar(){
     ['毛利',N(sum(v,'amt')-sum(v,'cogs'))]];
   bar.innerHTML=cells.map(([k,x])=>`<span><span class="k">${k}</span> <b>${x}</b></span>`).join('')
     +`<span class="sp"></span><button id="selClr">清除選取</button>`;
-  $('selClr').onclick=()=>{SEL.clear();drawTable();};
+  $('selClr').onclick=()=>{SEL.clear();drawTable();drawChart();};
 }
 
+/* ================== 欄寬拖曳（設定模式，2026-08-05 使用者第 3 項）==================
+   ★ 寬度存進 `LAY[tab].cw = {欄位key: 像素}`——**key-based，不是索引陣列**
+     （見本檔 curCfg 上方那段：索引陣列在欄位增刪時會整排錯位，把使用者的設定弄壞）。
+   ⚠️ 只要有任何一欄設過寬度，就把表格切成 `table-layout:fixed`，否則瀏覽器
+      會自己重新分配寬度，拖了等於沒拖。 */
+function colWidths(tab){ const l=LAY[tab]||{}; return l.cw||(l.cw={}); }
+function mkColResize(theadId, tab){
+  const cw=colWidths(tab), head=$(theadId);
+  const tbl=head.closest('table');
+  if(tbl)tbl.classList.toggle('fixw',Object.keys(cw).length>0);
+  head.querySelectorAll('th[data-k]').forEach(th=>{
+    const k=th.dataset.k;
+    if(cw[k])th.style.width=cw[k]+'px';
+    th.style.position='sticky';                       // 讓把手的 absolute 有定位基準
+    const g=document.createElement('div');
+    g.className='colgrip';
+    g.onmousedown=e=>{
+      if(!document.body.classList.contains('cfg'))return;
+      e.preventDefault(); e.stopPropagation();        // 別觸發排序
+      const x0=e.clientX, w0=th.getBoundingClientRect().width;
+      const mv=ev=>{
+        const w=Math.max(36,Math.round(w0+ev.clientX-x0));
+        cw[k]=w; th.style.width=w+'px';
+        if(tbl)tbl.classList.add('fixw');
+      };
+      const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up);saveCfg();};
+      addEventListener('mousemove',mv); addEventListener('mouseup',up);
+    };
+    th.appendChild(g);
+  });
+}
 /* ---------- 表格（分頁1） ---------- */
 let _selMark=null;
 function drawTable(){
@@ -1133,6 +1314,7 @@ function drawTable(){
   $('th').querySelectorAll('th[data-k]').forEach(th=>{
     const c=COLS.find(x=>x.k===th.dataset.k); if(c.sortless){th.style.cursor='default';return;}
     th.onclick=()=>{SORT.k===c.k?SORT.d*=-1:(SORT.k=c.k,SORT.d=-1);PAGE=0;render();};});
+  mkColResize('th','flow');
   const pages=Math.max(1,Math.ceil(VIEW.length/PER));
   if(PAGE>=pages)PAGE=pages-1;
   const rows=VIEW.slice(PAGE*PER,(PAGE+1)*PER);
@@ -1143,7 +1325,7 @@ function drawTable(){
   if(!_selMark)_selMark=mkDragSelect($('tb'),code=>{
       const p=VIEW.find(x=>x.c===code);
       PICK=(PICK&&PICK.c===code)?null:p; drawChart(); drawTable();
-    },SEL,drawSelBar);
+    },SEL,()=>{drawSelBar();drawChart();});   // ★ 多選變動 → 上方圖表一起重算
   else _selMark();
   drawSelBar();
   $('cnt').textContent=`符合 ${VIEW.length.toLocaleString()} 項`+
@@ -1155,9 +1337,7 @@ function drawTable(){
      <button ${PAGE>=pages-1?'disabled':''} data-p="${PAGE+1}">›</button>
      <button ${PAGE>=pages-1?'disabled':''} data-p="${pages-1}">»</button>`;
   $('pager').querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{PAGE=+b.dataset.p;drawTable();});
-  // 表格高度：扣掉上方圖表區
-  const top=$('tscroll').getBoundingClientRect().top;
-  $('tscroll').style.maxHeight=Math.max(160,innerHeight-top-70)+'px';
+  // 表格高度改由 flex 決定（`.tscroll{flex:1}`），不再手動算 maxHeight
 }
 function daysCell(p){
   if(p.days===Infinity)return '<span class="tag t-cool">無銷</span>';
@@ -1192,7 +1372,7 @@ function drawSale(){
   syncStatsH();
 
   const showA=$('vAmt').checked, showQ=$('vQty').checked;
-  const H=190,W=Math.max(document.querySelector('#page-sale .cwrap').clientWidth-4,B.length*(GRAN==='d'?46:90));
+  const H=190,W=Math.max(320,document.querySelector('#page-sale .cwrap').clientWidth-4);
   const PL=58,PR=showA&&showQ?46:14,PT=12,PB=24,iw=W-PL-PR,ih=H-PT-PB;
   const xs=i=>PL+(B.length===1?iw/2:i*(iw/(B.length-1)));
   const mA=Math.max(1,...amt),mQ=Math.max(1,...qty);
@@ -1217,9 +1397,12 @@ function drawSale(){
   else                       saleCat(v);
 }
 function saleTable(head,rows,hint){
-  $('th2').innerHTML='<tr>'+head.map(h=>`<th class="${h[1]||''}">${esc(h[0])}</th>`).join('')+'</tr>';
+  // data-k 用欄位標題當 key（銷售頁的欄位隨檢視模式而變，沒有固定 k）
+  $('th2').innerHTML='<tr>'+head.map(h=>
+    `<th class="${h[1]||''}" data-k="${esc(SALEMODE+':'+h[0])}">${esc(h[0])}</th>`).join('')+'</tr>';
   $('tb2').innerHTML=rows.length?rows.join(''):'<tr><td class="empty" colspan="9">沒有資料</td></tr>';
   $('saleHint').textContent=hint||'';
+  mkColResize('th2','sale');
 }
 function saleRank(v){
   const top=[...v].sort((a,b)=>b.amt-a.amt).slice(0,200);
@@ -1616,6 +1799,7 @@ function drawPlan(){
     const k=th.dataset.k, c=PCOLS.find(x=>x.k===k);
     // 第一次點：數字欄由大到小（要看的是「哪些最多」）、文字欄由小到大
     PSORT.k===k?PSORT.d*=-1:(PSORT.k=k,PSORT.d=(c&&c.filt==='num')?-1:1); drawPlan();});
+  mkColResize('th3','plan');
   $('th3').querySelectorAll('[data-f]').forEach(el=>{
     const h=deb(()=>{const v=el.value.trim();
       v?PFILT[el.dataset.f]=v:delete PFILT[el.dataset.f];
@@ -1671,7 +1855,8 @@ function drawPlan(){
       PPICK=(PPICK&&PPICK.kind==='vendor'&&PPICK.key===k)?null:{kind:'vendor',key:k};
       drawPlanChart(); drawPlan();};
   });
-  if(!_pselMark)_pselMark=mkDragSelect($('tb3'),()=>{},PSEL,drawPlanSel);
+  if(!_pselMark)_pselMark=mkDragSelect($('tb3'),()=>{},PSEL,
+    ()=>{drawPlanSel();drawPlanChart();});     // ★ 多選變動 → 圖表一起算
   else _pselMark();
   drawPlanSel();
 
@@ -1744,9 +1929,19 @@ function applyBox(){
 /* ---------- 決策頁的走勢圖（B8 產品／B9 廠商＝中類） ---------- */
 function drawPlanChart(){
   const box=$('planChartBox');
-  if(!PPICK){box.style.display='none';return;}
-  box.style.display='';
   const tmap=new Map(DATA.products.map(p=>[p.c,p]));
+  // ★ 2026-08-05 使用者：「拖曳多選可以批次設定，希望上面的圖表也一起計算」
+  //   沒有點選單品／廠商時，只要有多選就畫「選取的那幾項」合計。
+  if(!PPICK){
+    if(!PSEL.size){box.style.display='none';return;}
+    const codes=PLANROWS.filter(r=>PSEL.has(String(r.row))).map(r=>r.c);
+    const src2=codes.map(c=>tmap.get(c)).filter(Boolean);
+    box.style.display='';
+    $('pChartTitle').textContent=`選取的 ${codes.length.toLocaleString()} 項`;
+    $('pChartNote').textContent=`流量表對到 ${src2.length} 項`;
+    return planChartDraw(src2);
+  }
+  box.style.display='';
   let src=[],title='',note='';
   if(PPICK.kind==='code'){
     const p=tmap.get(PPICK.key);
@@ -1769,7 +1964,10 @@ function drawPlanChart(){
   }
   $('pChartTitle').textContent=title;
   $('pChartNote').textContent=note;
-
+  planChartDraw(src);
+}
+/** 345 決策頁的曲線繪製（抽出來，讓「點單品／點廠商／拖曳多選」三種來源共用） */
+function planChartDraw(src){
   const B=buckets();
   const sale=[],buy=[],stock=[];
   B.forEach(b=>{let s=0,i2=0,st=0;
@@ -1779,7 +1977,7 @@ function drawPlanChart(){
     sale.push(s);buy.push(i2);stock.push(st);});
 
   const show={sale:$('pSale').checked,buy:$('pBuy').checked,stock:$('pStock').checked};
-  const H=190,W=Math.max($('pcwrap').clientWidth-4,B.length*(GRAN==='d'?46:90));
+  const H=190,W=Math.max(320,$('pcwrap').clientWidth-4);   // ★ 第 9 項：30 天／120 天都塞滿一個螢幕
   const PL=52,PR=show.stock&&(show.sale||show.buy)?46:14,PT=12,PB=24;
   const iw=W-PL-PR,ih=H-PT-PB, xs=i=>PL+(B.length===1?iw/2:i*(iw/(B.length-1)));
   const maxL=Math.max(1,...(show.sale?sale:[]),...(show.buy?buy:[])), maxR=Math.max(1,...stock);
