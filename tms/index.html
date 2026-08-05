@@ -68,13 +68,26 @@ input[type=date]{font:inherit;font-size:11.5px;padding:2px 5px;border:1px solid 
 .layout.nosb aside{display:none}
 @media(max-width:860px){.layout{grid-template-columns:1fr}.layout aside{display:none}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:7px}
-/* 側邊欄：撐滿視窗高度，三個分類清單平分剩餘空間（清單才不會擠成一小格） */
+/* 側邊欄：撐滿視窗高度。三個分類清單**依「現在要選哪一層」動態分配高度**
+   （2026-08-05 使用者指定，取代原本的「平分」）：
+     沒選大類 → 下一步是選大類 → 大類全展開
+     選了大類 → 下一步是選中類 → 中類全展開、大類讓位
+     選了中類 → 下一步是選小類 → 小類全展開、空間其次給中類、**大類縮最小**
+     按「全部」＝退一步 → 焦點自動回到上一層（大類改全部就回到第一種情況）
+   做法：flex-basis 用內容自然高度（`0 1 auto`），空間夠時大家都完整列出；
+   不夠時**只壓非焦點層**（焦點層 flex-shrink:0），離焦點越遠壓得越兇。 */
 aside{position:sticky;top:7px;height:calc(100vh - 14px);overflow:hidden;
   display:flex;flex-direction:column}
 .sec{border-bottom:1px solid var(--line);padding:6px 8px;flex:none}
 .sec:last-child{border-bottom:0}
-.sec.grow{flex:1 1 0;min-height:64px;display:flex;flex-direction:column;overflow:hidden}
-.sec.grow .rlist{flex:1;min-height:0}
+.sec.grow{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.sec.grow .rlist{flex:1 1 auto;min-height:0}
+.sec.grow.pri1{flex-grow:1;flex-shrink:.01;min-height:104px} /* 焦點層：吃掉剩餘空間、最後才被壓 */
+.sec.grow.pri2{flex-shrink:60;min-height:96px}               /* 上一層：先讓位，但保有 3~4 行 */
+.sec.grow.pri3{flex-shrink:400;min-height:54px}              /* 更上層：最先被壓到最小 */
+/* ⚠️ 焦點層**不能**設 flex-shrink:0：清單很長時（例如 09.紅點 有 64 個中類＝1195px）
+   會把 aside 撐破，而 aside 是 overflow:hidden → 下半截看不到也捲不到（2026-08-05 量到）。
+   正解是「焦點層也能被壓，只是最後才輪到它」，壓到極限就由 .rlist 自己捲。 */
 .sec.hide{display:none}
 .sec>h4{margin:0 0 4px;font-size:11px;color:var(--muted);font-weight:700;flex:none}
 .rlist{overflow:auto}
@@ -91,11 +104,17 @@ input[type=text]{font:inherit;font-size:11.5px;padding:3px 6px;border:1px solid 
 .grip.h{left:0;bottom:-4px;height:8px;width:100%;cursor:row-resize}
 body.cfg .grip{background:var(--accent);opacity:.22}
 body.cfg .grip:hover{opacity:.5}
-/* ---- 統計 ---- */
-.stats{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border-radius:7px 7px 0 0;overflow:hidden}
-.stat{background:var(--card);padding:4px 10px;flex:1;min-width:82px}
-.stat .k{font-size:10px;color:var(--muted)}
-.stat .v{font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums}
+/* ---- 統計 ----
+   2026-08-05 使用者回報「報表最上面的數字看不到、可以大一點嗎」：
+     ①**數字加大**（13.5 → 18px，標題 10 → 11px，上下留白加大）
+     ②**黏在視窗頂端**（`position:sticky`）——以前捲動去看圖表時整條會捲出畫面，
+       只剩被切一半的數字。表頭 `th` 的 top 改成讓開統計列高度（`--stats-h`，JS 量測），
+       兩者才不會疊在一起。 */
+.stats{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border-radius:7px 7px 0 0;
+  overflow:hidden;position:sticky;top:0;z-index:14}
+.stat{background:var(--card);padding:6px 11px;flex:1;min-width:92px}
+.stat .k{font-size:11px;color:var(--muted);line-height:1.3}
+.stat .v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.35}
 .v.sale{color:var(--sale)}.v.buy{color:var(--buy)}.v.stock{color:var(--stock)}
 /* ---- 圖表 ---- */
 .chartbox{padding:6px 9px 2px;position:relative}
@@ -114,7 +133,7 @@ table{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--cell-
   font-variant-numeric:tabular-nums}
 th,td{padding:0 var(--cell-pad);height:var(--rowh);border-bottom:1px solid var(--line);
   white-space:nowrap;text-align:right}
-th{background:var(--head);position:sticky;top:0;z-index:8;font-size:calc(var(--cell-fs) - .5px);
+th{background:var(--head);position:sticky;top:var(--stats-h,0px);z-index:8;font-size:calc(var(--cell-fs) - .5px);
   font-weight:600;color:var(--muted);border-bottom:1.5px solid var(--line);
   cursor:pointer;user-select:none}
 th:hover{color:var(--accent)}
@@ -737,7 +756,7 @@ function buildUI(){
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
     TAB=b.dataset.p; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.page').forEach(pg=>pg.classList.toggle('on',pg.id==='page-'+TAB));
-    applyLayout(TAB); buildCfgPanel();
+    applyLayout(TAB); buildCfgPanel(); syncStatsH();   // 決策頁沒有統計列 → 要歸零，表頭才不會空一截
     // B10：切到決策頁就自動算一次（不用再按「結算補貨建議」）
     if(TAB==='sale')drawSale(); else if(TAB==='flow')drawChart(); else runPlan();
   });
@@ -795,25 +814,82 @@ function radios(box,items,key){
     render(); if(TAB==='sale')drawSale();
   });
 }
+/** 側邊欄三個分類清單的高度分配（2026-08-05 使用者指定）。
+    規則＝「**下一步要選哪一層，那一層就全部列出**」：
+      沒選大類 → 焦點是大類（中/小類本來就不顯示）
+      選了大類、還沒選中類 → 焦點是中類，大類讓位
+      選了中類 → 焦點是小類，其次留給中類，**大類縮到最小**
+    按「全部」＝退一步：F.g1 或 F.g2 被清成 ''，焦點自然回到上一層（不必另外寫）。
+    ⚠ 小類清單不存在時（該中類沒有小類），焦點退回中類，否則會把空間給一個隱藏的區塊。 */
+function layoutSecs(){
+  const has3=!$('sec3').classList.contains('hide');
+  const focus = F.g1==='' ? 1 : (F.g2==='' ? 2 : (has3?3:2));
+  [['sec1',1],['sec2',2],['sec3',3]].forEach(([id,lv])=>{
+    const el=$(id); if(!el) return;
+    el.classList.remove('pri1','pri2','pri3');
+    // 離焦點越遠 → 優先度越低（pri3 最先被壓縮）
+    el.classList.add('pri'+Math.min(3,1+Math.abs(focus-lv)));
+  });
+  armSelWatch();
+  // 多重時機補校：ResizeObserver 大部分情況會接住，但「大類 580px→63px」這種一次
+  // 縮很多的轉換實測會漏（2026-08-05）。這幾次呼叫都是冪等的（看得到就直接 return），
+  // 成本可以忽略，換到「不管哪種切換都一定捲得到選中項」。
+  keepSelVisible();
+  setTimeout(keepSelVisible, 0);
+  setTimeout(keepSelVisible, 160);
+}
+/** 讓位縮小之後，**目前選的那一項要還看得見**（不然只剩一兩行，使用者不知道自己選了什麼）。
+    ⚠️ 不可以用 `sel.offsetTop`——`.rlist` 沒有 position:relative，`offsetParent` 是 `aside`，
+       量到的是「相對側邊欄」的距離，基準錯了會捲到別的地方（2026-08-05 實測）。
+       用 getBoundingClientRect 算**相對位移**，不管 offsetParent 是誰都正確。 */
+function keepSelVisible(){
+  ['f1','f2','f3'].forEach(b=>{
+    const rl=$(b), sel=rl&&rl.querySelector('label.sel');
+    if(!rl||!sel||rl.scrollHeight<=rl.clientHeight) return;
+    const a=sel.getBoundingClientRect(), r=rl.getBoundingClientRect();
+    if(a.top>=r.top-1 && a.bottom<=r.bottom+1) return;        // 已經看得到就別亂捲
+    rl.scrollTop = Math.max(0, rl.scrollTop + (a.top-r.top) - (r.height-a.height)/2);
+  });
+}
+/** ⚠️⚠️ 為什麼要用 ResizeObserver 而不是 rAF：改完 class 之後**當下量到的還是舊高度**，
+    兩層 rAF 也一樣（2026-08-05 實測：大類清單那時仍是 580px，公式算出負值被 max(0) 夾成 0
+    → 看起來像「捲動沒生效」）。改成**尺寸真的變了才校正**，就不用猜時機。 */
+let _selWatch=null;
+function armSelWatch(){
+  if(_selWatch||!window.ResizeObserver) return;
+  _selWatch=new ResizeObserver(()=>keepSelVisible());
+  ['f1','f2','f3'].forEach(b=>$(b)&&_selWatch.observe($(b)));
+}
+/** 統計列黏在頂端後，要把它的實際高度告訴表頭（`th{top:var(--stats-h)}`），
+    否則捲動時表頭會躲到統計列底下。換分頁／改視窗寬度都要重算。 */
+function syncStatsH(){
+  const box=$('page-flow').classList.contains('on')?$('stats')
+           :($('page-sale')&&$('page-sale').classList.contains('on')?$('saleStats'):null);
+  const h=box&&box.offsetHeight?box.offsetHeight:0;
+  document.documentElement.style.setProperty('--stats-h',h+'px');
+}
+addEventListener('resize',syncStatsH);
 /* 分類是一層一層的：沒選大類就不顯示中類、沒選中類就不顯示小類
    ⚠ 側邊欄的清單**保留代號**（跟 TMS 原畫面一致，比較好對）；
      A2 要求「去掉代號」是指表格裡的「分類」欄。 */
 function syncMid(){
-  if(F.g1===''){F.g2='';$('f2').innerHTML='';$('sec2').classList.add('hide');return;}
+  if(F.g1===''){F.g2='';$('f2').innerHTML='';$('sec2').classList.add('hide');layoutSecs();return;}
   $('sec2').classList.remove('hide');
   const used=new Set(ROWS.filter(p=>p.g1==F.g1).map(p=>p.g2));
   const names=(DATA.meta.mids&&DATA.meta.mids[F.g1])||[];
   const items=[{v:'',t:'全部'}];
   names.forEach((nm,i)=>{if(used.has(i))items.push({v:String(i),t:nm||'（無中類）'});});
   radios('f2',items,'g2');
+  layoutSecs();
 }
 const midName=(g1,m)=>g1===''?'全部類別':(((DATA.meta.mids||[])[g1]||[])[m]||'（無中類）');
 function syncSub(){
-  if(F.g1===''||F.g2===''){F.g3='';$('f3').innerHTML='';$('sec3').classList.add('hide');return;}
+  if(F.g1===''||F.g2===''){F.g3='';$('f3').innerHTML='';$('sec3').classList.add('hide');layoutSecs();return;}
   const subs=[...new Set(ROWS.filter(p=>p.g1==F.g1&&p.g2==F.g2).map(p=>p.g3).filter(Boolean))].sort();
-  if(!subs.length){F.g3='';$('f3').innerHTML='';$('sec3').classList.add('hide');return;}
+  if(!subs.length){F.g3='';$('f3').innerHTML='';$('sec3').classList.add('hide');layoutSecs();return;}
   $('sec3').classList.remove('hide');
   radios('f3',[{v:'',t:'全部'}].concat(subs.map(s=>({v:s,t:s}))),'g3');
+  layoutSecs();
 }
 function checks(box,defs,cb){
   $(box).innerHTML=defs.map((d,i)=>
@@ -903,8 +979,11 @@ function render(){
     if(x===Infinity)x=9e15;if(y===Infinity)y=9e15;return SORT.d*((x||0)-(y||0));});
   drawStats(VIEW);drawChart();drawTable();
 }
-const drawStats=v=>$('stats').innerHTML=STATS.filter(s=>s.on).map(s=>
-  `<div class="stat"><div class="k">${esc(s.t)}</div><div class="v ${s.cls}">${s.f(v)}</div></div>`).join('');
+const drawStats=v=>{
+  $('stats').innerHTML=STATS.filter(s=>s.on).map(s=>
+    `<div class="stat"><div class="k">${esc(s.t)}</div><div class="v ${s.cls}">${s.f(v)}</div></div>`).join('');
+  syncStatsH();          // 勾選的統計項變了→高度可能變（會換行）→ 表頭的讓位要跟著更新
+};
 
 /* ---------- 圖表 ---------- */
 function drawChart(){
@@ -1110,6 +1189,7 @@ function drawSale(){
     ['毛利率',(sum(v,'amt')?((1-sum(v,'cogs')/sum(v,'amt'))*100).toFixed(1)+'%':'—'),''],
     ['有銷品項',v.filter(p=>p.tsale>0).length.toLocaleString(),''],
   ].map(([k,val,cls])=>`<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${val}</div></div>`).join('');
+  syncStatsH();
 
   const showA=$('vAmt').checked, showQ=$('vQty').checked;
   const H=190,W=Math.max(document.querySelector('#page-sale .cwrap').clientWidth-4,B.length*(GRAN==='d'?46:90));
