@@ -535,19 +535,25 @@ const WRITE_URL = /^https:\/\/script\.google\.com\//.test(W345_URL) ? W345_URL :
 // ⇒ 切小＋重試是唯一可靠的辦法；資料本身也已經 gzip（8.8MB→930KB）。
 const CHUNK_ROWS=5;
 let _metaCache=null;
-async function fetchText(url,label,tries=8){
+/** ⚠️ 一定要自己設逾時：GAS 掛掉那次會拖到 25~35 秒才回 404，
+    沒有逾時的話「失敗 8 次」＝白等 4 分鐘。成功的請求都在 2~4 秒內回來，
+    所以 15 秒還沒回就直接放棄重試，比乾等快得多。 */
+async function fetchText(url,label,tries=8,timeoutMs=15000){
   let last='';
   for(let i=1;i<=tries;i++){
+    const ac=new AbortController();
+    const tm=setTimeout(()=>ac.abort(),timeoutMs);
     try{
-      const r=await fetch(url,{redirect:'follow'});
+      const r=await fetch(url,{redirect:'follow',signal:ac.signal});
       if(!r.ok){ last=`HTTP ${r.status}`; }
       else{
         const t=await r.text();
         if(t.trim().startsWith('<')) last='後端回傳網頁而不是資料';
         else return t;
       }
-    }catch(e){ last=e.message||String(e); }
-    if(i<tries) await new Promise(r=>setTimeout(r,800*i));    // 退避後再試
+    }catch(e){ last=(e&&e.name==='AbortError')?`逾時 ${timeoutMs/1000}s`:(e.message||String(e)); }
+    finally{ clearTimeout(tm); }
+    if(i<tries) await new Promise(r=>setTimeout(r,400*i));    // 退避後再試
   }
   throw new Error(`${label} 取得失敗（試了 ${tries} 次）：${last}`);
 }
@@ -571,15 +577,25 @@ async function getPart(part,say){
     return JSON.parse(await decodeMaybeGzip(
       await fetchText(`${API_URL}?action=data&part=${part}`,part)));
   }
-  let text='';
-  for(let i=0;i<parts;i+=CHUNK_ROWS){
-    const to=Math.min(i+CHUNK_ROWS,parts);
-    if(say)say(`${part} 載入中… ${Math.round(i/parts*100)}%`);
-    const seg=await fetchText(
-      `${API_URL}?action=data&part=${part}&from=${i}&to=${to}`,`${part} 第 ${i/CHUNK_ROWS+1} 批`);
-    text+=seg;
-    if(i===0&&seg.length>CHUNK_ROWS*45000+1000){ text=seg; break; }  // 舊後端：一次就回整份
-  }
+  // ★ 分批**並行**下載（一次 3 條）：序列的話 5 批各自可能卡 15 秒逾時，體感很久。
+  //   併發開太大會加重 GAS 負擔、反而更常失敗，實測 3 條剛好。
+  const jobs=[];
+  for(let i=0;i<parts;i+=CHUNK_ROWS)jobs.push([i,Math.min(i+CHUNK_ROWS,parts)]);
+  const segs=new Array(jobs.length);
+  let done=0, next=0;
+  const worker=async()=>{
+    while(next<jobs.length){
+      const k=next++, [a,b]=jobs[k];
+      segs[k]=await fetchText(
+        `${API_URL}?action=data&part=${part}&from=${a}&to=${b}`,`${part} 第 ${k+1}/${jobs.length} 批`);
+      done++;
+      if(say)say(`${part} 載入中… ${Math.round(done/jobs.length*100)}%`);
+    }
+  };
+  await Promise.all([worker(),worker(),worker()].slice(0,Math.min(3,jobs.length)));
+  let text=segs.join('');
+  // 舊後端不認 from/to，會每批都回整份 → 取第一段就好
+  if(segs[0]&&segs[0].length>CHUNK_ROWS*45000+1000)text=segs[0];
   return JSON.parse(await decodeMaybeGzip(text));
 }
 const $=id=>document.getElementById(id);
