@@ -429,7 +429,7 @@ body.cfg .cfgpanel{display:block}
       <!-- 平常就要用的操作鈕：留在外面 -->
       <div style="padding:6px 10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button id="btnRun" title="參數一改就會自動重算，這顆只是手動再算一次">↻ 重算</button>
-        <button id="btnCopy">📋 複製四欄（貼回 AR 欄）</button>
+        <button id="btnCopy">📋 複製四欄（貼回 <span id="pcolA">AS</span> 欄）</button>
         <button class="primary" id="btnPush">☁️ 一鍵回填試算表</button>
         <span class="hint" id="planHint"></span>
         <span class="sp"></span>
@@ -519,6 +519,13 @@ const _q=new URLSearchParams(location.search).get('api');
 const API_URL = _q==='1' ? GAS_URL
               : _q==='0' ? ''
               : (/^(localhost|127\.|\[::1\])/.test(location.hostname) ? '' : GAS_URL);
+/* ★ 資料源（2026-08-12 起預設 Firebase）：
+     `fb`    ＝ Firestore（正式；需要 Google 登入）
+     `gas`   ＝ 舊的 Apps Script（**備援**，GAS 會間歇 404，只在 Firebase 出事時用）
+     `local` ＝ 同目錄 JSON（本機開發）
+   用網址參數切換：`?src=gas`／`?src=local`／`?src=fb` */
+const SRC=(new URLSearchParams(location.search).get('src')
+  || (/^(localhost|127\.|\[::1\])/.test(location.hostname) ? 'local' : 'fb')).toLowerCase();
 const WRITE_URL = /^https:\/\/script\.google\.com\//.test(W345_URL) ? W345_URL : '';
 
 /* ★★ 向 GAS 取一份資料：**分批下載＋失敗重試**（2026-08-12 加，起因是使用者遇到
@@ -567,7 +574,98 @@ async function decodeMaybeGzip(text){
   const ds=new DecompressionStream('gzip');
   return await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
 }
+/* =========================================================================
+   ⭐ Firebase（Firestore）資料源 — 2026-08-12 起的正式來源
+   ★ 為什麼換掉 GAS：GAS Web App 的讀取端點是**間歇性 404**（同端點連測 5 次，
+     plan 只成功 2 次、traffic 成功 4 次；與大小、快取都無關，回的是 Google 錯誤頁）。
+     使用者實際看到的就是「讀不到資料：traffic HTTP 404」。
+   ★ 為什麼不是 Storage：Cloud Storage for Firebase 要 Blaze 付費方案；
+     Firestore 免費方案就能用，而且我們的資料是「整包壓縮字串」→ 讀幾次就拿到一整包。
+   ★ 資料長怎樣：`parts/{part}` 是 manifest（段數／雜湊），
+     `parts/{part}/chunks/{i}` 是 gzip+base64 的字串分段（跟試算表同一套 `GZ64:` 格式）。
+   ★ 權限：只有白名單 Google 帳號讀得到（firestore.rules），瀏覽器端一律不可寫。
+   ========================================================================= */
+const FB_CFG={apiKey:"AIzaSyA-ZMECPXnBr-DN-qfdE10LUo6Qi5JidzI",
+  authDomain:"tms-report.firebaseapp.com",projectId:"tms-report",
+  appId:"1:1020109745583:web:1de02c4c2f5e85529d135a",
+  messagingSenderId:"1020109745583"};
+let _fbDb=null, _fbUser=null;
+
+/** 載入 Firebase SDK（compat 版，不需要打包工具） */
+function loadFb(){
+  if(window.firebase&&firebase.apps)return Promise.resolve();
+  const add=src=>new Promise((ok,err)=>{
+    const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>err(new Error('載入失敗：'+src));
+    document.head.appendChild(s);});
+  const V='10.12.2';
+  return add(`https://www.gstatic.com/firebasejs/${V}/firebase-app-compat.js`)
+    .then(()=>Promise.all([
+      add(`https://www.gstatic.com/firebasejs/${V}/firebase-auth-compat.js`),
+      add(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore-compat.js`)]));
+}
+
+/** 等使用者登入（沒登入就顯示登入畫面）。回傳 user */
+async function fbSignIn(){
+  await loadFb();
+  if(!firebase.apps.length)firebase.initializeApp(FB_CFG);
+  _fbDb=firebase.firestore();
+  const auth=firebase.auth();
+  await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);   // 記住登入，不用每次登
+  const u=await new Promise(r=>{const un=auth.onAuthStateChanged(x=>{un();r(x);});});
+  if(u)return u;
+  showLogin();
+  return await new Promise(r=>{
+    $('fbLoginBtn').onclick=async()=>{
+      const btn=$('fbLoginBtn'); btn.disabled=1; btn.textContent='登入中…';
+      try{
+        const p=new firebase.auth.GoogleAuthProvider();
+        p.setCustomParameters({prompt:'select_account'});
+        const res=await auth.signInWithPopup(p);
+        hideLogin(); r(res.user);
+      }catch(e){
+        btn.disabled=0; btn.textContent='使用 Google 帳號登入';
+        $('fbLoginMsg').textContent='登入失敗：'+(e.code||e.message);
+      }
+    };
+  });
+}
+function showLogin(msg){
+  let el=$('fbLogin');
+  if(!el){
+    el=document.createElement('div'); el.id='fbLogin';
+    el.style.cssText='position:fixed;inset:0;z-index:99;background:var(--bg);'
+      +'display:flex;align-items:center;justify-content:center';
+    el.innerHTML=`<div class="panel" style="padding:26px 30px;text-align:center;max-width:380px">
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px">百思特 報表</div>
+      <div class="hint" style="margin-bottom:16px">請用公司允許的 Google 帳號登入</div>
+      <button id="fbLoginBtn" class="primary" style="padding:8px 18px;font-size:13px">使用 Google 帳號登入</button>
+      <div id="fbLoginMsg" class="hint" style="margin-top:12px;color:var(--warn)"></div>
+      <div class="hint" style="margin-top:14px">看不到資料請找管理者把你的帳號加進白名單</div>
+    </div>`;
+    document.body.appendChild(el);
+  }
+  el.style.display='flex';
+  if(msg)$('fbLoginMsg').textContent=msg;
+}
+function hideLogin(){ const el=$('fbLogin'); if(el)el.style.display='none'; }
+
+/** 從 Firestore 讀一個 part（manifest → 各段 → 併回 → 解壓 → JSON） */
+async function fbGetPart(part,say){
+  const man=await _fbDb.doc(`parts/${part}`).get();
+  if(!man.exists)throw new Error(`Firestore 沒有 ${part}（尚未推送？）`);
+  const n=man.data().chunks||0;
+  if(say&&n>1)say(`${part} 載入中…`);
+  // 各段並行取（一段最多 700K 字元，現況日庫也才 2 段）
+  const docs=await Promise.all(Array.from({length:n},(_,i)=>
+    _fbDb.doc(`parts/${part}/chunks/${i}`).get()));
+  const packed=docs.map(d=>(d.data()||{}).s||'').join('');
+  if(packed.length!==(man.data().packedChars||packed.length))
+    throw new Error(`${part} 長度不符（可能正在更新，請重新整理）`);
+  return JSON.parse(await decodeMaybeGzip(packed));
+}
+
 async function getPart(part,say){
+  if(SRC==='fb')return fbGetPart(part,say);
   if(!_metaCache){
     try{ _metaCache=JSON.parse(await fetchText(`${API_URL}?action=meta`,'meta')); }
     catch(e){ _metaCache={}; }
@@ -764,7 +862,7 @@ function loadCfg(){
 /* ---- 全站設定（存在 GAS 後端的 settings 分頁，所有人共用） ---- */
 async function loadGlobalCfg(){
   try{
-    const r=await fetch(`${API_URL}?action=settings`);
+    const r=await fetch(`${GAS_URL}?action=settings`);
     const c=await r.json();
     if(c&&(c.v||c.cols)){ applyCfg(c); buildCfgPanel(); render();
       if(TAB==='plan')runPlan();
@@ -778,7 +876,7 @@ async function saveGlobalCfg(){
   try{
     const data={...curCfg(),_at:new Date().toLocaleString('zh-TW')};
     // 用 text/plain 送，避免觸發 CORS preflight（GAS 不回應 OPTIONS）
-    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    const r=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'saveSettings',data})});
     const j=await r.json();
     $('cfgNote').textContent=j.ok?`✅ 已存成全站預設，其他人下次開啟就會套用（${data._at}）`
@@ -791,11 +889,11 @@ async function saveGlobalCfg(){
 /* ---- 立即更新：寫觸發格 → MSI 端輪詢接手重跑匯出 ---- */
 async function askRefresh(){
   const b=$('btnRefresh'), o=b.textContent;
-  if(!API_URL){ b.disabled=1;b.textContent='尚未接上後端';
+  if(!GAS_URL){ b.disabled=1;b.textContent='尚未接上後端';
     setTimeout(()=>{b.disabled=0;b.textContent=o;},2000); return; }
   b.disabled=1; b.textContent='通知中…';
   try{
-    const r=await fetch(`${API_URL}?action=refresh`);
+    const r=await fetch(`${GAS_URL}?action=refresh`);
     const j=await r.json();
     b.textContent=j.ok?'✅ 已通知，約 1~3 分鐘':'✘ 失敗';
     if(j.ok)$('meta').insertAdjacentHTML('beforeend',
@@ -814,7 +912,24 @@ async function boot(){
       DATA=JSON.parse(emb.textContent);
       if(embM)MASTER=JSON.parse(embM.textContent).items||{};
       if(embP)PLAN=JSON.parse(embP.textContent);
-    }else if(API_URL){                          // ② 正式版：向 GAS 取（資料留在 Google）
+    }else if(SRC==='fb'){                       // ★② 正式版：Firestore（需登入）
+      say('登入中…');
+      _fbUser=await fbSignIn();
+      say('讀取資料中…');
+      try{
+        DATA=await getPart('traffic',say);
+      }catch(e){
+        // 白名單沒放行時 Firestore 會回 permission-denied → 講清楚該找誰，不要只丟英文
+        if(/permission|insufficient/i.test(e.message||'')){
+          showLogin(`這個帳號（${(_fbUser||{}).email||''}）不在白名單裡，請找管理者加入。`);
+          throw new Error('帳號未獲授權');
+        }
+        throw e;
+      }
+      try{ MASTER=(await getPart('master')).items||{}; }catch(e){ console.warn('master',e); }
+      try{ PLAN=await getPart('plan'); }catch(e){ console.warn('plan',e); }
+      // 月庫等切到「月」顆粒才載（見 ensureMonthly）
+    }else if(API_URL){                          // ③ 備援：向 GAS 取（?src=gas）
       say('連線後端取得資料中…');
       DATA=await getPart('traffic',say);
       say('主檔載入中…');
@@ -841,7 +956,9 @@ async function boot(){
     MONTHLY&&MONTHLY.meta&&MONTHLY.meta.months
       ? `月＝讀月庫（${MONTHLY.meta.months[0]} 起共 ${MONTHLY.meta.months.length} 個月）`
       : '月＝讀月庫（2024-01 起）；第一次切過去要等 30~60 秒載入';
-  if(API_URL&&!emb)loadGlobalCfg();             // 全站設定（後端）覆蓋本機設定
+  // 全站設定仍存在 GAS 的 settings 分頁（讀它不會受 404 影響太大，失敗就用本機設定）。
+  // ⚠️ 使用者存的全站預設是唯一真相，不可用程式碼預設覆蓋（見 ..\CLAUDE.md 開發約定第一條）。
+  if(GAS_URL&&!emb)loadGlobalCfg();
 }
 const fail=m=>{ $('err').innerHTML='<div class="err">'+m+'</div>'; $('tb').innerHTML=''; };
 
@@ -918,9 +1035,9 @@ function buildUI(){
     const was=GRAN; GRAN=b.dataset.g; segOn('gran',b);
     // 「月」用月庫（看得到 2024 年起）、「日／週」用日庫（滾動 120 天）→ 換資料源要整份重算
     if((was==='m')!==(GRAN==='m')){
-      if(GRAN==='m'&&!MONTHLY&&API_URL){       // 月庫是延後載入的，第一次切「月」才去拿
+      if(GRAN==='m'&&!MONTHLY&&(SRC==='fb'||API_URL)){   // 月庫延後載入，第一次切「月」才去拿
         const old=$('meta').innerHTML;
-        $('meta').innerHTML='月庫載入中…（第一次切「月」需要 30~60 秒）';
+        $('meta').innerHTML= SRC==='fb' ? '月庫載入中…' : '月庫載入中…（GAS 需要 30~60 秒）';
         try{ MONTHLY=await getPart('monthly'); }
         catch(e){ $('meta').innerHTML=old;
           alert('月庫載入失敗：'+e.message+'\n可以再切一次「月」重試。');
@@ -1658,6 +1775,9 @@ function buildClip(){
 function runPlan(){
   if(!PLAN||!PLAN.items){ $('tb3').innerHTML='<tr><td class="empty">讀不到 plan.json（345庫存規劃）</td></tr>'; return; }
   if(!$('spbox').innerHTML)buildSpBox();
+  // 回填欄位由後端（fetch_plan 讀標題）決定，前端只顯示，不寫死
+  //（試算表插過 AB 欄，寫死 AR 會蓋掉「加總金額」公式——2026-08-12）
+  if($('pcolA'))$('pcolA').textContent=(PLAN.pasteCols||'AS:AV').split(':')[0];
   const ltSea=+$('ltSea').value||50, ltFast=+$('ltFast').value||30, ltQiao=+$('ltQiao').value||14;
   const ltOther=+$('ltOther').value||15;
   const maxDaysLimit=+$('maxDays').value||90, fallbackSafety=+$('safeDays').value||0;
@@ -2106,7 +2226,7 @@ function copyPlan(){
   if(!CLIP)return alert('還沒有計算結果');
   navigator.clipboard.writeText(CLIP).then(()=>{
     const b=$('btnCopy'),o=b.textContent;
-    b.textContent='✅ 已複製，請到 AR 欄頂端貼上';b.classList.add('on');
+    b.textContent=`✅ 已複製，請到 ${(PLAN&&PLAN.pasteCols||'AS:AV').split(':')[0]} 欄頂端貼上`;b.classList.add('on');
     setTimeout(()=>{b.textContent=o;b.classList.remove('on');},4000);
   }).catch(()=>alert('複製失敗，請改用手動選取'));
 }
@@ -2131,7 +2251,7 @@ function openPush(){
   $('mTitle').textContent='回填預覽（確認後才會寫入試算表）';
   let h=`<p class="hint" style="margin:8px 0">目標試算表：<b>345庫存規劃 / 庫存規劃</b>　`
     +`（回填走的是繫結在那一本底下的 GAS，權限只有那一本）</p>`;
-  h+=`<h4 style="margin:10px 0 4px">① AR:AU 四欄（AI參考／狀態／銷售狀況／商品代號）</h4>`
+  h+=`<h4 style="margin:10px 0 4px">① ${esc(PLAN&&PLAN.pasteCols||"AS:AV")} 四欄（AI參考／狀態／銷售狀況／商品代號）</h4>`
     +`<p class="hint"><b>整段覆蓋 AR${ar.length?ar[0].row:2}:AU${ar.length?ar[ar.length-1].row:2}</b>`
     +`（${ar.length.toLocaleString()} 列，其中有下單量的 <b>${nz}</b> 列）。`
     +`沒有建議的列會寫成<b>空白</b>——包含「關閉」的列，這樣才不會留下上一輪的殘值。`
@@ -2167,7 +2287,7 @@ async function doPush(){
     if(j.ok){
       PEND.ship={}; PEND.boxn={};
       $('mBody').innerHTML=`<p style="padding:14px 0"><b style="color:var(--ok)">✅ 寫入完成</b><br>`
-        +`AR:AU ${j.ar||0} 列　·　C 欄貨運方式 ${j.ship||0} 筆　·　AA 欄裝箱數 ${j.boxn||0} 筆`
+        +`${esc(PLAN&&PLAN.pasteCols||"AS:AV")} ${j.ar||0} 列　·　C 欄貨運方式 ${j.ship||0} 筆　·　AA 欄裝箱數 ${j.boxn||0} 筆`
         +`<br><span class="hint">試算表端時間 ${esc(j.at||'')}</span></p>`;
       b.style.display='none'; $('mCancel').textContent='關閉';
       $('mCancel').onclick=()=>{$('mask').classList.remove('on');b.style.display='';
