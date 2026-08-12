@@ -548,14 +548,25 @@ async function fetchText(url,label,tries=5){
   }
   throw new Error(`${label} 取得失敗（試了 ${tries} 次）：${last}`);
 }
+/** 後端存的可能是 gzip+base64（前綴 GZ64:）——解開它。舊的純 JSON 原樣回傳。 */
+async function decodeMaybeGzip(text){
+  if(!text.startsWith('GZ64:'))return text;
+  const b64=text.slice(5);
+  const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+  if(typeof DecompressionStream==='undefined')
+    throw new Error('這個瀏覽器不支援 gzip 解壓（請用新版 Chrome／Edge）');
+  const ds=new DecompressionStream('gzip');
+  return await new Response(new Blob([bin]).stream().pipeThrough(ds)).text();
+}
 async function getPart(part,say){
   if(!_metaCache){
     try{ _metaCache=JSON.parse(await fetchText(`${API_URL}?action=meta`,'meta')); }
     catch(e){ _metaCache={}; }
   }
   const parts=((_metaCache||{})[part]||{}).parts||0;
-  if(parts<=CHUNK_ROWS){                       // 小的一次拿完（master/plan/舊資料）
-    return JSON.parse(await fetchText(`${API_URL}?action=data&part=${part}`,part));
+  if(parts<=CHUNK_ROWS){                       // 小的一次拿完（master/plan/壓縮後的日庫）
+    return JSON.parse(await decodeMaybeGzip(
+      await fetchText(`${API_URL}?action=data&part=${part}`,part)));
   }
   let text='';
   for(let i=0;i<parts;i+=CHUNK_ROWS){
@@ -566,7 +577,7 @@ async function getPart(part,say){
     text+=seg;
     if(i===0&&seg.length>CHUNK_ROWS*45000+1000){ text=seg; break; }  // 舊後端：一次就回整份
   }
-  return JSON.parse(text);
+  return JSON.parse(await decodeMaybeGzip(text));
 }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
