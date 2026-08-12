@@ -521,6 +521,53 @@ const API_URL = _q==='1' ? GAS_URL
               : (/^(localhost|127\.|\[::1\])/.test(location.hostname) ? '' : GAS_URL);
 const WRITE_URL = /^https:\/\/script\.google\.com\//.test(W345_URL) ? W345_URL : '';
 
+/* ★★ 向 GAS 取一份資料：**分批下載＋失敗重試**（2026-08-12 加，起因是使用者遇到
+     「讀不到資料：traffic HTTP 404」）。
+   日庫長到 120 天之後整包 8.8 MB，GAS Web App 回傳這種大小**會間歇性失敗回 404**
+   （實測連續 4 次有 2 次掛），而且失敗要等 12~15 秒才回來。
+   ⇒ ①先看 meta 的 `parts`（總段數），超過一批就照 40 段（約 1.8 MB）分批要，自己接起來
+     ②每一批失敗重試 3 次（404 是暫時性的，重試通常就過）
+   舊版後端沒有 from/to 參數會回整份 → 這裡偵測到「拿回來的比要求的多」就直接採用，
+   所以前端可以先上線、後端還沒更新也不會壞。 */
+// 一批 20 列（約 0.9 MB）。實測：40 列（1.8 MB）在後段會穩定回 404，20 列全數成功。
+const CHUNK_ROWS=20;
+let _metaCache=null;
+async function fetchText(url,label,tries=5){
+  let last='';
+  for(let i=1;i<=tries;i++){
+    try{
+      const r=await fetch(url,{redirect:'follow'});
+      if(!r.ok){ last=`HTTP ${r.status}`; }
+      else{
+        const t=await r.text();
+        if(t.trim().startsWith('<')) last='後端回傳網頁而不是資料';
+        else return t;
+      }
+    }catch(e){ last=e.message||String(e); }
+    if(i<tries) await new Promise(r=>setTimeout(r,800*i));    // 退避後再試
+  }
+  throw new Error(`${label} 取得失敗（試了 ${tries} 次）：${last}`);
+}
+async function getPart(part,say){
+  if(!_metaCache){
+    try{ _metaCache=JSON.parse(await fetchText(`${API_URL}?action=meta`,'meta')); }
+    catch(e){ _metaCache={}; }
+  }
+  const parts=((_metaCache||{})[part]||{}).parts||0;
+  if(parts<=CHUNK_ROWS){                       // 小的一次拿完（master/plan/舊資料）
+    return JSON.parse(await fetchText(`${API_URL}?action=data&part=${part}`,part));
+  }
+  let text='';
+  for(let i=0;i<parts;i+=CHUNK_ROWS){
+    const to=Math.min(i+CHUNK_ROWS,parts);
+    if(say)say(`${part} 載入中… ${Math.round(i/parts*100)}%`);
+    const seg=await fetchText(
+      `${API_URL}?action=data&part=${part}&from=${i}&to=${to}`,`${part} 第 ${i/CHUNK_ROWS+1} 批`);
+    text+=seg;
+    if(i===0&&seg.length>CHUNK_ROWS*45000+1000){ text=seg; break; }  // 舊後端：一次就回整份
+  }
+  return JSON.parse(text);
+}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const N=n=>(!n)?'':Math.round(n).toLocaleString('zh-TW');
@@ -738,20 +785,13 @@ async function boot(){
       if(embM)MASTER=JSON.parse(embM.textContent).items||{};
       if(embP)PLAN=JSON.parse(embP.textContent);
     }else if(API_URL){                          // ② 正式版：向 GAS 取（資料留在 Google）
-      say('連線後端取得資料中…（第一次載入約需 10~30 秒）');
-      const get=async part=>{
-        const r=await fetch(`${API_URL}?action=data&part=${part}`,{redirect:'follow'});
-        if(!r.ok)throw new Error(`${part} HTTP ${r.status}`);
-        const t=await r.text();
-        if(t.trim().startsWith('<'))throw new Error(`${part}：後端回傳網頁而不是資料，通常是「GAS 尚未授權」或「部署存取權不是任何人」`);
-        return JSON.parse(t);
-      };
-      DATA=await get('traffic');
+      say('連線後端取得資料中…');
+      DATA=await getPart('traffic',say);
       say('主檔載入中…');
-      try{ MASTER=(await get('master')).items||{}; }catch(e){ console.warn('master',e); }
-      try{ PLAN=await get('plan'); }catch(e){ console.warn('plan',e); }
-      // 月庫（2024-01 起）：選「月」顆粒時用它，日庫只有滾動 120 天
-      try{ MONTHLY=await get('monthly'); }catch(e){ console.warn('monthly',e); }
+      try{ MASTER=(await getPart('master')).items||{}; }catch(e){ console.warn('master',e); }
+      try{ PLAN=await getPart('plan'); }catch(e){ console.warn('plan',e); }
+      // ⚠️ 月庫**不在開站時載**（2026-08-12）：它 1.7 MB 但後端要 30~60 秒才回，
+      //   放在這裡等於整個網站都被它卡住。改成切到「月」顆粒時才載（見 ensureMonthly）。
     }else{                                      // ③ 本機開發：直接讀同目錄 JSON
       const [a,b,c,d]=await Promise.all([fetch('traffic.json?_='+Date.now()),
         fetch('master.json?_='+Date.now()).catch(()=>null),
@@ -767,9 +807,10 @@ async function boot(){
     '<br>本機開發請透過網址開啟（不是雙擊檔案）；離線請改用單檔版。'); }
   DAILY=DATA;                                   // 日庫留一份，切「月」時要換回來
   loadCfg(); prep(); buildUI(); buildQuick(); render();
-  if(MONTHLY&&MONTHLY.meta&&MONTHLY.meta.months)
-    $('gran').querySelector('[data-g="m"]').title=
-      `月＝讀月庫（${MONTHLY.meta.months[0]} 起共 ${MONTHLY.meta.months.length} 個月）`;
+  $('gran').querySelector('[data-g="m"]').title=
+    MONTHLY&&MONTHLY.meta&&MONTHLY.meta.months
+      ? `月＝讀月庫（${MONTHLY.meta.months[0]} 起共 ${MONTHLY.meta.months.length} 個月）`
+      : '月＝讀月庫（2024-01 起）；第一次切過去要等 30~60 秒載入';
   if(API_URL&&!emb)loadGlobalCfg();             // 全站設定（後端）覆蓋本機設定
 }
 const fail=m=>{ $('err').innerHTML='<div class="err">'+m+'</div>'; $('tb').innerHTML=''; };
@@ -843,10 +884,21 @@ function buildUI(){
   $('q').oninput=deb(()=>{PAGE=0;F.q=$('q').value;render();
     if(TAB==='sale')drawSale();},200);
   $('hideZero').onchange=()=>{PAGE=0;render();};
-  document.querySelectorAll('#gran button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#gran button').forEach(b=>b.onclick=async()=>{
     const was=GRAN; GRAN=b.dataset.g; segOn('gran',b);
     // 「月」用月庫（看得到 2024 年起）、「日／週」用日庫（滾動 120 天）→ 換資料源要整份重算
-    if((was==='m')!==(GRAN==='m')){ switchSource(); return; }
+    if((was==='m')!==(GRAN==='m')){
+      if(GRAN==='m'&&!MONTHLY&&API_URL){       // 月庫是延後載入的，第一次切「月」才去拿
+        const old=$('meta').innerHTML;
+        $('meta').innerHTML='月庫載入中…（第一次切「月」需要 30~60 秒）';
+        try{ MONTHLY=await getPart('monthly'); }
+        catch(e){ $('meta').innerHTML=old;
+          alert('月庫載入失敗：'+e.message+'\n可以再切一次「月」重試。');
+          GRAN=was; segOn('gran',document.querySelector(`#gran button[data-g="${was}"]`)); return; }
+        $('meta').innerHTML=old;
+      }
+      switchSource(); return;
+    }
     TAB==='flow'?drawChart():TAB==='sale'?drawSale():drawPlanChart();});
   document.querySelectorAll('#quick button').forEach(b=>b.onclick=()=>{
     segOn('quick',b);setRangeDays(+b.dataset.d);});
