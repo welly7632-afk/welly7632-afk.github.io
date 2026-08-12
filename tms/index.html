@@ -529,8 +529,9 @@ const WRITE_URL = /^https:\/\/script\.google\.com\//.test(W345_URL) ? W345_URL :
      ②每一批失敗重試 3 次（404 是暫時性的，重試通常就過）
    舊版後端沒有 from/to 參數會回整份 → 這裡偵測到「拿回來的比要求的多」就直接採用，
    所以前端可以先上線、後端還沒更新也不會壞。 */
-// 一批 20 列（約 0.9 MB）。實測：40 列（1.8 MB）在後段會穩定回 404，20 列全數成功。
-const CHUNK_ROWS=20;
+// 一批 10 列（約 0.45 MB）。實測失敗率：整包 930KB→3/5 掛、900KB→常掛、**450KB→全過**。
+// GAS Web App 回大內容是**隨機**失敗（同一個 URL 有時成功有時 404），只能靠「切小＋重試」。
+const CHUNK_ROWS=10;
 let _metaCache=null;
 async function fetchText(url,label,tries=5){
   let last='';
