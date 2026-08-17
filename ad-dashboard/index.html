@@ -165,6 +165,7 @@
     <button class="tabbtn" data-tab="sop">SOP 建議</button>
     <button class="tabbtn" data-tab="compare">調整成效</button>
   <button class="tabbtn" data-tab="month">月度整合</button>
+  <button class="tabbtn" data-tab="ended">已到期廣告</button>
   </nav>
   <input type="search" id="search" placeholder="搜尋商品名稱 / ID">
   <div class="spacer"></div>
@@ -346,6 +347,24 @@
         <b>改價</b>(當月有改價紀錄,附最近日期)。點「▸」展開本月vs上月完整對比。</div>
       <div class="tblscroll"><table id="mtbl"></table></div>
     </div>
+  </section>
+
+  <!-- ===== 已到期廣告 ===== -->
+  <section class="tabpanel" id="tab-ended">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">已到期廣告</h2>
+        <select id="endShop"><option value="">全部店鋪</option></select>
+        <input id="endQ" placeholder="搜尋廣告名稱" style="width:170px">
+        <button class="plain" id="endReload">↻ 重新整理</button>
+        <span id="endMsg" class="muted" style="font-size:12px"></span>
+      </div>
+      <div class="hint">廣告結束日一到就<b>自動停止投放，蝦皮不會通知</b>——這份是「最近 30 天有哪些廣告悄悄停掉了」。
+        資料由本機 <code>ad_ended_report.py</code> 每天 09:35 重寫「已到期廣告」分頁（<b>當下快照，不是累積紀錄</b>）。
+        要續投就到賣家中心把結束日往後延；不打算續的可以不管，超過 30 天會自己掉出清單。
+        <b>另一條線</b>：還沒到期但剩 7 天內的，每天 09:30 會發 LINE 提醒。</div>
+    </div>
+    <div class="tablecard"><div class="tblscroll"><table id="endTbl"></table></div></div>
   </section>
 
   </main>
@@ -1553,14 +1572,83 @@ function renderMTable(){
   }));
 }
 
+// ===== 已到期廣告 =====
+// 資料源＝「已到期廣告」分頁(ad_ended_report.py 每天 09:35 整張重寫,當下快照)。
+// 只讀不寫,所以只用唯讀 token,沒有任何寫入路徑。
+let ENDDATA=[], endLoaded=false;
+const END_COLS=['店鋪','廣告名稱','campaign_id','狀態','結束日','已過幾天',
+                '開始日','每日預算','目標投入產出比','抓取時間'];
+
+function parseEnded(data){
+  const h=data[0]||[], ix={}; END_COLS.forEach(c=>ix[c]=h.indexOf(c));
+  return data.slice(1)
+    .filter(r=>String(r[ix['campaign_id']]??'').trim())
+    .map(r=>({
+      shop:canonStore(r[ix['店鋪']]), shopRaw:String(r[ix['店鋪']]||''),
+      name:String(r[ix['廣告名稱']]||''), cid:String(r[ix['campaign_id']]||''),
+      state:String(r[ix['狀態']]||''), end:String(r[ix['結束日']]||'').slice(0,10),
+      days:Number(r[ix['已過幾天']])||0, start:String(r[ix['開始日']]||'').slice(0,10),
+      budget:Number(r[ix['每日預算']])||0, roi:Number(r[ix['目標投入產出比']])||0,
+      at:String(r[ix['抓取時間']]||''),
+    }));
+}
+
+async function loadEnded(){
+  const msg=document.getElementById('endMsg');
+  msg.textContent='載入中…';
+  try{
+    ENDDATA=parseEnded(await fetchApi('ended'));
+    const sel=document.getElementById('endShop');
+    const shops=[...new Set(ENDDATA.map(o=>o.shop))].sort();
+    sel.innerHTML='<option value="">全部店鋪</option>'+shops.map(s=>`<option>${esc(s)}</option>`).join('');
+    msg.textContent = ENDDATA.length
+      ? `共 ${ENDDATA.length} 則（資料時間 ${ENDDATA[0].at||'—'}）`
+      : '近 30 天沒有到期的廣告 ✅';
+    renderEnded();
+  }catch(err){
+    msg.textContent='載入失敗：'+err.message;
+  }
+}
+
+function renderEnded(){
+  const shop=document.getElementById('endShop').value;
+  const q=document.getElementById('endQ').value.trim().toLowerCase();
+  const rows=ENDDATA.filter(o=>(!shop||o.shop===shop)&&(!q||o.name.toLowerCase().includes(q)));
+  const t=document.getElementById('endTbl');
+  if(!rows.length){
+    t.innerHTML='<tr><td class="muted" style="padding:14px">沒有符合的資料</td></tr>';
+    return;
+  }
+  const head=['店鋪','廣告名稱','結束日','已過','狀態','每日預算','目標ROI','開始日','campaign_id'];
+  t.innerHTML='<thead><tr>'+head.map(h=>`<th>${esc(h)}</th>`).join('')+'</tr></thead><tbody>'
+    + rows.map(o=>{
+        // 剛停不久的最該處理 → 標色提示
+        const hot = o.days<=7 ? ' style="font-weight:700"' : '';
+        return '<tr>'
+          + `<td>${esc(o.shop)}</td>`
+          + `<td title="${esc(o.name)}">${esc(o.name.slice(0,38))}</td>`
+          + `<td${hot}>${esc(o.end)}</td>`
+          + `<td${hot}>${o.days} 天</td>`
+          + `<td>${esc(o.state)}</td>`
+          + `<td>$${o.budget.toLocaleString()}</td>`
+          + `<td>${o.roi||'—'}</td>`
+          + `<td class="muted">${esc(o.start)}</td>`
+          + `<td class="muted">${esc(o.cid)}</td>`
+          + '</tr>';
+      }).join('')
+    + '</tbody>';
+}
+
 // ===== 事件 =====
 function setTab(t){
   state.tab=t;
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('on',p.id==='tab-'+t));
-  document.getElementById('pbar').style.display=(t==='month'||t==='compare'||!dailyOk)?'none':'flex';
+  document.getElementById('pbar').style.display=
+    (t==='month'||t==='compare'||t==='ended'||!dailyOk)?'none':'flex';
   if(t==='sop'&&!queueLoaded){ queueLoaded=true; refreshQueue(); }
   if(t==='compare'&&!cmpLoaded){ cmpLoaded=true; loadCompare(); }
+  if(t==='ended'&&!endLoaded){ endLoaded=true; loadEnded(); }
 }
 function syncChecks(kind,val){document.querySelectorAll(`[data-kind="${kind}"]`).forEach(el=>el.checked=val);}
 let bound=false;
@@ -1617,6 +1705,9 @@ function bind(){
   document.getElementById('reload').addEventListener('click',load);
   document.getElementById('sopSend').addEventListener('click',sendQueue);
   document.getElementById('queueReload').addEventListener('click',refreshQueue);
+  document.getElementById('endReload').addEventListener('click',loadEnded);
+  document.getElementById('endShop').addEventListener('change',renderEnded);
+  document.getElementById('endQ').addEventListener('input',renderEnded);
   document.getElementById('cmpReload').addEventListener('click',loadCompare);
   ['cmpField','cmpSrc','cmpSt','cmpHideAuto'].forEach(id=>document.getElementById(id).addEventListener('change',renderCompare));
   document.getElementById('cmpQ').addEventListener('input',renderCompare);
