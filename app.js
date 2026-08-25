@@ -1,4 +1,5 @@
-/* 倉儲系統前端 SPA v28 — 新增 345點貨(海運/海快批次 + 巧巧郎散貨,資料在「345庫存規劃」的點貨綜合表);
+/* 倉儲系統前端 SPA v29 — 345點貨改用登入人員當點貨人(移除預設點貨人下拉);
+   v28=新增 345點貨(海運/海快批次 + 巧巧郎散貨,資料在「345庫存規劃」的點貨綜合表),
    v27=修待送清單卡片的按鈕壓到文字,v26=卡住時白話自救指示,v25=缺貨登記欄位/排序,v24=點貨待送清單 */
 'use strict';
 
@@ -19,7 +20,6 @@ var store = {
   products: [], ts: 0, v: '',
   staff: [], links: [], staffPw: {}, configured: true, counts: {},
   picking: null, picking346: null, picking345: null, bigcount: null, shortage: null, shortInv: null,
-  staff345: [], p345Picker: sessionStorage.getItem('p345Picker') || '',   /* 345 預設點貨人:只活在本次工作階段 */
   siAnnounce: '',
   rel: null,
   recCache: { pick: null, pick346: null, pick345: null, bigcount: null },
@@ -43,7 +43,6 @@ function loadCache() {
   var p = lsGet('cache_picking'); if (p) store.picking = p;
   var p3 = lsGet('cache_picking346'); if (p3) store.picking346 = p3;
   var p5 = lsGet('cache_picking345'); if (p5) store.picking345 = p5;
-  var s5 = lsGet('cache_staff345'); if (s5) store.staff345 = s5;
   var si = lsGet('cache_shortInv'); if (si) store.shortInv = si;
   var pi = lsGet('cache_purchaseIdx2'); if (pi && Date.now() - pi.t < CONFIG.BULK_TTL) store.purchaseIdx = pi.idx || {};
   var sa = lsGet('cache_salesIdx2'); if (sa && Date.now() - sa.t < CONFIG.BULK_TTL) store.salesIdx = sa.idx || {};
@@ -82,11 +81,8 @@ function loadData(key, force) {
       store.dataTs[key] = Date.now();
       if (key === 'picking') lsSet('cache_picking', d.rows);
       if (key === 'picking346') lsSet('cache_picking346', d.rows);
-      /* 345 的員工名單跟著同一支 API 回來(來源=345庫存規劃的員工表),順手收下 */
-      if (key === 'picking345') {
-        lsSet('cache_picking345', d.rows);
-        if (d.staff && d.staff.length) { store.staff345 = d.staff; lsSet('cache_staff345', d.staff); }
-      }
+      if (key === 'picking345') lsSet('cache_picking345', d.rows);
+      /* (345 後端還會回 staff=員工表名單,v29 起前端不用了:點貨人一律=網站登入人員) */
       if (key === 'shortInv') { lsSet('cache_shortInv', d.rows); if (d.announce !== undefined) { store.siAnnounce = String(d.announce || ''); lsSet('cache_siAnnounce', store.siAnnounce); } }
     }
     return store[key];
@@ -1280,16 +1276,8 @@ function p345ProgColor(list) {
   return list.every(p345Done) ? '#2e7d32' : '#c62828';
 }
 function p345Find(id) { return p345Rows().find(function (r) { return r.id === id; }); }
-/* 點貨人下拉:名單來自 345庫存規劃的員工表(GET picking345 一起回來) */
-function p345StaffOptions(sel) {
-  return '<option value="">— 請選擇 —</option>' + (store.staff345 || []).map(function (n) {
-    return '<option value="' + esc(n) + '"' + (n === sel ? ' selected' : '') + '>' + esc(n) + '</option>';
-  }).join('');
-}
-function p345SetPicker(v) {
-  store.p345Picker = v || '';
-  try { if (v) sessionStorage.setItem('p345Picker', v); else sessionStorage.removeItem('p345Picker'); } catch (e) {}
-}
+/* 點貨人=網站登入人員(store.user),與其他三種點貨一致。
+   v28 曾有「預設點貨人」下拉(照 yaml v1.4),使用者 2026-08-25 指出網站本來就有登入 → v29 移除 */
 function p345Card(r, nav) {
   var c = p345Color(r.status);
   var sync = obSyncing(r) ? ' ⏳' : '';
@@ -1303,7 +1291,7 @@ function p345Card(r, nav) {
     '<div class="sales">' + esc(line2) + '</div></div>';
 }
 
-/* ---- 主頁:選預設點貨人 + 兩個入口 ---- */
+/* ---- 主頁:兩個入口(點貨人=登入人員,不另外選) ---- */
 function pagePick345Home() {
   $('#pageTitle').textContent = '345點貨';
   currentRender = render;
@@ -1312,17 +1300,10 @@ function pagePick345Home() {
     if (!rows.length) { $('#app').innerHTML = '<div class="empty">載入中…</div>'; return; }
     var sea = rows.filter(function (r) { return !p345IsQL(r); });
     var ql = rows.filter(p345IsQL);
-    var h = '<div class="form"><h2>預設點貨人</h2>' +
-      '<label>先選自己,之後每筆會自動帶入(可在每筆儲存前臨時改成別人)</label>' +
-      '<select id="p345Picker">' + p345StaffOptions(store.p345Picker) + '</select>' +
-      (store.p345Picker ? '' : '<div class="err">⚠ 尚未選擇,選了才能存點貨</div>') +
-      '<label style="margin-top:6px">關掉網頁後下次進來要重新選一次</label></div>';
-    h += '<div class="form" style="margin-top:10px"><h2>選擇點貨方式</h2><div class="person-grid">' +
+    $('#app').innerHTML = '<div class="form"><h2>選擇點貨方式</h2><div class="person-grid">' +
       '<button data-nav="/pick345batch">🚢 海運/海快批次<br><span style="font-size:12px;color:' + p345ProgColor(sea) + '">' + (sea.length ? p345Prog(sea) : '目前沒有資料') + '</span></button>' +
       '<button data-nav="/pick345ql">📦 巧巧郎散貨<br><span style="font-size:12px;color:' + p345ProgColor(ql) + '">' + (ql.length ? p345Prog(ql) : '目前沒有資料') + '</span></button>' +
-      '</div></div>';
-    $('#app').innerHTML = h;
-    $('#p345Picker').onchange = function () { p345SetPicker(this.value); render(); };
+      '</div><label style="margin-top:10px">點貨人＝目前登入的「' + esc(store.user) + '」;要換人請到 ⚙️ 設定切換</label></div>';
   }
   render();
   loadData('picking345').then(render);
@@ -1486,7 +1467,7 @@ function pagePick345Form(params) {
     P345_STATUS.map(function (s) { return '<option value="' + esc(s) + '"' + (s === defStatus ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
     (isQL ? '<label>點貨箱編(選填)</label><input id="pickBox" value="' + esc(it.pickBox || '') + '">' : '') +
     '<label>備註(損壞數量、短少或多到說明寫這裡)</label><input id="note" value="' + esc(it.note || '') + '">' +
-    '<label>本次點貨人 *</label><select id="picker">' + p345StaffOptions(store.p345Picker) + '</select>' +
+    '<label>點貨人</label><input class="ro" readonly value="' + esc(store.user) + '">' +
     '<div class="err" id="formErr"></div>' +
     '<div class="actions"><button type="button" onclick="history.back()">取消</button>' +
     '<button class="primary" id="saveBtn">儲存(新增一筆)</button></div></div>';
@@ -1517,11 +1498,10 @@ function pagePick345Form(params) {
 
   $('#saveBtn').onclick = function () {
     var qty = Number(qtyEl.value);
-    var picker = $('#picker').value;
+    var picker = store.user;   /* 點貨人=登入人員;後端沿用 picker 欄位,不必重新部署 GAS */
     var status = $('#status').value;
     /* yaml:只檢查輸入格式,不比較應到/實到、不給業務警告 */
     if (qtyEl.value === '' || isNaN(qty) || qty < 0) { $('#formErr').textContent = '數量請填 0 以上的數字'; return; }
-    if (!picker) { $('#formErr').textContent = '請選擇本次點貨人'; return; }
     if (!status) { $('#formErr').textContent = '請選擇點貨狀態'; return; }
     var note = $('#note').value;
     var pickBox = isQL && $('#pickBox') ? $('#pickBox').value.trim() : '';
