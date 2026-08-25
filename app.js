@@ -1,4 +1,5 @@
-/* 倉儲系統前端 SPA v27 — 修待送清單卡片的按鈕壓到文字(.card .actions 沒樣式);v26=卡住時白話自救指示,v25=缺貨登記欄位/排序,v24=點貨待送清單 */
+/* 倉儲系統前端 SPA v28 — 新增 345點貨(海運/海快批次 + 巧巧郎散貨,資料在「345庫存規劃」的點貨綜合表);
+   v27=修待送清單卡片的按鈕壓到文字,v26=卡住時白話自救指示,v25=缺貨登記欄位/排序,v24=點貨待送清單 */
 'use strict';
 
 var CONFIG = {
@@ -17,10 +18,11 @@ var SHORTAGE_HANDLE = ['不足需聊', '不足等到貨', '需找', '缺先出',
 var store = {
   products: [], ts: 0, v: '',
   staff: [], links: [], staffPw: {}, configured: true, counts: {},
-  picking: null, picking346: null, bigcount: null, shortage: null, shortInv: null,
+  picking: null, picking346: null, picking345: null, bigcount: null, shortage: null, shortInv: null,
+  staff345: [], p345Picker: sessionStorage.getItem('p345Picker') || '',   /* 345 預設點貨人:只活在本次工作階段 */
   siAnnounce: '',
   rel: null,
-  recCache: { pick: null, pick346: null, bigcount: null },
+  recCache: { pick: null, pick346: null, pick345: null, bigcount: null },
   purchaseIdx: {}, salesIdx: {},
   dataTs: {},
   user: localStorage.getItem('user') || '',
@@ -40,6 +42,8 @@ function loadCache() {
   var s = lsGet('cache_staff'); if (s) { store.staff = s.staff || []; store.staffPw = s.staffPw || {}; store.links = s.links || []; }
   var p = lsGet('cache_picking'); if (p) store.picking = p;
   var p3 = lsGet('cache_picking346'); if (p3) store.picking346 = p3;
+  var p5 = lsGet('cache_picking345'); if (p5) store.picking345 = p5;
+  var s5 = lsGet('cache_staff345'); if (s5) store.staff345 = s5;
   var si = lsGet('cache_shortInv'); if (si) store.shortInv = si;
   var pi = lsGet('cache_purchaseIdx2'); if (pi && Date.now() - pi.t < CONFIG.BULK_TTL) store.purchaseIdx = pi.idx || {};
   var sa = lsGet('cache_salesIdx2'); if (sa && Date.now() - sa.t < CONFIG.BULK_TTL) store.salesIdx = sa.idx || {};
@@ -78,6 +82,11 @@ function loadData(key, force) {
       store.dataTs[key] = Date.now();
       if (key === 'picking') lsSet('cache_picking', d.rows);
       if (key === 'picking346') lsSet('cache_picking346', d.rows);
+      /* 345 的員工名單跟著同一支 API 回來(來源=345庫存規劃的員工表),順手收下 */
+      if (key === 'picking345') {
+        lsSet('cache_picking345', d.rows);
+        if (d.staff && d.staff.length) { store.staff345 = d.staff; lsSet('cache_staff345', d.staff); }
+      }
       if (key === 'shortInv') { lsSet('cache_shortInv', d.rows); if (d.announce !== undefined) { store.siAnnounce = String(d.announce || ''); lsSet('cache_siAnnounce', store.siAnnounce); } }
     }
     return store[key];
@@ -102,17 +111,17 @@ function loadBulk() {
   }
 }
 function preloadAll() {
-  loadData('picking'); loadData('picking346'); loadData('bigcount'); loadData('shortage'); loadData('shortInv'); loadData('rel');
-  loadRecords('pick'); loadRecords('pick346'); loadRecords('bigcount');
+  loadData('picking'); loadData('picking346'); loadData('picking345'); loadData('bigcount'); loadData('shortage'); loadData('shortInv'); loadData('rel');
+  loadRecords('pick'); loadRecords('pick346'); loadRecords('pick345'); loadRecords('bigcount');
   loadBulk();
 }
 function manualSync() {
   toast('同步中…', '', 1200);
   Promise.all([
     refreshProducts(true, true),
-    loadData('picking', true), loadData('picking346', true), loadData('bigcount', true),
+    loadData('picking', true), loadData('picking346', true), loadData('picking345', true), loadData('bigcount', true),
     loadData('shortage', true), loadData('shortInv', true), loadData('rel', true),
-    loadRecords('pick', true), loadRecords('pick346', true), loadRecords('bigcount', true),
+    loadRecords('pick', true), loadRecords('pick346', true), loadRecords('pick345', true), loadRecords('bigcount', true),
     apiGet('purchaseAll').then(function (d) { if (d.ok) { store.purchaseIdx = d.idx || {}; lsSet('cache_purchaseIdx2', { t: Date.now(), idx: d.idx }); } }).catch(function () {}),
     apiGet('salesAll').then(function (d) { if (d.ok) { store.salesIdx = d.idx || {}; lsSet('cache_salesIdx2', { t: Date.now(), idx: d.idx }); } }).catch(function () {}),
     apiGet('meta').then(applyMeta).catch(function () {})
@@ -127,6 +136,7 @@ function startPolling() {
     var path = (location.hash.slice(1) || '/storage').split('?')[0];
     if (path === '/orders' || path === '/order-detail') loadData('picking', true).then(rerenderActive);
     if (path === '/pick346') loadData('picking346', true).then(rerenderActive);
+    if (path.indexOf('/pick345') === 0) loadData('picking345', true).then(rerenderActive);
     if (path === '/bigcount') loadData('bigcount', true).then(rerenderActive);
     if (path === '/shortage') loadData('shortage', true).then(rerenderActive);
     if (path === '/short-inv') loadData('shortInv', true).then(rerenderActive);
@@ -269,14 +279,14 @@ function reloadTotalsSoon(key) {
 }
 
 /* ===================== 待送清單(outbox) =====================
- * 只接管三種點貨(pickSave / pick346Save / bigcountSave);其他寫入維持原本的背景送出。
+ * 只接管四種點貨(pickSave / pick346Save / pick345Save / bigcountSave);其他寫入維持原本的背景送出。
  *
  * 按儲存 → 先寫進手機的待送清單 → 才送出,後端確認了才移除。
  * 送不出去(網路斷、鎖螢幕、切去 LINE、關網頁)也不會掉:
  * 開站 / 回到前景 / 網路恢復 / 每 20 秒,都會自動補送。
  * 每筆帶 cid,後端認 cid 只寫一次(Code.gs 的 cidSeen),所以自動重送不會變成重複點。 */
 var OUTBOX_KEY = 'outbox_pick_v1';
-var OB_ACTIONS = { pickSave: 1, pick346Save: 1, bigcountSave: 1 };
+var OB_ACTIONS = { pickSave: 1, pick346Save: 1, pick345Save: 1, bigcountSave: 1 };
 var obKeyMap = {}, obCount = 0, obFlushing = false;
 
 function obList() { var l = lsGet(OUTBOX_KEY); return Array.isArray(l) ? l : []; }
@@ -288,6 +298,7 @@ function obPut(list) {
     var b = e.body || {};
     if (b.action === 'pickSave') m['pick:' + b.id] = 1;
     else if (b.action === 'pick346Save') m['pick346:' + b.sku] = 1;
+    else if (b.action === 'pick345Save') m['pick345:' + b.id] = 1;
     else if (b.action === 'bigcountSave') m['bigcount:' + b.sku] = 1;
   });
   obKeyMap = m;
@@ -303,10 +314,15 @@ function obUpdate(cid, patch) {
 /* 這個品項還有沒有沒送成功的?(清單上顯示 ⏳,不給正式綠燈) */
 function obSyncing(it) {
   if (!it || !obCount) return false;
-  return !!(obKeyMap['pick:' + it.id] || obKeyMap['pick346:' + it.sku] || obKeyMap['bigcount:' + it.sku]);
+  return !!(obKeyMap['pick:' + it.id] || obKeyMap['pick346:' + it.sku] || obKeyMap['pick345:' + it.id] || obKeyMap['bigcount:' + it.sku]);
 }
 function newCid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-function obKeyOf(action) { return action === 'pickSave' ? 'picking' : (action === 'pick346Save' ? 'picking346' : 'bigcount'); }
+function obKeyOf(action) {
+  if (action === 'pickSave') return 'picking';
+  if (action === 'pick346Save') return 'picking346';
+  if (action === 'pick345Save') return 'picking345';
+  return 'bigcount';
+}
 
 /* 送一筆的三種結果:
  * ok    = 後端確認寫入(或認出是同一筆 dup)→ 從清單移除
@@ -362,6 +378,9 @@ function afterPickOk(bodies) {
   refreshProducts(true);
   if (kind.pickSave) { loadRecords('pick', true).then(rerenderActive); reloadTotalsSoon('picking'); }
   if (kind.pick346Save) { loadRecords('pick346', true).then(rerenderActive); reloadTotalsSoon('picking346'); }
+  /* 345 直接重抓:總表 L 欄是後端寫回時就算好的(不是試算表公式),沒有「半熟舊值」問題,
+     不必套 reloadTotalsSoon;而且修改紀錄把數量改小是合法的,reloadTotalsSoon 反而會把它還原 */
+  if (kind.pick345Save) { loadRecords('pick345', true).then(rerenderActive); loadData('picking345', true).then(rerenderActive); }
   if (kind.bigcountSave) { loadRecords('bigcount', true).then(rerenderActive); reloadTotalsSoon('bigcount'); }
   apiGet('meta').then(applyMeta).catch(function () {});
   rerenderActive();
@@ -403,7 +422,7 @@ function renderOutboxBar() {
 function pageOutbox() {
   $('#pageTitle').textContent = '待送清單';
   currentRender = render;
-  function actName(a) { return a === 'pickSave' ? '一般點貨' : (a === 'pick346Save' ? '346點貨' : '盤點作業'); }
+  function actName(a) { return a === 'pickSave' ? '一般點貨' : (a === 'pick346Save' ? '346點貨' : (a === 'pick345Save' ? '345點貨' : '盤點作業')); }
   function render() {
     var l = obList();
     /* 事件綁在 #obList 這層(不綁 #app):切頁時整塊被 innerHTML 清掉,不會殘留到別頁 */
@@ -571,7 +590,7 @@ function bindTabBar(id, onChange) {
 /* ===================== 首頁 ===================== */
 function pageHome() {
   $('#pageTitle').textContent = '首頁';
-  var mods = [['#/storage', '🔍 儲位查詢'], ['#/orders', '📦 一般點貨(訂貨表)'], ['#/pick346', '📦 346點貨'],
+  var mods = [['#/storage', '🔍 儲位查詢'], ['#/orders', '📦 一般點貨(訂貨表)'], ['#/pick346', '📦 346點貨'], ['#/pick345', '🚢 345點貨'],
     ['#/bigcount', '📋 盤點作業'], ['#/shortage', '❗ 缺貨單'], ['#/second-list', '🏬 第二庫存清單'], ['#/short-inv', '📝 缺貨登記'],
     [CONFIG.LINKS.labelPrint, '🏷️ 標籤列印', true]];   /* true = 外部網站,開新分頁 */
   var html = '<div class="form"><h2>功能</h2><div class="person-grid">' +
@@ -1228,6 +1247,297 @@ function pagePick346Form(params) {
     onSave: function (qty, note, recId) { submitBg({ action: 'pick346Save', sku: it.sku, qty: qty, note: note, recId: recId }, (recId ? '已修改點貨紀錄:' : '346點貨已送出:') + it.sku + ' × ' + qty, function () { applyPickPatch(it, qty, !!recId, recId ? qty : 0); if (it.status === '未點') it.status = '點貨中'; }); } });
 }
 
+/* ===================== 345點貨 =====================
+ * 規格:\\192.168.58.91\共用\交接\點貨表運作邏輯及欄位簡介.yaml (v1.3)
+ * 與一般點貨/346 的四個關鍵差異(改這塊前先看懂,不要照抄 pickForm):
+ *   ① 實到數量是「本次實到總數」= 覆蓋,不是每次累加
+ *   ② 點貨狀態由人五選一,前後端都不比較應到/實到、不給業務警告(yaml 明訂)
+ *   ③ 沒有主管覆核
+ *   ④ 點貨人不是登入者:主頁選「預設點貨人」(只存 sessionStorage,關掉網頁就沒了),
+ *      每筆儲存前可臨時改成別人,只影響那一次。試算表 N 欄由後端累積所有經手人。
+ * 資料來源分兩條路:巧巧郎=散貨(搜尋篩選);其他(海運/海快)=批次→來源箱編→箱內商品。 */
+var P345_STATUS = ['完成', '短少', '多到', '損壞', '未點貨'];
+var P345_PROBLEM = ['短少', '多到', '損壞'];
+/* 來源箱編空白時的分組代號。⚠ 它同時是網址參數(?box=),所以箱清單與商品清單一定要用同一個常數,
+   各自寫死字串的話哪天改了字就對不起來,那一箱會變成點不進去 */
+var P345_NOBOX = '(未標箱號)';
+function p345Color(s) {
+  if (s === '完成') return '#2e7d32';
+  if (!s || s === '未點貨') return '#c62828';
+  return '#e68a00';                                    /* 短少/多到/損壞 = 問題商品 */
+}
+function p345Done(r) { return !!(r.status && r.status !== '未點貨'); }
+function p345Problem(r) { return P345_PROBLEM.indexOf(r.status) >= 0; }
+function p345Rows() { return store.picking345 || []; }
+function p345IsQL(r) { return r.ship === '巧巧郎'; }
+/* 「3/8 已點 · 1 有問題」這種進度字串;顏色不是唯一線索,文字也要講得出來 */
+function p345Prog(list) {
+  var done = list.filter(p345Done).length, prob = list.filter(p345Problem).length;
+  return done + '/' + list.length + ' 已點' + (prob ? ' · ' + prob + ' 有問題' : '');
+}
+function p345ProgColor(list) {
+  if (list.some(p345Problem)) return '#e68a00';
+  return list.every(p345Done) ? '#2e7d32' : '#c62828';
+}
+function p345Find(id) { return p345Rows().find(function (r) { return r.id === id; }); }
+/* 點貨人下拉:名單來自 345庫存規劃的員工表(GET picking345 一起回來) */
+function p345StaffOptions(sel) {
+  return '<option value="">— 請選擇 —</option>' + (store.staff345 || []).map(function (n) {
+    return '<option value="' + esc(n) + '"' + (n === sel ? ' selected' : '') + '>' + esc(n) + '</option>';
+  }).join('');
+}
+function p345SetPicker(v) {
+  store.p345Picker = v || '';
+  try { if (v) sessionStorage.setItem('p345Picker', v); else sessionStorage.removeItem('p345Picker'); } catch (e) {}
+}
+function p345Card(r, nav) {
+  var c = p345Color(r.status);
+  var sync = obSyncing(r) ? ' ⏳' : '';
+  var line2 = '應到 ' + r.needQty + ' / 實到 ' + (r.doneQty == null ? '—' : r.doneQty) +
+    (r.user ? ' · ' + r.user : '') + (r.note ? ' · ' + r.note : '');
+  return '<div class="card" style="border-left:4px solid ' + c + ';border-radius:0 10px 10px 0" ' + nav + '>' +
+    '<div class="locline"><span class="loc">➜ ' + esc(r.loc || '—') + '</span>' +
+    '<span class="sku" style="color:' + c + ';font-weight:bold">' + esc(r.status || '未點貨') + sync + '</span></div>' +
+    '<div class="name">' + esc(r.name) + '</div>' +
+    '<div class="sku">' + esc(r.sku) + (p345IsQL(r) && r.pickBox ? ' · 點貨箱 ' + esc(r.pickBox) : '') + '</div>' +
+    '<div class="sales">' + esc(line2) + '</div></div>';
+}
+
+/* ---- 主頁:選預設點貨人 + 兩個入口 ---- */
+function pagePick345Home() {
+  $('#pageTitle').textContent = '345點貨';
+  currentRender = render;
+  function render() {
+    var rows = p345Rows();
+    if (!rows.length) { $('#app').innerHTML = '<div class="empty">載入中…</div>'; return; }
+    var sea = rows.filter(function (r) { return !p345IsQL(r); });
+    var ql = rows.filter(p345IsQL);
+    var h = '<div class="form"><h2>預設點貨人</h2>' +
+      '<label>先選自己,之後每筆會自動帶入(可在每筆儲存前臨時改成別人)</label>' +
+      '<select id="p345Picker">' + p345StaffOptions(store.p345Picker) + '</select>' +
+      (store.p345Picker ? '' : '<div class="err">⚠ 尚未選擇,選了才能存點貨</div>') +
+      '<label style="margin-top:6px">關掉網頁後下次進來要重新選一次</label></div>';
+    h += '<div class="form" style="margin-top:10px"><h2>選擇點貨方式</h2><div class="person-grid">' +
+      '<button data-nav="/pick345batch">🚢 海運/海快批次<br><span style="font-size:12px;color:' + p345ProgColor(sea) + '">' + (sea.length ? p345Prog(sea) : '目前沒有資料') + '</span></button>' +
+      '<button data-nav="/pick345ql">📦 巧巧郎散貨<br><span style="font-size:12px;color:' + p345ProgColor(ql) + '">' + (ql.length ? p345Prog(ql) : '目前沒有資料') + '</span></button>' +
+      '</div></div>';
+    $('#app').innerHTML = h;
+    $('#p345Picker').onchange = function () { p345SetPicker(this.value); render(); };
+  }
+  render();
+  loadData('picking345').then(render);
+}
+
+/* ---- 海運/海快:批次清單 ---- */
+function pagePick345Batch() {
+  $('#pageTitle').textContent = '海運/海快批次';
+  currentRender = render;
+  function render() {
+    var rows = p345Rows().filter(function (r) { return !p345IsQL(r); });
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      if (!groups[r.batchId]) { groups[r.batchId] = []; order.push(r.batchId); }
+      groups[r.batchId].push(r);
+    });
+    order.sort();
+    $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div>' +
+      (order.length ? order.map(function (b) {
+        var list = groups[b], c = p345ProgColor(list);
+        return '<div class="card" style="border-left:4px solid ' + c + ';border-radius:0 10px 10px 0" data-nav="/pick345box?b=' + encodeURIComponent(b) + '">' +
+          '<div class="locline"><span class="loc">' + esc(list[0].ship) + '</span><span class="sku" style="color:' + c + ';font-weight:bold">' + esc(p345Prog(list)) + '</span></div>' +
+          '<div class="name">' + esc(list[0].batchName || b) + '</div>' +
+          '<div class="sku">批次 ' + esc(b) + '</div></div>';
+      }).join('') : '<div class="empty">目前沒有海運/海快批次</div>');
+  }
+  render();
+  loadData('picking345').then(render);
+}
+
+/* ---- 海運/海快:來源箱編清單 ---- */
+function pagePick345Box(params) {
+  var bid = params.b || '';
+  $('#pageTitle').textContent = '選箱號';
+  currentRender = render;
+  function render() {
+    var rows = p345Rows().filter(function (r) { return r.batchId === bid; });
+    if (!rows.length) { $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div><div class="empty">找不到這個批次</div>'; return; }
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      var k = r.srcBox || P345_NOBOX;
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(r);
+    });
+    /* 箱號多半是數字,用數值排序才不會出現 1,10,2;沒標箱號的是例外,擺最後不要擋在正常箱號前面。
+       ⚠ 比較函式必須前後一致(同一組值不能有時說 a<b 有時說 a>b),否則排序結果會亂跳 */
+    order.sort(function (a, b) {
+      var ua = a === P345_NOBOX, ub = b === P345_NOBOX;
+      if (ua !== ub) return ua ? 1 : -1;
+      var na = Number(a), nb = Number(b), da = a !== '' && !isNaN(na), db = b !== '' && !isNaN(nb);
+      if (da && db) return na - nb;
+      if (da !== db) return da ? -1 : 1;      /* 數字箱號排在文字箱號前面 */
+      return String(a).localeCompare(String(b), 'zh-Hant');
+    });
+    $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div>' +
+      '<div class="card"><div class="name">' + esc(rows[0].batchName || bid) + '</div>' +
+      '<div class="sku">' + esc(rows[0].ship) + ' · ' + esc(p345Prog(rows)) + '</div></div>' +
+      order.map(function (k) {
+        var list = groups[k], c = p345ProgColor(list);
+        /* &amp; 不是多餘的:寫成裸的 & 在 HTML 屬性裡會被當成實體開頭(&box 剛好是合法實體名) */
+        return '<div class="card" style="border-left:4px solid ' + c + ';border-radius:0 10px 10px 0" data-nav="/pick345items?b=' + encodeURIComponent(bid) + '&amp;box=' + encodeURIComponent(k) + '">' +
+          '<div class="locline"><span class="loc">📦 箱 ' + esc(k) + '</span><span class="sku" style="color:' + c + ';font-weight:bold">' + esc(p345Prog(list)) + '</span></div>' +
+          '<div class="sku">' + list.length + ' 個品項</div></div>';
+      }).join('');
+  }
+  render();
+  loadData('picking345').then(render);
+}
+
+/* ---- 海運/海快:箱內商品 ---- */
+function pagePick345Items(params) {
+  var bid = params.b || '', box = params.box || '';
+  $('#pageTitle').textContent = '箱 ' + box;
+  currentRender = render;
+  function render() {
+    var rows = p345Rows().filter(function (r) { return r.batchId === bid && (r.srcBox || P345_NOBOX) === box; });
+    $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div>' +
+      (rows.length
+        ? '<div class="card"><div class="name">' + esc(rows[0].batchName || bid) + ' · 箱 ' + esc(box) + '</div>' +
+          '<div class="sku">' + esc(p345Prog(rows)) + '</div></div>' +
+          rows.map(function (r) { return p345Card(r, 'data-nav="/pick345form?id=' + encodeURIComponent(r.id) + '"'); }).join('')
+        : '<div class="empty">這箱沒有商品</div>');
+  }
+  render();
+  loadData('picking345').then(render);
+}
+
+/* ---- 巧巧郎散貨:搜尋 + 篩選 ---- */
+var p345Q = { term: '', cat: '', onlyTodo: false, onlyProblem: false };
+function pagePick345QL() {
+  $('#pageTitle').textContent = '巧巧郎散貨';
+  function catList() {
+    var cats = [];
+    p345Rows().filter(p345IsQL).forEach(function (r) { if (r.vendorCat && cats.indexOf(r.vendorCat) < 0) cats.push(r.vendorCat); });
+    return cats.sort(function (a, b) { var na = Number(a), nb = Number(b); return (!isNaN(na) && !isNaN(nb)) ? na - nb : String(a).localeCompare(String(b)); });
+  }
+  function catOptions() {
+    return '<option value="">全部廠商分類</option>' + catList().map(function (c) {
+      return '<option value="' + esc(c) + '"' + (p345Q.cat === c ? ' selected' : '') + '>分類 ' + esc(c) + '</option>';
+    }).join('');
+  }
+  $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div>' +
+    searchBarHtml('p345q',
+      '<div class="filterbar"><select id="p345cat">' + catOptions() + '</select>' +
+      '<button class="chip' + (p345Q.onlyTodo ? ' on' : '') + '" id="p345todo">未點貨</button>' +
+      '<button class="chip' + (p345Q.onlyProblem ? ' on' : '') + '" id="p345prob">問題商品</button></div>') +
+    '<div id="list"></div>';
+  var q = bindSearch('p345q', function (v) { p345Q.term = v; render(); });
+  q.value = p345Q.term;
+  $('#p345cat').onchange = function () { p345Q.cat = this.value; render(); };
+  $('#p345todo').onclick = function () { p345Q.onlyTodo = !p345Q.onlyTodo; this.classList.toggle('on', p345Q.onlyTodo); render(); };
+  $('#p345prob').onclick = function () { p345Q.onlyProblem = !p345Q.onlyProblem; this.classList.toggle('on', p345Q.onlyProblem); render(); };
+  currentRender = render;
+  function render() {
+    var box = $('#list'); if (!box) return;
+    /* 第一次進站(還沒快取)時資料是後到的,下拉會是空的 → 資料到了要把選項補上 */
+    var sel = $('#p345cat');
+    if (sel && sel.options.length !== catList().length + 1) sel.innerHTML = catOptions();
+    var nt = normSearch(p345Q.term);
+    var rows = p345Rows().filter(p345IsQL).filter(function (r) {
+      if (p345Q.cat && r.vendorCat !== p345Q.cat) return false;
+      if (p345Q.onlyTodo && p345Done(r)) return false;
+      if (p345Q.onlyProblem && !p345Problem(r)) return false;
+      if (!nt) return true;
+      return normSearch(r.sku).indexOf(nt) >= 0 || normSearch(r.name).indexOf(nt) >= 0 || normSearch(r.loc).indexOf(nt) >= 0;
+    });
+    box.innerHTML = rows.length
+      ? '<div class="card"><div class="sku">符合 ' + rows.length + ' 筆 · ' + esc(p345Prog(rows)) + '</div></div>' +
+        rows.map(function (r) { return p345Card(r, 'data-nav="/pick345form?id=' + encodeURIComponent(r.id) + '"'); }).join('')
+      : '<div class="empty">沒有符合的商品</div>';
+  }
+  render();
+  loadData('picking345').then(render);
+}
+
+/* ---- 點貨表單 ----
+ * 累加制(使用者 2026-08-25 定案,與 346 對齊):每按一次儲存=追加一筆紀錄,總表實到=所有紀錄加總。
+ * 「✏️ 修改」改的是舊紀錄那一筆(帶 recId),總表由後端重算。 */
+function pagePick345Form(params) {
+  var it = p345Find(params.id || '');
+  if (!it) { $('#app').innerHTML = '<div class="backrow"><button onclick="history.back()">← 返回</button></div><div class="empty">找不到這筆資料,請回上頁重新載入</div>'; return; }
+  var isQL = p345IsQL(it), nav = navSeq;
+  $('#pageTitle').textContent = '345點貨';
+  /* 預設帶「還沒點的量」(應到-已點);點完了還進來多半是要補點或修改 → 預設 0 */
+  var remain = it.needQty - (it.doneQty || 0);
+  var defQty = remain > 0 ? remain : 0;
+  var defStatus = p345Done(it) ? it.status : '完成';
+  $('#app').innerHTML =
+    '<div class="form"><h2>' + esc(it.name) + '</h2>' +
+    '<label>貨號</label><input class="ro" readonly value="' + esc(it.sku) + '">' +
+    '<label>儲位</label><input class="ro" readonly value="' + esc(it.loc || '—') + '">' +
+    (isQL
+      ? '<label>巧郎廠商分類</label><input class="ro" readonly value="' + esc(it.vendorCat || '—') + '">'
+      : '<label>物流方式 / 批次 / 來源箱編</label><input class="ro" readonly value="' + esc(it.ship + ' · ' + (it.batchName || it.batchId) + ' · 箱 ' + (it.srcBox || '—')) + '">') +
+    '<label>應到數量</label><input class="ro" readonly value="' + it.needQty + '">' +
+    (it.doneQty != null ? '<label>目前實到總數</label><input class="ro" readonly value="' + it.doneQty + (it.user ? ' (' + esc(it.user) + ')' : '') + '">' : '') +
+    '<div id="existBox"></div>' +
+    '<label>本次數量 *(會加進實到總數;可填 0)</label>' +
+    '<div class="stepper"><button type="button" id="minus">−</button><input id="qty" type="number" inputmode="numeric" value="' + defQty + '"><button type="button" id="plus">＋</button></div>' +
+    '<label>點貨狀態 *</label><select id="status">' +
+    P345_STATUS.map(function (s) { return '<option value="' + esc(s) + '"' + (s === defStatus ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
+    (isQL ? '<label>點貨箱編(選填)</label><input id="pickBox" value="' + esc(it.pickBox || '') + '">' : '') +
+    '<label>備註(損壞數量、短少或多到說明寫這裡)</label><input id="note" value="' + esc(it.note || '') + '">' +
+    '<label>本次點貨人 *</label><select id="picker">' + p345StaffOptions(store.p345Picker) + '</select>' +
+    '<div class="err" id="formErr"></div>' +
+    '<div class="actions"><button type="button" onclick="history.back()">取消</button>' +
+    '<button class="primary" id="saveBtn">儲存(新增一筆)</button></div></div>';
+  var qtyEl = $('#qty');
+  $('#minus').onclick = function () { qtyEl.value = Math.max(0, Number(qtyEl.value) - 1); };
+  $('#plus').onclick = function () { qtyEl.value = Number(qtyEl.value) + 1; };
+
+  var editRecId = null, editOldQty = 0;
+  function renderExist() {
+    if (nav !== navSeq) return;
+    var box = $('#existBox'); if (!box) return;
+    var list = (store.recCache.pick345 || {})[it.id] || [];
+    if (!list.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<label>已有 ' + list.length + ' 筆紀錄 — 點「修改」改舊資料,或直接輸入新增新的一筆</label>' +
+      list.map(function (r) { return '<div class="reccard"><div class="recmain">× <b>' + r.qty + '</b> · ' + esc(r.user) + ' · ' + fmtDate(r.time) + (r.note ? ' · ' + esc(r.note) : '') + '</div><button class="chip" data-rec="' + esc(r.recId) + '" data-qty="' + r.qty + '" data-note="' + esc(r.note) + '">✏️ 修改</button></div>'; }).join('');
+    box.onclick = function (e) {
+      var b = e.target.closest('button[data-rec]'); if (!b) return;
+      editRecId = b.getAttribute('data-rec'); editOldQty = Number(b.getAttribute('data-qty')) || 0;
+      qtyEl.value = b.getAttribute('data-qty'); $('#note').value = b.getAttribute('data-note');
+      $('#saveBtn').textContent = '儲存(修改這筆紀錄)';
+      box.querySelectorAll('button[data-rec]').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on');
+      $('#formErr').innerHTML = '正在修改既有紀錄。<button class="chip" id="cancelEdit">改回新增新的一筆</button>';
+      $('#cancelEdit').onclick = function () { editRecId = null; editOldQty = 0; $('#saveBtn').textContent = '儲存(新增一筆)'; $('#formErr').textContent = ''; box.querySelectorAll('button[data-rec]').forEach(function (x) { x.classList.remove('on'); }); };
+    };
+  }
+  renderExist();
+  if (!store.recCache.pick345) loadRecords('pick345').then(renderExist);
+
+  $('#saveBtn').onclick = function () {
+    var qty = Number(qtyEl.value);
+    var picker = $('#picker').value;
+    var status = $('#status').value;
+    /* yaml:只檢查輸入格式,不比較應到/實到、不給業務警告 */
+    if (qtyEl.value === '' || isNaN(qty) || qty < 0) { $('#formErr').textContent = '數量請填 0 以上的數字'; return; }
+    if (!picker) { $('#formErr').textContent = '請選擇本次點貨人'; return; }
+    if (!status) { $('#formErr').textContent = '請選擇點貨狀態'; return; }
+    var note = $('#note').value;
+    var pickBox = isQL && $('#pickBox') ? $('#pickBox').value.trim() : '';
+    var recId = editRecId, oldQty = editOldQty;
+    var body = { action: 'pick345Save', id: it.id, sku: it.sku, qty: qty, status: status, note: note, picker: picker, recId: recId };
+    if (isQL) body.pickBox = pickBox;
+    submitBg(body, (recId ? '已修改點貨紀錄:' : '345點貨已儲存:') + it.sku + ' × ' + qty, function () {
+      /* 樂觀:本地先加上去(修改=先扣舊量再加新量);送失敗時 submitPick 會重抓後端真值蓋回來 */
+      it.doneQty = (it.doneQty || 0) - (recId ? oldQty : 0) + qty;
+      it.status = status; it.note = note;
+      it.user = mergeUser(it.user, picker);
+      if (isQL && pickBox) it.pickBox = pickBox;
+    });
+  };
+}
+
 /* ===================== 盤點作業(盤點表) ===================== */
 var bigTab = '待點', bigSort = { key: 'loc', asc: true }, bigDelMode = false, bigDelSel = {};
 function pageBigcount() {
@@ -1707,6 +2017,9 @@ routes['/relocate'] = pageRelocate; routes['/count'] = pageCount; routes['/count
 routes['/second'] = pageSecond; routes['/second-list'] = pageSecondList;
 routes['/orders'] = pageOrders; routes['/order-detail'] = pageOrderDetail; routes['/pick'] = pagePick;
 routes['/pick346'] = pagePick346List; routes['/pick346form'] = pagePick346Form;
+routes['/pick345'] = pagePick345Home; routes['/pick345batch'] = pagePick345Batch;
+routes['/pick345box'] = pagePick345Box; routes['/pick345items'] = pagePick345Items;
+routes['/pick345ql'] = pagePick345QL; routes['/pick345form'] = pagePick345Form;
 routes['/bigcount'] = pageBigcount; routes['/bigcountform'] = pageBigcountForm;
 routes['/shortage'] = pageShortage; routes['/shortage-add'] = pageShortageAdd; routes['/shortage-edit'] = pageShortageEdit;
 routes['/short-inv'] = pageShortInv; routes['/short-inv-detail'] = pageShortInvDetail;
