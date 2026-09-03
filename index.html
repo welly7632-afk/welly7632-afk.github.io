@@ -1,48 +1,43 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>倉儲系統</title>
-<link rel="stylesheet" href="style.css?v=29">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>倉儲系統已搬家</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#f4f2f8;font-family:"Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;color:#2f2a3a}
+  .box{max-width:420px;width:calc(100% - 32px);background:#fff;border-radius:16px;
+       box-shadow:0 6px 24px rgba(70,50,110,.12);padding:28px 24px;text-align:center}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:#6b6480;font-size:15px;line-height:1.7;margin:0 0 20px}
+  a.go{display:block;background:#5b3d8f;color:#fff;text-decoration:none;font-size:19px;
+       font-weight:bold;padding:16px;border-radius:12px}
+  a.go:active{background:#4a3175}
+  .note{margin-top:18px;font-size:13px;line-height:1.8;color:#8a8399;text-align:left}
+  .note b{color:#c62828}
+  .cd{font-size:13px;color:#8a8399;margin-top:14px}
+</style>
 </head>
 <body>
-<header id="topbar">
-  <button id="menuBtn" aria-label="選單">☰</button>
-  <h1 id="pageTitle">儲位查詢</h1>
-  <span id="topTime"></span>
-  <span id="userBadge" role="button"></span>
-</header>
-
-<nav id="drawer" class="hidden">
-  <a href="#/home">🏠 首頁</a>
-  <a href="#/storage">🔍 儲位查詢</a>
-  <a href="#/orders">📦 一般點貨(訂貨表)</a>
-  <a href="#/pick346">📦 346點貨</a>
-  <a href="#/pick345">🚢 345點貨</a>
-  <a href="#/bigcount">📋 盤點作業<span class="navcount" id="c_bigcount"></span></a>
-  <a href="#/shortage">❗ 缺貨單<span class="navcount" id="c_shortage"></span></a>
-  <a href="#/second-list">🏬 第二庫存清單</a>
-  <a href="#/short-inv">📝 缺貨登記</a>
-  <a href="#/records?type=count">🗒️ 盤點紀錄<span class="navcount" id="c_count"></span></a>
-  <a href="#/records?type=reloc">🗒️ 改儲位紀錄<span class="navcount" id="c_reloc"></span></a>
-  <a href="https://bestx0114-dev.github.io/call-name/inspection.html" target="_blank">🔔 驗貨呼叫台</a>
-  <a href="#/settings">⚙️ 設定(切換人員)</a>
-  <div id="syncInfo"></div>
-  <button id="syncNowBtn">🔄 手動同步</button>
-</nav>
-<div id="overlay" class="hidden"></div>
-
-<main id="app"></main>
-
-<div id="scanBox" class="hidden">
-  <div id="scanReader"></div>
-  <button id="scanClose">✕ 關閉掃描</button>
+<div class="box">
+  <h1>倉儲系統已經換新版了</h1>
+  <p class="sub">舊版從 2026/09/03 起停用，<br>請改用新版（功能一樣，速度更快）。</p>
+  <a class="go" id="go" href="https://warehouse-web-tw.web.app">前往新版倉儲系統 →</a>
+  <div class="cd" id="cd">5 秒後自動前往…</div>
+  <div class="note">
+    ・第一次進去要用<b>公司的 Google 帳號</b>登入，登入後選自己的名字。<br>
+    ・請把手機書籤改成新版網址。<br>
+    ・如果舊版上還有「待送清單」沒送出去的點貨，<b>先找主管</b>，不要直接關掉。
+  </div>
 </div>
-
-<div id="outboxBar" class="hidden"></div>
-<div id="toast" class="hidden"></div>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="app.js?v=29"></script>
+<script>
+  var n = 5, cd = document.getElementById('cd');
+  var t = setInterval(function () {
+    n--;
+    if (n <= 0) { clearInterval(t); location.replace('https://warehouse-web-tw.web.app'); return; }
+    cd.textContent = n + ' 秒後自動前往…';
+  }, 1000);
+</script>
 </body>
 </html>
