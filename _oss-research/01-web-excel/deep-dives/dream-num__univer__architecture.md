@@ -562,6 +562,41 @@ export async function openWorkbook(univerAPI) {
 | Facade mixin 模式 | `f-univer.ts` L101-L121 | 無 | 低 | 想替自己的工具做「一個入口物件、各模組往上掛方法」時可以參考 |
 | 無介面公式引擎 | `engine-formula` ＋ `ISOMORPHIC.md` | core、rpc、decimal.js | 中高 | 在 Cloud Functions（Node）跑同一套公式，用來批次算成本；細節要另外驗證 |
 
+**自己寫外掛的最小範本（TypeScript）**
+
+照 sheets-note 的結構簡化，用到的 API 都在上文出處確認過；整段沒有實際編譯過。需要 TypeScript 並開啟參數裝飾器。
+
+```ts
+import type { IAccessor, IMutation } from '@univerjs/core';
+import { CommandType, ICommandService, Inject, Injector, Plugin, UniverInstanceType } from '@univerjs/core';
+
+// Mutation：只改資料、參數可序列化（id 依命名規則 <業務>.mutation.<名稱>）
+export const MarkCostCheckedMutation: IMutation<{ unitId: string; subUnitId: string; row: number }> = {
+    id: 'sheet.mutation.mark-cost-checked',
+    type: CommandType.MUTATION,
+    handler: (accessor: IAccessor, params) => {
+        /* 用 accessor.get(IUniverInstanceService) 取活頁簿再改資料 */
+        return true;
+    },
+};
+
+export class UniverCostCheckPlugin extends Plugin {
+    static override pluginName = 'SHEET_COST_CHECK_PLUGIN';     // <業務>_<名稱>_PLUGIN
+    static override type = UniverInstanceType.UNIVER_SHEET;     // 第一本表建立時才載入
+
+    constructor(
+        private readonly _config: Record<string, unknown> = {},
+        @Inject(Injector) override readonly _injector: Injector,
+        @ICommandService private readonly _commandService: ICommandService
+    ) { super(); }
+
+    override onStarting(): void {
+        this.disposeWithMe(this._commandService.registerCommand(MarkCostCheckedMutation));
+    }
+}
+// 使用：univer.registerPlugin(UniverCostCheckPlugin)；之後 univerAPI.executeCommand('sheet.mutation.mark-cost-checked', {...})
+```
+
 ---
 
 ## 坑與限制
