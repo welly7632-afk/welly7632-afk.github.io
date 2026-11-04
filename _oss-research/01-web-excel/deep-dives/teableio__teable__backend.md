@@ -8,7 +8,7 @@
 
 ## 重點結論（5–10 點）
 
-1. **後端是一個 NestJS 單體，而且順便把 Next.js 前端也包進來**：同一個 Node 行程、同一個 port（預設 3000）同時提供 `/api`、WebSocket `/socket` 和網頁。中介資料（空間、Base、資料表、欄位、檢視、權限）用 Prisma 管理（64 個 model）；使用者的試算表資料則是「真正的 PostgreSQL 資料表」：每個 Base 一個 schema、每張表一個實體表、每個欄位一個實體欄位，再加上 `__id`、`__version` 等 7 個系統欄位。
+1. **後端是一個 NestJS 單體，而且順便把 Next.js 前端也包進來**：同一個 Node 行程、同一個 port（預設 3000）同時提供 `/api`、WebSocket `/socket` 和網頁（正式環境如此；開發模式的 WebSocket 另開 `SOCKET_PORT`，見 [ws.module.ts#L7-L16](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/ws/ws.module.ts#L7-L16)）。中介資料（空間、Base、資料表、欄位、檢視、權限）用 Prisma 管理（64 個 model）；使用者的試算表資料則是「真正的 PostgreSQL 資料表」：每個 Base 一個 schema、每張表一個實體表、每個欄位一個實體欄位，再加上 `__id`、`__version` 等 7 個系統欄位。
 2. **正處於「v1 → v2」大改版**：舊路徑（`apps/nestjs-backend` 內的 service＋knex）和新路徑（`packages/v2/*` 共 48 個套件，DDD／CQRS 設計、MIT 授權、與 NestJS 解耦）並存。控制器用 `V2FeatureGuard` 依功能旗標分流，而**新建立的 Base 一律寫入 `v2Enabled: true`**，所以新資料走 v2。要借程式碼，請優先看 v2。
 3. **公式引擎＝ANTLR4（antlr4ts）＋沿用 Baserow（MIT）的語法**。公式屬於 Airtable 式「整欄一條公式、逐列計算」，用 `{欄位}` 參照，**不是 Excel 的 A1 儲存格參照**，沒有 VLOOKUP／SUMIF；跨表查值靠 Link＋Lookup／Rollup 欄位。函式數量：v1 81 個、v2 83 個。
 4. **儲存格的值不是在 JS 裡算，而是把公式翻成 PostgreSQL SQL 交給資料庫算**。v1 能轉的公式直接做成 `GENERATED ALWAYS AS (...) STORED` 欄位；v2 則把公式編成「運算式圖 → SQL（共用子運算式會變成 MATERIALIZED CTE）」，結果寫回一般欄位，依相依層級用 CTE 鏈批次 `UPDATE`。同一張表同步計算，跨表的連鎖更新經資料庫 outbox＋BullMQ 非同步補算。
@@ -254,7 +254,7 @@ commit() {
 
 ## 坑與限制
 
-1. **不是 Excel**：沒有儲存格座標、跨列公式、VLOOKUP／SUMIF，跨表一定要先建 Link 欄位。習慣 Excel 的人會卡在這裡。
+1. **不是 Excel**：沒有儲存格座標、沒有 VLOOKUP／SUMIF，公式也引用不到「上一列」（語法裡只有 `{欄位}` 參照），所以「上一列庫存＋本列進貨」這種累計餘額寫不出來；跨表一定要先建 Link 欄位。習慣 Excel 的人會卡在這裡。
 2. **v1／v2 雙軌**：兩套公式→SQL、兩套查詢組裝、兩套即時推送。讀程式時先確認走哪條路；舊 Base 可能仍走 v1，新 Base 走 v2。
 3. **NOW()／TODAY() 的時間凍結**：v1 若把含 NOW／TODAY 的公式做成生成欄位，值會固定在「欄位建立當下」，驗證器註解寫得很清楚。[generated-column-query-support-validator.postgres.ts#L202-L211](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/db-provider/generated-column-query/postgres/generated-column-query-support-validator.postgres.ts#L202-L211)。v2 儲存型公式如何隨時間自動刷新，我沒找到明確機制（未確認）。
 4. **跨表結果會「晚一點」到**：改了 A 表，B 表的 Lookup／Rollup 要等 outbox worker 算完、再透過 ShareDB 推到畫面；SDK 註解也寫 v2 計算欄位可能尚未更新。[record.ts#L133-L139](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/sdk/src/model/record/record.ts#L133-L139)
