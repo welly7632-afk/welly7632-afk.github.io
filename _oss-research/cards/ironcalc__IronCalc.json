@@ -1,0 +1,135 @@
+{
+  "repo": "ironcalc/IronCalc",
+  "category": "01-web-excel",
+  "commit": "bec55e1e9ba33be147166cd52ed968a89f650a04",
+  "scanned_at": "2026-11-04",
+  "stars": 4247,
+  "license": "MIT OR Apache-2.0（雙授權，任選其一；GitHub 只偵測到 Apache-2.0）",
+  "license_personal_zh": "個人使用：完全自由，可修改、拆用、組合。",
+  "license_commercial_zh": "公司商用：可閉源商用與做 SaaS，只需保留版權與授權聲明（含 CLDR 的 Unicode License 與字型 OFL 聲明）；repo 內未見付費版限定功能。",
+  "one_liner_zh": "Rust 寫的 Excel 相容公式引擎，wasm 在瀏覽器算公式讀寫xlsx",
+  "use_cases_zh": [
+    "在自己的純 JS＋Firebase 倉儲系統中，用 @ironcalc/wasm 計算使用者輸入的 Excel 公式（成本、毛利、安全庫存）",
+    "在瀏覽器直接匯入供應商 .xlsx 報價單、計算後再匯出 .xlsx（@ironcalc/wasm-xlsx，不需伺服器）",
+    "用 embed.js 在網頁嵌入一張可編輯的試算表（展示用）",
+    "用 Python 綁定做每日廣告報表 xlsx 批次計算",
+    "包成 MCP 工具，讓 Claude 寫公式、由引擎算出正確數字"
+  ],
+  "stack": [
+    "Rust",
+    "WebAssembly (wasm-bindgen / wasm-pack)",
+    "TypeScript",
+    "React",
+    "Canvas 2D",
+    "zip + quick-xml",
+    "bitcode",
+    "Python (PyO3)",
+    "Node.js (napi-rs)",
+    "Rocket + SQLite（官方網站後端，選用）",
+    "IndexedDB"
+  ],
+  "run_requirements_zh": "只用公式引擎：純前端載入 npm @ironcalc/wasm（或 wasm-xlsx），可放 Firebase Hosting；不需伺服器、資料庫、GPU、API Key，零費用。自行編譯需 Rust、wasm-pack、Node/pnpm、Python。完整官方網站可 docker compose up 啟動（Rocket+SQLite+Caddy）。wasm 成品大小未確認。",
+  "key_features_zh": [
+    "497 個 Excel 函數（含 37 個舊版相容名稱），含 XLOOKUP、LAMBDA、LET、FILTER、SORT、UNIQUE、TEXTSPLIT、REGEX 系列",
+    "約 225 個在 Excel 中算好的 xlsx 對照測試，確保計算結果一致",
+    "整本重算引擎：循環參照偵測、動態陣列 spill、超深公式鏈不爆堆疊",
+    "瀏覽器端 xlsx 匯入匯出（自製 OOXML 讀寫）",
+    "Canvas 繪製＋只畫可見區域的虛擬捲動，凍結窗格、合併儲存格、條件格式（色階／資料橫條／圖示集）",
+    "復原／重做與 diff 佇列（flushSendQueue／applyExternalDiffs）可做同步",
+    "自動填滿與序列偵測、Excel 數字格式器、命名範圍、表格結構化參照、超連結",
+    "wasm／Node.js／Python 三種綁定，iframe 嵌入 embed.js"
+  ],
+  "reusable_parts": [
+    {
+      "name": "公式引擎 wasm 綁定",
+      "path": "bindings/wasm/src/lib.rs",
+      "difficulty": "低",
+      "note_zh": "直接用 npm @ironcalc/wasm；new Model(name, locale, tz, lang) 必須 4 個參數；批次寫入先 pauseEvaluation。"
+    },
+    {
+      "name": "xlsx 匯入匯出",
+      "path": "xlsx/src/import/mod.rs、xlsx/src/export/mod.rs",
+      "difficulty": "低",
+      "note_zh": "瀏覽器用 @ironcalc/wasm-xlsx 的 Model.fromXlsx / toXlsx；圖表、樞紐、資料驗證、圖片會遺失。"
+    },
+    {
+      "name": "diff 同步佇列",
+      "path": "base/src/user_model/common.rs",
+      "difficulty": "中",
+      "note_zh": "flushSendQueue 的 bytes 寫入 Firestore，其他裝置 applyExternalDiffs；非 OT/CRDT，衝突與順序要自己處理。"
+    },
+    {
+      "name": "React Canvas 試算表元件",
+      "path": "webapp/IronCalc/",
+      "difficulty": "中",
+      "note_zh": "npm @ironcalc/workbook，需 React、i18next、lucide-react；沒有 onChange 事件，需輪詢 flushSendQueue。"
+    },
+    {
+      "name": "iframe 嵌入器",
+      "path": "webapp/embed.ironcalc.com/src/embed.ts",
+      "difficulty": "低",
+      "note_zh": "純 JS 網頁可用；目前只能送資料進去，要把編輯結果傳回需自架並修改 App.tsx。"
+    },
+    {
+      "name": "Excel 數字格式器",
+      "path": "base/src/formatter/",
+      "difficulty": "中",
+      "note_zh": "要與 Excel 顯示一致時參考或移植。"
+    },
+    {
+      "name": "自動填滿序列偵測",
+      "path": "base/src/user_model/sequence_detector.rs",
+      "difficulty": "中",
+      "note_zh": "可請 Claude 翻成 JS 用在自家表格。"
+    },
+    {
+      "name": "IndexedDB 自動存檔",
+      "path": "webapp/app.ironcalc.com/frontend/src/components/storage.ts",
+      "difficulty": "低",
+      "note_zh": "每秒檢查 diff 佇列、有變更才 toBytes 存檔，可改寫成存 Firestore Bytes 或 Storage。"
+    }
+  ],
+  "ai_integration_zh": "專案本身沒有任何 AI／LLM／MCP 程式碼。很適合當 Claude 的計算工具：用 Node.js 或 Python 綁定包成 MCP server（set_cell／get_cell／evaluate／export_xlsx），由 Claude 寫公式、引擎負責正確計算；functions.json 可當函數清單提示。",
+  "claude_support": "可接",
+  "maintenance_zh": "活躍：掃描當天仍有 commit，版本 0.9.1（尚未 1.0）；Rust 測試 2,936 個、CI 含 lint、Rust 與 wasm32-wasip2 測試、codecov；主要由單一核心作者維護，README 自承社群仍小。",
+  "risks_zh": [
+    "每次輸入都整本重算，沒有增量依賴圖；公式很多時編輯會變慢，10 萬列以上效能未實測",
+    "沒有圖表、樞紐分析、篩選／排序介面、資料驗證（下拉選單）、圖片",
+    "沒有繁體中文介面與 zh-TW 地區格式（UI 只有 en/de/es/fr/it）",
+    "沒有現成即時協作伺服器，diff 同步不是 OT/CRDT",
+    "從 Excel／Google 試算表貼上只吃純文字，格式不會一起過來",
+    "wasm README 與 test.html 的 new Model 範例參數過時（實際要 4 個參數）",
+    "嵌入版 iframe 拿不到編輯後的資料；React 元件無 onChange 事件",
+    "內部存檔格式是 bitcode 二進位，不是 JSON，無法直接在 Firestore 查詢儲存格",
+    "0.x 版 API 仍可能變動"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要在自己的純 JS 倉儲系統裡加入「真正的 Excel 公式計算＋xlsx 讀寫」，首選拿 @ironcalc/wasm 當引擎；若要完整線上試算表介面（圖表、篩選、協作）則需搭配其他專案。",
+  "keywords": [
+    "IronCalc",
+    "網頁版 Excel",
+    "試算表引擎",
+    "公式引擎",
+    "Excel 相容",
+    "WebAssembly",
+    "wasm",
+    "Rust",
+    "xlsx 匯入匯出",
+    "Canvas 試算表",
+    "動態陣列",
+    "XLOOKUP",
+    "條件格式",
+    "復原重做",
+    "嵌入試算表",
+    "Firestore",
+    "成本計算",
+    "報價單",
+    "spreadsheet engine",
+    "formula engine",
+    "web spreadsheet",
+    "@ironcalc/wasm",
+    "MIT",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/01-web-excel/ironcalc__IronCalc.md"
+}
