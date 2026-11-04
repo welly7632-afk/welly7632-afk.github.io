@@ -1,0 +1,150 @@
+{
+  "repo": "github/spec-kit",
+  "category": "04-agent-rules-skills",
+  "commit": "38c40ae25a4f1c025e1a2dd6a450095d17acab47",
+  "scanned_at": "2026-11-04",
+  "stars": 147114,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、可把範本與提示詞直接抄進自己的專案。",
+  "license_commercial_zh": "公司商用：可以，含內部工具與對外產品；對外散布修改版時保留 GitHub, Inc. 著作權聲明與 MIT 授權文字即可。社群擴充授權各自不同且未經官方驗證。",
+  "one_liner_zh": "GitHub官方規格驅動工具：專案憲法＋一致性稽核，原生支援Claude",
+  "use_cases_zh": [
+    "借用 constitution 範本寫一份 GPT 與 Claude 共讀的總規則（含版本號與 Sync Impact Report 修訂紀錄）",
+    "把 /speckit.analyze 改寫成每日巡讀技能，抓重複、模糊、遺漏、新舊衝突與術語漂移",
+    "用 agent-context 的受管區塊標記，把同一份規則同步到 AGENTS.md 與 CLAUDE.md",
+    "借用 tasks.md 格式與 converge 的「只追加不改寫」規則，做多 AI 共用任務清單",
+    "日後組合 A＋B＋C 自製工具時，用 specify→plan→tasks→analyze→implement 流程指揮 Claude／Codex"
+  ],
+  "stack": [
+    "Python 3.11+",
+    "Typer",
+    "Rich",
+    "PyYAML",
+    "pydantic",
+    "mcp (stdio)",
+    "Markdown 指令範本",
+    "bash／PowerShell／Python 腳本"
+  ],
+  "run_requirements_zh": "在本機以 uv tool install specify-cli 安裝，specify init <專案> --integration claude（或 codex）。不需 GPU、不需資料庫或伺服器，Spec Kit 本身不呼叫 AI 也不需 API Key；費用來自你使用的 Claude Code／Codex 訂閱或 API。",
+  "key_features_zh": [
+    "9 個核心指令：constitution、specify、clarify、plan、tasks、analyze、implement、converge、checklist",
+    "專案憲法：MUST/SHOULD 原則、SemVer 版本、批准與修訂日期、Sync Impact Report",
+    "analyze 唯讀跨文件稽核：6 類問題＋4 級嚴重度＋固定報告表格＋覆蓋率統計",
+    "converge：比對程式碼與規格，只追加新任務、不改舊任務",
+    "一份指令原稿自動產生 Claude（.claude/skills）與 Codex（.agents/skills）的 SKILL.md，可同專案並存",
+    "agent-context 擴充：以標記區塊同步多個 AI 規則檔",
+    "workflow 引擎：gate 人工關卡、每步可指定不同 AI、可中斷續跑",
+    "擴充 hooks（before_/after_）與執行期事件（session_start、stop 等寫入 Claude/Codex 原生 hook）",
+    "presets 四層優先順序覆寫範本",
+    "實驗性唯讀 MCP 伺服器"
+  ],
+  "reusable_parts": [
+    {
+      "name": "一致性稽核提示詞",
+      "path": "templates/commands/analyze.md",
+      "difficulty": "低",
+      "note_zh": "刪 hooks 段與 {SCRIPT}，把比對對象換成規則檔、交接紀錄、程式碼，存成 patrol 技能"
+    },
+    {
+      "name": "憲法範本",
+      "path": "templates/constitution-template.md",
+      "difficulty": "低",
+      "note_zh": "直接當 docs/RULES.md 骨架"
+    },
+    {
+      "name": "修憲流程（版本規則＋Sync Impact Report）",
+      "path": "templates/commands/constitution.md",
+      "difficulty": "低",
+      "note_zh": "第 96–132 行當成修改規則的 SOP"
+    },
+    {
+      "name": "真實憲法範例",
+      "path": ".specify/memory/constitution.md",
+      "difficulty": "低",
+      "note_zh": "參考 Sync Impact Report 與 Governance 寫法"
+    },
+    {
+      "name": "收斂（只追加）",
+      "path": "templates/commands/converge.md",
+      "difficulty": "低",
+      "note_zh": "巡讀發現遺漏時追加新任務，不准改舊紀錄"
+    },
+    {
+      "name": "任務清單格式",
+      "path": "templates/tasks-template.md",
+      "difficulty": "低",
+      "note_zh": "T 編號＋[P]＋[故事]＋檔案路徑，完成改 [X]"
+    },
+    {
+      "name": "規則檔受管區塊同步",
+      "path": "extensions/agent-context/scripts/python/update_agent_context.py",
+      "difficulty": "低",
+      "note_zh": "_upsert_section 概念可改寫成 Node.js，同步 AGENTS.md 與 CLAUDE.md"
+    },
+    {
+      "name": "各 AI 規則檔預設路徑表",
+      "path": "extensions/agent-context/agent-context-defaults.json",
+      "difficulty": "低",
+      "note_zh": "查各工具讀哪個規則檔"
+    },
+    {
+      "name": "SKILL.md 產生器",
+      "path": "src/specify_cli/integrations/base.py",
+      "difficulty": "中",
+      "note_zh": "SkillsIntegration：一份原稿輸出到多個工具的技能資料夾"
+    },
+    {
+      "name": "人工關卡工作流程",
+      "path": "workflows/speckit/workflow.yml",
+      "difficulty": "高",
+      "note_zh": "需整套 specify CLI；可只借每步後加 gate 的概念"
+    },
+    {
+      "name": "技能 description 範本",
+      "path": ".github/skills/code-review/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "做什麼＋Use when＋Do not use for"
+    }
+  ],
+  "ai_integration_zh": "本身不呼叫模型，只產生指令／技能檔給 AI 工具執行。Claude Code 與 Codex 都是原生技能模式（.claude/skills、.agents/skills），可同專案並存；workflow 每步可指定 integration 與 model，背後執行 claude／codex exec；事件可寫入 .claude/settings.json 與 .codex/config.toml；另有實驗性唯讀 MCP 伺服器。",
+  "claude_support": "原生",
+  "maintenance_zh": "GitHub 官方維護、非常活躍：最新 commit 2026-11-04，1.3.0 於 2026-11-03 發布，一週多版；tests/ 有 364 個 Python 測試檔，CI 含 pytest、ruff、markdownlint、CodeQL。",
+  "risks_zh": [
+    "沒有內建每日巡讀／排程，analyze 只看單一功能的 spec/plan/tasks，需自行改寫與排程",
+    "沒有 AI 角色（persona）設計，分工是「指令＝階段」",
+    "版本變動快，網路舊教學常過時（例如 0.14.4 起 constitution 不再自動同步其他範本）",
+    "analyze 報告可達數百行，長對話中容易吃光上下文",
+    "workflow 的 shell 步驟無沙箱；社群擴充全部未經官方驗證",
+    "會在專案新增 .specify、.claude/skills、.agents/skills 等資料夾，部署 Firebase 時需排除"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不必整套導入，但 constitution 範本、analyze 稽核提示詞與 AGENTS.md／CLAUDE.md 受管區塊同步，是你建立多 AI 共用規則與每日巡讀最值得直接借用的骨架。",
+  "keywords": [
+    "Spec Kit",
+    "spec-kit",
+    "規格驅動開發",
+    "Spec-Driven Development",
+    "專案憲法",
+    "constitution",
+    "共用規則",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "Claude Code",
+    "Codex",
+    "SKILL.md",
+    "技能",
+    "一致性分析",
+    "analyze",
+    "巡讀",
+    "重複偵測",
+    "術語漂移",
+    "版本衝突",
+    "Sync Impact Report",
+    "單一事實來源",
+    "converge",
+    "handoff",
+    "人工關卡",
+    "多 AI 協作"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/github__spec-kit.md"
+}

@@ -1,0 +1,142 @@
+{
+  "repo": "msitarzewski/agency-agents",
+  "category": "04-agent-rules-skills",
+  "commit": "b37b5bb33b78f2c1d6567d98e25ca818e3259219",
+  "scanned_at": "2026-11-04",
+  "stars": 166482,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可任意修改、安裝到自己的 Claude Code／Codex。",
+  "license_commercial_zh": "公司商用：可以，含內部使用與做成產品；對外散布檔案時需附原版權聲明與 MIT 授權文字。推薦的桌面 App 在另一個 repo，其授權與收費未確認。",
+  "one_liner_zh": "283 個 AI 角色＋交接範本，一份檔裝進 Claude 與 Codex",
+  "use_cases_zh": [
+    "拿 Codebase Archaeologist 角色當每日巡讀員，找 AI 漏做、重複實作、新舊寫法衝突、文件與程式不一致",
+    "用 7 種交接單範本統一 GPT（Codex）與 Claude 之間的交棒紀錄",
+    "建立「總管拆任務 → 實作 → 另一個 AI 驗收 → 最終把關」的 Dev↔QA 迴圈，失敗 3 次升級",
+    "把 check-agent-originality.sh 的重複偵測改寫來掃自己的規則檔與文件",
+    "學 divisions.json／tools.json＋CI 檢查的「單一事實來源」寫法，防止清單新舊不一致",
+    "用 Paid Media 七個角色做廣告帳戶健檢、用 Pricing Analyst 做定價與成本分析的顧問",
+    "用 convert.sh 的模式，一份角色檔同時產生 Claude Code 與 Codex 格式"
+  ],
+  "stack": [
+    "Markdown + YAML frontmatter",
+    "Bash (bash 3.2 相容)",
+    "awk",
+    "Python 3（檢查腳本）",
+    "JSON 目錄檔",
+    "GitHub Actions CI"
+  ],
+  "run_requirements_zh": "不需伺服器、資料庫、GPU 或 API Key。Claude Code 直接複製 .md 到 ~/.claude/agents/；其他工具先跑 scripts/convert.sh 再跑 scripts/install.sh（Windows 需 WSL 或 Git Bash）。費用＝你原本 Claude／ChatGPT 的訂閱或 API 用量。MCP 記憶需自備伺服器。",
+  "key_features_zh": [
+    "283 個角色、18 個部門（逐檔計數），固定章節：身分、使命、紅線規則、交付物、流程、成功指標",
+    "一份來源轉 17 種工具格式：Claude Code、Codex TOML、Cursor .mdc、Agent Skills SKILL.md 等",
+    "NEXUS 七階段多代理管線、指揮結構、品質閘門、最多重試 3 次的 Dev↔QA 迴圈",
+    "7 種交接範本：一般、QA 通過、QA 退件、升級、階段閘門、衝刺、事故",
+    "Codebase Archaeologist：多 AI 工具漂移稽核，四視圖登記表（依發現／時期／責任／風險）",
+    "重複角色偵測（實體名稱中和＋8 字 shingle Jaccard，20% 警告、40% 失敗）",
+    "divisions.json／tools.json／runbooks.json 單一事實來源＋CI 一致性檢查＋產物雜湊漂移清單"
+  ],
+  "reusable_parts": [
+    {
+      "name": "每日巡讀員角色（漂移稽核）",
+      "path": "specialized/specialized-codebase-archaeologist.md",
+      "difficulty": "低",
+      "note_zh": "複製到 .claude/agents/ 或轉成 Codex TOML；改中文並把範例換成庫存、單價、成本等自己的檔名"
+    },
+    {
+      "name": "交接單範本",
+      "path": "strategy/coordination/handoff-templates.md",
+      "difficulty": "低",
+      "note_zh": "放進 docs/handoff/，在 AGENTS.md／CLAUDE.md 規定交棒前必填"
+    },
+    {
+      "name": "重複內容偵測",
+      "path": "scripts/check-agent-originality.sh",
+      "difficulty": "中",
+      "note_zh": "抽出 heredoc 內的 Python，改掃 docs/、rules/；中文需改成字元 n-gram，原版正規式會濾掉中文"
+    },
+    {
+      "name": "單一事實來源一致性檢查",
+      "path": "scripts/check-divisions.sh",
+      "difficulty": "中",
+      "note_zh": "概念套到 Firestore collection 或欄位清單：權威 JSON vs 程式實際使用，不一致就報錯"
+    },
+    {
+      "name": "產物雜湊漂移清單",
+      "path": "scripts/test-convert-outputs.sh",
+      "difficulty": "中",
+      "note_zh": "對規則檔與共用設定算 SHA-256 清單，巡讀時比對誰變了"
+    },
+    {
+      "name": "一份角色轉多工具格式",
+      "path": "scripts/convert.sh",
+      "difficulty": "中",
+      "note_zh": "參考 convert_codex 與 convert_antigravity，自己的 roles/*.md 同時產生 Claude subagent 與 Codex TOML"
+    },
+    {
+      "name": "角色定義範本（含不負責什麼、可用工具）",
+      "path": "engineering/engineering-multi-agent-systems-architect.md",
+      "difficulty": "低",
+      "note_zh": "L392-L423 範本直接當每個 AI 角色的規格書"
+    },
+    {
+      "name": "總指揮＋驗收角色組",
+      "path": "specialized/agents-orchestrator.md",
+      "difficulty": "中",
+      "note_zh": "需改掉 Laravel 範例與不存在的 qa-playwright-capture.sh；搭配 testing-evidence-collector、testing-reality-checker、project-manager-senior"
+    },
+    {
+      "name": "文件連動更新與每日／每週節奏",
+      "path": "specialized/specialized-chief-of-staff.md",
+      "difficulty": "低",
+      "note_zh": "L68-L78 文件依賴圖、L154-L198 每日站會／每週結算／跨工具交接"
+    },
+    {
+      "name": "廣告帳戶稽核角色",
+      "path": "paid-media/paid-media-auditor.md",
+      "difficulty": "低",
+      "note_zh": "季度廣告健檢；200+ 檢查點清單並不在檔案中，需自行補"
+    }
+  ],
+  "ai_integration_zh": "不綁模型（283 個角色皆無 model 欄位）。Claude Code 原生：角色檔即 subagent 格式，17 個角色用 tools 欄位限制工具。Codex 轉成 ~/.codex/agents/*.toml（name、description、developer_instructions），tools 限制不會帶過去。SKILL.md 只產生給 Antigravity／Osaurus／DeepSeek Harness。MCP 只提供記憶整合寫法（remember／recall／rollback／search），不附伺服器。沒有排程或 hook。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：HEAD 為 2026-10-24 合併的 PR #1177；6 支 CI（lint、重複偵測、部門／工具／runbook 一致性、安裝器 Linux＋macOS），22 支回歸測試腳本。測的是轉換與安裝，不測角色內容品質。總 commit 數未確認（淺層 clone）。",
+  "risks_zh": [
+    "不是共用規則框架：沒有根目錄 AGENTS.md／CLAUDE.md、沒有規則分層與優先順序",
+    "沒有自動排程巡檢，每日巡讀要自己用 cron／GitHub Actions 排",
+    "角色之間有漂移：Orchestrator 稱 ArchitectUX／EvidenceQA，與實際角色名不同；任務清單路徑兩處寫法不同；引用不存在的 ai/agents/pm.md 與 qa-playwright-capture.sh",
+    "多個核心角色範例寫死 Laravel／FluxUI，需改成純 JS＋Firebase",
+    "全部安裝 283 個會很雜，建議只挑 10～15 個",
+    "角色是方法論提示詞，宣稱的檢查清單不一定真的寫在檔案裡",
+    "install.sh 會寫入家目錄設定資料夾，執行前應先閱讀"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "多 AI 協作最值得抄的是「巡讀員角色＋交接單＋單一事實來源檢查」，挑 5～6 個角色改成中文即可；共用規則分層要另找工具搭配。",
+  "keywords": [
+    "agency-agents",
+    "AI 角色庫",
+    "subagent",
+    "子代理",
+    "Claude Code",
+    "Codex",
+    "SKILL.md",
+    "多代理協作",
+    "multi-agent",
+    "NEXUS",
+    "Agents Orchestrator",
+    "交接範本",
+    "handoff",
+    "Dev↔QA 迴圈",
+    "品質閘門",
+    "Reality Checker",
+    "Codebase Archaeologist",
+    "漂移偵測",
+    "drift detection",
+    "重複偵測",
+    "單一事實來源",
+    "巡讀",
+    "每日巡檢",
+    "廣告投放稽核",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/msitarzewski__agency-agents.md"
+}

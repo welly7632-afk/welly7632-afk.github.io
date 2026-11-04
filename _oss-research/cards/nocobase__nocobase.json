@@ -1,0 +1,58 @@
+{
+  "repo": "nocobase/nocobase",
+  "category": "02-price-erp",
+  "commit": "3681eb091e6785c395b8ba7e511857aa4b3d23c5",
+  "scanned_at": "2026-11-04",
+  "stars": 24837,
+  "license": "自訂授權：v3-develop 無根目錄 LICENSE，88 個套件中僅 14 個標 Apache-2.0（核心 app-server/app-client/db 未標）；舊版 main 分支為 NocoBase License Agreement（Apache-2.0＋附加條款）",
+  "license_personal_zh": "個人使用：自架自用沒問題。",
+  "license_commercial_zh": "公司商用：v2 條款可商用但須保留介面上的 NocoBase 品牌資訊、不得做成對外的無程式碼／AI 平台 SaaS；v3 核心套件尚未標授權，正式商用前需向官方確認。審核（Approval）、Redis 後端、部分資料庫驅動為付費 Pro 套件。",
+  "one_liner_zh": "讓 Claude Code 寫業務系統的開源地基框架（v3 beta）",
+  "use_cases_zh": [
+    "參考採購範例（供應商、物料、申請單、明細、報價 vs 目錄價價差）設計自己的進貨／報價模組",
+    "把金額整數化（分）與價差計算的小函式抄進自己的 Firebase 倉儲系統",
+    "參考 AI 結構化擷取的 prompt 與 JSON Schema，把廠商報價訊息自動轉成進貨明細",
+    "用 Carbone 套 DOCX 範本產生報價單／發票 PDF",
+    "學它如何把開發規則寫成 Claude Code Skills",
+    "若願意改用 Node 伺服器＋SQL，可直接開一個 NocoBase 3 App 讓 Claude Code 寫進銷存"
+  ],
+  "stack": ["TypeScript", "Node.js 24+", "pnpm 11", "Hono", "React 19", "Vite", "Tailwind", "shadcn/ui", "TanStack Table", "knex", "SQLite", "PostgreSQL", "MySQL", "SQL Server", "Oracle", "Better Auth", "Vercel AI SDK", "Claude Agent SDK", "Carbone"],
+  "run_requirements_zh": "Node.js 24 以上＋pnpm 11（Windows 需 WSL），預設 SQLite 免另裝資料庫；PM2 或 Docker 自架，不需 GPU。AI 功能需各家模型 API Key（Anthropic/OpenAI/Google 等，按量計費）或用自己的 Claude Code 訂閱經 Runner 執行；PDF 列印需 LibreOffice。框架本身免費，所有套件目前為 beta。",
+  "key_features_zh": [
+    "Schema as code：defineMigration＋createCollection 定義資料表",
+    "自動 CRUD API（defineRepositoryApiRoutes）與 OpenAPI 文件",
+    "角色權限、資料列權限、分享／限制規則、API Key",
+    "@nocobase/lifecycle 狀態機（訂單、購買、發票、請款範例）",
+    "46 個可複製原始碼的 UI 元件（資料表格、看板、審核、收件匣、AI 對話）",
+    "Agent Runner：在本機或伺服器執行 Claude Code／Codex／OpenCode／Pi",
+    "模型閘道：多家 LLM、用量與成本記錄、知識庫 embedding",
+    "38 份 SKILL.md，讓 coding agent 依規範開發"
+  ],
+  "reusable_parts": [
+    {"name": "金額分化與加總", "path": "packages/app/app-skills/skills/nocobase-app-development/assets/business-examples/procurement/shared/procurement.ts", "difficulty": "低", "note_zh": "約 17 行，改成純 JS 放進 Firebase 系統，避免浮點誤差；台幣可改 0 位小數"},
+    {"name": "報價 vs 目錄價價差", "path": "packages/app/app-skills/skills/nocobase-app-development/assets/business-examples/procurement/client/pages/procurement/detail.tsx", "difficulty": "低", "note_zh": "priceDifference() 顯示每單位 +/− 價差，可用在進貨單明細"},
+    {"name": "採購四張表資料模型", "path": "packages/app/app-skills/skills/nocobase-app-development/assets/business-examples/procurement/database/main/migrations/202611040001_create_procurement.ts", "difficulty": "低", "note_zh": "供應商、物料（含單價）、申請單、明細（含報價快照），照著設計 Firestore collection"},
+    {"name": "decimal 字串工具", "path": "packages/libs/db/src/numeric/decimal.ts", "difficulty": "低", "note_zh": "純 BigInt，不經 JS number 四捨五入，適合成本／匯率計算"},
+    {"name": "AI 結構化擷取 prompt＋schema", "path": "packages/templates/app-template-examples/server/providers/structured-extraction-service.ts", "difficulty": "低", "note_zh": "只取 prompt 與 JSON Schema，直接呼叫 Claude API 把廠商報價文字轉進貨明細"},
+    {"name": "TanStack 資料表格", "path": "ui-library/registry/components/data-table/data-table.tsx", "difficulty": "中", "note_zh": "需 React＋shadcn；排序／篩選／分頁／欄位顯示，無儲存格編輯與公式"},
+    {"name": "DOCX/PDF 報價單列印", "path": "packages/examples/app-plugin-template-print-example/server/routes/template-print.ts", "difficulty": "中", "note_zh": "carbone.render 套 DOCX 範本，PDF 需 LibreOffice，放 Node 伺服器或 Cloud Functions"},
+    {"name": "Claude Code runner adapter", "path": "packages/app/agent-runner/src/agent/adapters/claude.ts", "difficulty": "高", "note_zh": "用 @anthropic-ai/claude-agent-sdk 驅動 Claude Code，做網頁派工給本機 Claude 時參考"}
+  ],
+  "ai_integration_zh": "兩條路線：(1) Agent Runner 以 @anthropic-ai/claude-agent-sdk 等原生 adapter 驅動 Claude Code／Codex／OpenCode／Pi；(2) OnlineAgent／模型閘道透過 Vercel AI SDK 接 OpenAI、Anthropic、Google、DeepSeek、阿里、Moonshot、Cohere、Ollama、OpenAI 相容端點，記錄用量與成本。開發方式本身就是 Claude Code＋38 份 Skills。v3 未找到 MCP server（v2 main 分支有 plugin-mcp-server）。無影片／腳本生成功能。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：掃描當日仍有 push，.changeset 1,542 檔、2,073 個測試檔、33 個 workflow；但 v3 為全面重寫且全部套件仍為 beta。",
+  "risks_zh": [
+    "v3 全部套件為 beta，API 可能變動",
+    "v3 核心套件未標授權，根目錄無 LICENSE",
+    "v3 與 v2（無程式碼版）架構完全不同，網路教學多為 v2，容易混淆",
+    "沒有現成進銷存／庫存／成本模組，只有範例",
+    "不支援 Firebase／Firestore，需改用 SQL 或用 API 串接",
+    "repository-routes 基本 adapter 不含驗證授權，照抄會開出無保護 API",
+    "審核等功能為付費 Pro 外掛",
+    "Runner 會在本機執行 coding agent，需注意權限"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不是現成 ERP 也不是網頁 Excel，但它的採購範例、金額計算、AI 擷取與 Claude Code Skills 寫法很值得抄進你的倉儲系統。",
+  "keywords": ["NocoBase", "NocoBase 3", "無程式碼", "低程式碼", "Claude Code", "Claude Agent SDK", "Skills", "ERP", "採購單", "procurement", "報價", "價差", "金額整數化", "decimal", "TanStack Table", "Hono", "React", "SQLite", "PostgreSQL", "狀態機", "權限", "API Key", "Carbone", "AI 結構化擷取", "Apache-2.0"],
+  "pack_path": "_oss-research/02-price-erp/nocobase__nocobase.md"
+}

@@ -86,7 +86,7 @@ apitable/
 │   │       ├── compute_manager/    ★ 計算欄位相依圖（ComputeRefManager）＋快取
 │   │       ├── engine/ot/          ★ json0 OT 動作定義與 apply（可走 WASM）
 │   │       ├── command_manager/    指令執行、UndoManager（最多 50 步）
-│   │       ├── commands/datasheet/ 46 個表格指令：貼上、填滿、加列、改欄、排序、篩選…
+│   │       ├── commands/datasheet/ 45 個表格指令檔：貼上、填滿、加列、改欄、排序、篩選…
 │   │       ├── model/field/        28 種欄位型別的行為（cellValueToString、驗證…）
 │   │       ├── modules/database/store/interfaces/resource/datasheet/datasheet.ts  ★ 資料模型（ISnapshot/IRecord/IMeta/View）
 │   │       ├── types/field_types.ts★ FieldType 列舉、各欄位 property
@@ -220,7 +220,7 @@ apitable/
 
 **資安／隱私：**
 - `.env` 預設密碼 `apitable@com`（MySQL、Redis、MinIO 都是），對外上線前必改。
-- 貼上 HTML 時直接 `measureContainer.innerHTML = html`，檔內沒有 sanitize（`html_parser.ts#L32-L33`）。在偵離 DOM 的 `div` 上設 innerHTML，`<img onerror>` 這類屬性在瀏覽器裡仍可能被觸發；**我沒有實際測試**，但你拆這段去用時請加 DOMPurify（前端依賴裡其實就有 `dompurify`）。
+- 貼上 HTML 時直接 `measureContainer.innerHTML = html`，檔內沒有 sanitize（`html_parser.ts#L32-L33`）。在脫離 DOM 的 `div` 上設 innerHTML，`<img onerror>` 這類屬性在瀏覽器裡仍可能被觸發；**我沒有實際測試**，但你拆這段去用時請加 DOMPurify（前端依賴裡其實就有 `dompurify`）。
 - 有欄位權限（`fieldPermissionMap`），公式取值時對無權限欄位會遮蔽。
 
 **遙測：**
@@ -295,7 +295,7 @@ apitable/
 
 **多人即時協作**
 - **有，OT（json0）**：前端 socket.io 送 changeset（帶 baseRevision），room-server 用 Redis 鎖＋transform＋revision 檢查後廣播給同一「房間」。https://github.com/apitable/apitable/blob/c9255a752a85913e2e6b362ff6c306b0fc3585df/packages/core/src/sync/readme.md 、https://github.com/apitable/apitable/blob/c9255a752a85913e2e6b362ff6c306b0fc3585df/packages/room-server/src/database/ot/services/ot.service.ts#L234-L303
-- **需要的伺服器**：room-server（Node）＋ Redis ＋ MySQL ＋ RabbitMQ（＋ backend-server 處理登入／權限）。另外有協作者游標（`ENGAGEMENT_CURSOR`）。WorkDoc 文件欄位則用 Yjs（CRDT，`@hocuspocus/provider`、`yjs`）。
+- **需要的伺服器**：room-server（Node）＋ Redis ＋ MySQL ＋ RabbitMQ（＋ backend-server 處理登入／權限）。另外有協作者游標（`ENGAGEMENT_CURSOR`）。前端 package.json 也列了 `yjs`、`@hocuspocus/provider`（CRDT），但我在 `datasheet/src` 搜不到使用處，推測給 WorkDoc 企業功能用（未確認）。
 
 **資料模型**
 - **有，JSON 快照**：https://github.com/apitable/apitable/blob/c9255a752a85913e2e6b362ff6c306b0fc3585df/packages/core/src/modules/database/store/interfaces/resource/datasheet/datasheet.ts#L49-L160 。簡短範例（依介面整理，ID 為示意）：
@@ -357,7 +357,7 @@ async function setQty(recordId, qty) {
 listLowStock().then(rows => console.table(rows.map(x => x.fields)));
 </script>
 ```
-（路由、`Bearer`、`filterByFormula`、`fieldKey` 預設 name 都在 room-server 原始碼中確認過；回應 JSON 的 `data.records[].fields` 形狀與 PATCH body 形狀是依 `ros/record.update.ro.ts`、`vos` 命名推斷，未實際呼叫驗證。）
+（路由、`Bearer`、`filterByFormula`、`fieldKey` 預設 name 都在 room-server 原始碼中確認過；回應包在 `ApiResponse.data`（`vos/api.response.ts`）、分頁物件有 `records`（`vos/api.page.ts`），PATCH body 的 `{records:[{recordId, fields}]}` 取自 `ros/record.update.ro.ts` 的範例；未實際呼叫驗證。）
 
 **API／事件**
 - **監聽變更：有。** 外部：沒有開源版 outbound webhook 訂閱 API（未確認），但可用「自動化（紀錄建立／更新觸發）＋Webhook 動作」推到你的網址；內部：`event_manager/events/datasheet/cell_updated.ts` 等事件；Widget SDK 的 hooks 會自動隨資料更新重繪。

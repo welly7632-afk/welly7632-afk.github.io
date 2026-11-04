@@ -1,0 +1,144 @@
+{
+  "repo": "digitalsamba/claude-code-video-toolkit",
+  "category": "03-video-script",
+  "commit": "a50da9e7e78a162b58a4fb9e1c3a4008e831b8dc",
+  "scanned_at": "2026-11-04",
+  "stars": 2435,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：工具箱本身 MIT，自由使用與修改；但它呼叫的模型與服務（Remotion、FLUX.2、LTX-2、Ideogram、ElevenLabs 等）各有授權與付費條款。",
+  "license_commercial_zh": "公司商用：程式碼 MIT 可商用、可閉源；注意 FLUX.2 klein-9B 為非商用授權（預設 klein-4B 為 Apache-2.0 可商用）、LTX-2 年營收 1,000 萬美元以下免費但不得移除浮水印、Remotion 公司使用可能需買公司授權（repo 未說明，未確認）、Ideogram 需付費方案才有商用授權。",
+  "one_liner_zh": "Claude Code 原生影片工具箱：腳本、配音、生圖、配樂、字幕到 MP4",
+  "use_cases_zh": [
+    "用 video_job.py 從分鏡 JSON 自動產出 9:16 商品知識短片（每支約 0.5～1 美元）",
+    "用 Ideogram 4 做帶文字的廣告標題卡、促銷卡與 YouTube 縮圖",
+    "用 LTX-2 把商品照片做成 5 秒動態鏡頭（image-to-video）",
+    "用 synthetic-ui-demo 技能讓 Claude 讀自家倉儲 App 程式碼，做操作教學影片",
+    "用 cutdown.py 把橫式廣告片轉成 9:16／1:1／4:5",
+    "用 ACE-Step 生背景音樂、sfx.py 生音效",
+    "拆出 cloud_gpu.py＋Modal 部署檔，給自己的工具呼叫 TTS／生圖端點"
+  ],
+  "stack": [
+    "Python 3.10+（uv）",
+    "moviepy 2",
+    "Pillow",
+    "Remotion 4.0.539（React/TypeScript）",
+    "Node.js 22+",
+    "Playwright",
+    "ffmpeg",
+    "Modal",
+    "RunPod",
+    "Cloudflare R2",
+    "FastMCP"
+  ],
+  "run_requirements_zh": "本機需 Node.js 22+、uv（Python 3.10+）、Claude Code，ffmpeg 選用；AI 生成全在雲端 GPU：Modal（Starter 方案每月 30 美元免費額度）或 RunPod，LTX-2 需 A100-80GB 與 HuggingFace 權重申請。API Key 全部選填：ELEVENLABS_API_KEY、IDEOGRAM_API_KEY、ACEMUSIC_API_KEY（免費）、R2 金鑰、RunPod key、YouTube OAuth。程式內建價目：Qwen3 配音約 $0.01／場景、FLUX 圖約 $0.0075、LTX 5 秒片段約 $0.10、Ideogram $0.03–0.10／張；README 範例 52 秒短片約 $0.80。",
+  "key_features_zh": [
+    "15 個斜線指令（/video、/setup、/generate-voiceover、/voice-clone、/thumbnail、/publish 等）與 13 個 Claude Code 技能資料夾",
+    "video_job.py：brief/spec→配音→畫面→字幕→配樂→合成→品管→MP4 的非同步流水線，含事前報價、預算上限、失敗續跑",
+    "MCP 伺服器 video_mcp.py（8 個工具）",
+    "TTS：Qwen3-TTS（9 個內建聲音含 5 個中文、聲音複製、聲音設計）、ElevenLabs、60db",
+    "畫面：FLUX.2、Ideogram 4／4.5、LTX-2.3、Qwen-Image 編輯、放大、SoulX／SadTalker 說話頭像",
+    "字幕：whisper 或 ElevenLabs Scribe 逐字時間軸，並以原稿對齊",
+    "合成：純 Python 直式範本（moviepy）與 5 個 Remotion 範本、14 個元件、7 個轉場",
+    "qc.py 品管：缺檔、時間、語速、LUFS 音量、版面與對比度"
+  ],
+  "reusable_parts": [
+    {
+      "name": "非同步影片工作佇列（預算、續跑、收據）",
+      "path": "tools/video_job.py",
+      "difficulty": "中",
+      "note_zh": "run_pipeline 支援 steps= 注入，可換成自己的步驟；預算檢查與鎖的設計可直接抄。"
+    },
+    {
+      "name": "brief→分鏡 prompt 與自我修正迴圈",
+      "path": "tools/video_job.py",
+      "difficulty": "低",
+      "note_zh": "EXPANDER_INSTRUCTIONS 翻成中文、改成商品賣點→分鏡，用 claude -p 當 expander。"
+    },
+    {
+      "name": "配音驅動時間軸的 moviepy 合成器",
+      "path": "templates/concept-explainer-short/build.py",
+      "difficulty": "低",
+      "note_zh": "460 行單檔；需加 Noto Sans TC 字型並改成逐字斷行才能顯示中文。"
+    },
+    {
+      "name": "統一雲端 GPU 呼叫器",
+      "path": "tools/cloud_gpu.py",
+      "difficulty": "低",
+      "note_zh": "call_cloud_endpoint 統一處理 Modal／RunPod 送出、輪詢、逾時與費用估算。"
+    },
+    {
+      "name": "Modal 模型部署檔",
+      "path": "docker/modal-qwen3-tts/app.py",
+      "difficulty": "中",
+      "note_zh": "modal deploy 後得到 HTTPS 端點，其他專案或 Firebase Cloud Functions 都能 POST 呼叫。"
+    },
+    {
+      "name": "腳本對齊字幕",
+      "path": "tools/captions.py",
+      "difficulty": "中",
+      "note_zh": "difflib 對齊演算法可用，但 norm() 只保留 a-z0-9，中文需改寫正規化與斷詞。"
+    },
+    {
+      "name": "Remotion 字幕元件與轉場",
+      "path": "lib/components/Captions.tsx",
+      "difficulty": "低",
+      "note_zh": "吃 @remotion/captions 格式 JSON；lib/transitions 的 7 個轉場可直接 import。"
+    },
+    {
+      "name": "橫轉直／剪短",
+      "path": "tools/cutdown.py",
+      "difficulty": "低",
+      "note_zh": "只需 ffmpeg，獨立可用。"
+    },
+    {
+      "name": "MCP 包裝範例",
+      "path": "tools/video_mcp.py",
+      "difficulty": "低",
+      "note_zh": "178 行，示範把 CLI 工具包成 MCP，可套用到自己的價格查詢工具。"
+    }
+  ],
+  "ai_integration_zh": "專為 Claude Code 設計：CLAUDE.md（915 行）＋15 個斜線指令＋13 個技能資料夾，Claude 本身負責寫腳本與分鏡；程式內沒有直接呼叫 Anthropic API。另有 MCP 伺服器（video_mcp.py）、給其他 agent 的 skills/video-toolkit/SKILL.md，以及 VIDEO_JOB_EXPANDER（文件範例 claude -p）把 brief 展開成 spec。生成模型：Qwen3-TTS、ElevenLabs、60db、FLUX.2、Ideogram 4、LTX-2.3、ACE-Step 1.5、SoulX、SadTalker、whisper／Scribe。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最後 push 2026-11-04，v0.24.0 於 2026-11-01 發布，7 個 GitHub Actions；測試集中在 video_job.py（63 個 test 函式），其他工具幾乎無單元測試。",
+  "risks_zh": [
+    "未設定 Cloudflare R2 時，素材會被上傳到公開暫存站 litterbox.catbox.moe（24 小時）或 0x0.st（30 天）",
+    "字幕對齊與語速計算只處理英文，中文需修改 captions.py 與 pacing.py",
+    "Python 範本只找英文字型且以空白斷行，中文會變方塊、不換行",
+    "brief→spec prompt 寫死英文旁白與英文字數預算",
+    "LTX-2 需 A100-80GB 與 Gemma 權重人工審核，部署門檻高",
+    "FLUX.2 klein-9B 非商用、LTX-2 不得移除浮水印、Remotion 公司授權需自查",
+    "dewatermark.py 內建 Sora 浮水印移除預設，有違反平台條款與 AI 標示規定的風險",
+    "RunPod 路線使用作者個人 ghcr.io 預建 Docker 映像",
+    "不適合短劇：沒有角色一致性與多角色對話分鏡"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合用來做電商商品解說短片與廣告素材的 Claude Code 原生工具箱；先設定 R2、補中文字型與中文字幕，再拆 build.py＋video_job.py 當自己的出片流水線。",
+  "keywords": [
+    "claude-code-video-toolkit",
+    "Claude Code",
+    "AI 影片",
+    "短影音",
+    "直式影片",
+    "解說影片",
+    "商品影片",
+    "廣告素材",
+    "腳本生成",
+    "分鏡",
+    "配音",
+    "TTS",
+    "Qwen3-TTS",
+    "聲音複製",
+    "字幕",
+    "配樂",
+    "ACE-Step",
+    "LTX-2",
+    "FLUX.2",
+    "Ideogram",
+    "Remotion",
+    "moviepy",
+    "Modal",
+    "MCP",
+    "Skills"
+  ],
+  "pack_path": "_oss-research/03-video-script/digitalsamba__claude-code-video-toolkit.md"
+}

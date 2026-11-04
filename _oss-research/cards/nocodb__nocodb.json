@@ -1,0 +1,149 @@
+{
+  "repo": "nocodb/nocodb",
+  "category": "01-web-excel",
+  "commit": "5f2e38194e0bda13d8818a412bd4d723fd944cb8",
+  "scanned_at": "2026-11-04",
+  "stars": 65421,
+  "license": "自訂授權：Sustainable Use License 1.0（2026/1/29 起，非 OSI 開源；舊版曾為 AGPL-3.0）",
+  "license_personal_zh": "個人使用：可以免費使用、修改；非商業目的也可免費散布（須保留授權與版權聲明）。",
+  "license_commercial_zh": "公司商用：僅限「自家公司內部業務」使用（例如自己管庫存、價格）；不可轉賣、不可包成 SaaS／付費服務提供他人。拆出的程式碼片段同樣受限，要商品化須自行重寫。復原、即時協作、條件格式、AI、Gantt 等屬付費版（EE）。",
+  "one_liner_zh": "自架Airtable替代品：試算表介面管SQL資料庫，MCP接Claude",
+  "use_cases_zh": [
+    "自架商品／庫存／進貨成本表，用關聯＋Lookup＋Rollup＋公式欄做輕量 ERP",
+    "比價資料庫：匯入各通路價格 csv／xlsx，公式算價差、篩選排序找最低價",
+    "透過內建 MCP 讓 Claude Code／Claude Desktop 直接查詢與更新資料表",
+    "當自家純 JS 倉儲網頁的後端 REST API（v2／v3，xc-token）",
+    "Webhook 觸發 Firebase Cloud Function 同步到 Firestore",
+    "參考其 Canvas 表格的 TSV 貼上、拖拉填滿數列推算、虛擬捲動寫法"
+  ],
+  "stack": [
+    "TypeScript",
+    "Vue 3",
+    "Nuxt 4",
+    "ant-design-vue",
+    "HTML Canvas",
+    "NestJS",
+    "Knex",
+    "PostgreSQL",
+    "SQLite",
+    "MySQL",
+    "ExcelJS",
+    "SheetJS",
+    "papaparse",
+    "socket.io",
+    "Docker"
+  ],
+  "run_requirements_zh": "Docker 一行指令即可（預設 SQLite，正式建議 PostgreSQL）；後端 Node ≥ 24；無 GPU 需求，1–2GB RAM 的 VPS 或家用電腦即可（經驗估計）。核心不需任何 API Key、自架免費；附件可接 S3／GCS／R2（需自備帳號）。預設送遙測，設 NC_DISABLE_TELE=1 關閉。",
+  "key_features_zh": [
+    "Canvas 繪製的 Grid，列欄雙向虛擬捲動，前端 50 列一塊分塊載入",
+    "46 種欄位型別（含貨幣、單選下拉、附件、關聯、Lookup、Rollup、公式）",
+    "70 個公式函數（數 formulas.ts 頂層鍵），由資料庫在查詢時計算（公式轉 SQL）",
+    "可直接從 Excel／Google 試算表貼上（TSV，單次上限 5000 列），複製時同時輸出 HTML＋TSV",
+    "拖拉填滿支援 Google 試算表式數列遞增",
+    "凍結左側欄、拖拉欄寬、整體列高、多欄排序、巢狀篩選、分組與彙總列",
+    "csv／xlsx／json 匯入與匯出（ExcelJS 串流，只保留值與數字格式）",
+    "Grid／Gallery／Form／Kanban／Calendar 檢視，公開分享可 iframe 嵌入",
+    "內建 MCP 伺服器（13 個工具）並產生 Claude Code 設定指令",
+    "REST API v2／v3、Webhook、20+ 儲存與通知外掛、繁體中文介面約 80%"
+  ],
+  "reusable_parts": [
+    {
+      "name": "拖拉填滿數列推算",
+      "path": "packages/nocodb-sdk/src/lib/columnHelper/utils/fill-handler.ts",
+      "difficulty": "低",
+      "note_zh": "209 行純函式，只依賴 decimal.ts／is.ts；改寫成純 JS 即可接到任何表格的填滿功能"
+    },
+    {
+      "name": "Excel／Google 試算表 TSV 貼上解析",
+      "path": "packages/nc-gui/components/smartsheet/grid/canvas/composables/useCopyPaste.ts",
+      "difficulty": "低",
+      "note_zh": "L395–445：讀 text/plain、去結尾換行、papaparse 以 \\t 切成二維陣列；可直接搬進倉儲網頁"
+    },
+    {
+      "name": "複製成 HTML＋TSV 雙格式",
+      "path": "packages/nc-gui/components/smartsheet/grid/canvas/composables/useCopyPaste.ts",
+      "difficulty": "低",
+      "note_zh": "L1320–1345：ClipboardItem 同時寫 text/html 與 text/plain，讓資料可貼回 Excel"
+    },
+    {
+      "name": "公式函數定義表",
+      "path": "packages/nocodb-sdk/src/lib/formula/formulas.ts",
+      "difficulty": "中",
+      "note_zh": "70 個函數的語法、說明、範例與參數驗證，可當公式自動完成提示資料；實際計算需自行補 JS 引擎"
+    },
+    {
+      "name": "Canvas 儲存格渲染器",
+      "path": "packages/nc-gui/components/smartsheet/grid/canvas/cells/",
+      "difficulty": "中",
+      "note_zh": "每型別一個 render(ctx, props)；需替換 Nuxt 自動匯入的全域工具後可移植到 Glide Data Grid custom cell"
+    },
+    {
+      "name": "虛擬捲動＋分塊載入",
+      "path": "packages/nc-gui/composables/useInfiniteData.ts",
+      "difficulty": "中",
+      "note_zh": "CHUNK_SIZE=50／MAX_CACHE_SIZE=200 的概念可套到 Firestore 分頁查詢"
+    },
+    {
+      "name": "Excel 串流匯入／匯出",
+      "path": "packages/nocodb/src/modules/jobs/jobs/export-import/export.service.ts",
+      "difficulty": "中",
+      "note_zh": "ExcelJS WorkbookWriter 串流、關 shared strings 避免大檔爆記憶體；適合 Cloud Functions 匯出報表"
+    },
+    {
+      "name": "公式轉 SQL 編譯器",
+      "path": "packages/nocodb/src/db/formulav2/formulaQueryBuilderv2.ts",
+      "difficulty": "高",
+      "note_zh": "與 NocoDB 中繼資料與 Knex 深度耦合，僅適合參考安全白名單與函數對應寫法"
+    },
+    {
+      "name": "MCP 伺服器",
+      "path": "packages/nocodb/src/mcp/mcp.service.ts",
+      "difficulty": "高",
+      "note_zh": "直接使用最划算；替自家 Firestore 做 MCP 時可參考其工具切分與 descriptions.ts 說明文字"
+    }
+  ],
+  "ai_integration_zh": "開源版 AI 功能（AI 欄位、AI 按鈕、AI 聊天）關閉，屬付費版；AI 抽象層用 Vercel AI SDK（含 @ai-sdk/anthropic 依賴）但供應商實作與 prompt 不在此 repo。開源版內建 MCP 伺服器（/mcp/:tokenId，13 個工具：查詢、計數、彙總、建立、更新、刪除、連結等），設定頁直接產生 claude mcp add 指令與 Claude Desktop 設定，Claude 可原生讀寫資料表。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-11-04 仍有 commit，版本 0.301.3，65k 星；但公開 repo 是從私有 EE repo 同步（sync-ee-to-ce），後端公開測試幾乎沒有（src 下 0 個 spec），社群參與空間有限。",
+  "risks_zh": [
+    "授權已改為 Sustainable Use License：不可轉賣或做成付費服務，拆出程式碼也受限",
+    "開源版沒有復原／重做（useUndoRedo 為空殼），誤改資料只能靠備份",
+    "開源版沒有即時協作推播（NocoSocket 全空），多人同時編輯為最後寫入覆蓋",
+    "不是真正試算表：無儲存格公式、合併儲存格、儲存格樣式、圖表、樞紐分析",
+    "xlsx 匯入只留值，公式／樣式／合併全遺失",
+    "預設送遙測到 telemetry.nocodb.com，需設 NC_DISABLE_TELE",
+    "CORS 全開，若把 xc-token 放進公開網頁會外洩資料庫讀寫權",
+    "不支援 Firebase／Firestore，需靠 Webhook／Cloud Function 同步",
+    "Grid 與 Nuxt 全域狀態深度耦合，無法當元件嵌入純 JS 頁面（只能 iframe 或 API）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "適合直接自架當內部商品／價格／庫存資料庫並用 MCP 接 Claude；若要可嵌入的 Excel 元件或真正儲存格公式，請搭配 Glide Data Grid 或 Univer 類專案。",
+  "keywords": [
+    "NocoDB",
+    "Airtable 替代品",
+    "自架資料庫",
+    "網頁版試算表",
+    "Canvas 表格",
+    "虛擬捲動",
+    "欄位公式",
+    "公式轉 SQL",
+    "PostgreSQL",
+    "SQLite",
+    "ExcelJS",
+    "xlsx 匯入",
+    "從 Excel 貼上",
+    "拖拉填滿",
+    "REST API",
+    "Webhook",
+    "MCP",
+    "Claude Code",
+    "Sustainable Use License",
+    "庫存管理",
+    "比價",
+    "輕量 ERP",
+    "繁體中文",
+    "no-code database",
+    "self-hosted"
+  ],
+  "pack_path": "_oss-research/01-web-excel/nocodb__nocodb.md"
+}

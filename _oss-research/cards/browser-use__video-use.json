@@ -1,0 +1,129 @@
+{
+  "repo": "browser-use/video-use",
+  "category": "03-video-script",
+  "commit": "43cfc566833548093455c9d4a46bd69913b7e552",
+  "scanned_at": "2026-11-04",
+  "stars": 30532,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、可拆零件進自己的工具。",
+  "license_commercial_zh": "公司商用：可以，含放進收費產品或 SaaS，只需保留版權與 MIT 授權聲明；外部服務（ElevenLabs、Claude、Remotion 等）的條款另計。",
+  "one_liner_zh": "Claude Code 剪片 Skill：讀逐字稿選段，ffmpeg 剪接上字幕",
+  "use_cases_zh": [
+    "口播廣告／開箱影片：多次 take 自動挑最佳段、剪掉贅字與停頓",
+    "直播或長影片切成 Reels／Shorts 投放素材",
+    "批次燒字幕、調色、音量標準化到 -14 LUFS",
+    "iPhone HDR 素材自動轉 SDR，避免上傳後顏色爆掉",
+    "學習「把影片轉成 LLM 可讀文字＋按需截圖」的設計，移植到自己的工具"
+  ],
+  "stack": [
+    "Python 3.10+",
+    "ffmpeg / ffprobe",
+    "ElevenLabs Scribe API",
+    "Pillow",
+    "numpy",
+    "Claude Code Skill（SKILL.md）",
+    "選用：HyperFrames / Remotion（Node.js）/ Manim"
+  ],
+  "run_requirements_zh": "本機 clone 後 symlink 到 ~/.claude/skills/video-use，裝 Python 依賴與 ffmpeg，在素材資料夾開 claude 對話。不需 GPU；唯一 API Key 是 ELEVENLABS_API_KEY（轉錄按音訊時長計費，單價 repo 未寫）；剪輯判斷用你的 Claude Code 訂閱額度。",
+  "key_features_zh": [
+    "ElevenLabs Scribe 逐字時間戳、講者辨識、笑聲等音訊事件，結果快取不重轉",
+    "takes_packed.md：片語級逐字稿，Claude 主要閱讀檔",
+    "EDL（edl.json）驅動的分段抽取＋30ms 淡入淡出＋無損串接",
+    "字幕依成片時間軸重算並最後燒入，避開短影音平台底部 UI",
+    "兩階段 loudnorm 音量標準化、自動微調色、HDR 轉 SDR",
+    "timeline_view 膠卷＋波形 PNG 讓 Claude 自我檢查剪接點",
+    "平行子代理做動畫（HyperFrames／Remotion／Manim／PIL）",
+    "edit/project.md 跨次記憶"
+  ],
+  "reusable_parts": [
+    {
+      "name": "Scribe 轉錄＋快取＋靜音防呆",
+      "path": "helpers/transcribe.py",
+      "difficulty": "低",
+      "note_zh": "整支複製；換其他 STT 只需改 call_scribe() 並輸出相同 words[] 格式"
+    },
+    {
+      "name": "逐字稿壓成 LLM 可讀片語檔",
+      "path": "helpers/pack_transcripts.py",
+      "difficulty": "低",
+      "note_zh": "純 Python；中文把 L73 的空白串接改成不加空白"
+    },
+    {
+      "name": "EDL 渲染器（剪接、調色、字幕、疊動畫、音量）",
+      "path": "helpers/render.py",
+      "difficulty": "低",
+      "note_zh": "其他產片專案只要輸出 edl.json 就能交給它出片"
+    },
+    {
+      "name": "字幕時間換算與切塊",
+      "path": "helpers/render.py#L433-L521",
+      "difficulty": "中",
+      "note_zh": "中文需加全形標點、拿掉 upper()、改字數切塊、換中文字型"
+    },
+    {
+      "name": "社群音量標準化",
+      "path": "helpers/render.py#L527-L627",
+      "difficulty": "低",
+      "note_zh": "任何產片流程最後一步可直接套用"
+    },
+    {
+      "name": "膠卷＋波形檢查圖",
+      "path": "helpers/timeline_view.py",
+      "difficulty": "低",
+      "note_zh": "讓 Claude 低成本看影片片段；FONT_CANDIDATES 需加 CJK 字型"
+    },
+    {
+      "name": "自動微調色",
+      "path": "helpers/grade.py",
+      "difficulty": "低",
+      "note_zh": "signalstats 取樣後產生 ±8% 內的 eq 濾鏡"
+    },
+    {
+      "name": "Skill 寫法範本",
+      "path": "SKILL.md",
+      "difficulty": "低",
+      "note_zh": "硬規則＋先提策略再執行＋平行子代理＋project.md 記憶，可套用到自己的 Skill"
+    }
+  ],
+  "ai_integration_zh": "原生 Claude Code Skill（SKILL.md frontmatter，symlink 到 ~/.claude/skills）；程式內不呼叫任何 LLM API，剪輯判斷由執行中的 agent 依 SKILL.md 規則完成；語音轉文字用 ElevenLabs scribe_v1；無 MCP；大量使用 Agent 工具派平行子代理。",
+  "claude_support": "原生",
+  "maintenance_zh": "Browser Use 公司維護，2026-04 建立、2026-10-08 最後 push，版本 0.1.0；26 個單元測試只覆蓋 render.py，repo 內無 CI 設定。",
+  "risks_zh": [
+    "素材音訊上傳 ElevenLabs、截圖與逐字稿送 Anthropic，需注意隱私與肖像",
+    "中文字幕未針對中文處理：空白串字、全形標點不斷句、Helvetica 無中文字形",
+    "台灣口音準確度與繁／簡輸出未確認",
+    "agent 會自動執行 brew／npx 等指令，有供應鏈與誤操作風險",
+    "SKILL.md 與程式不一致（MarginV 35 vs 90）；librosa 列為依賴但未使用；--edl 檢視未實作",
+    "沒有 TTS、AI 生圖／生影片、腳本生成，必須先有實拍素材"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "有實拍口播或開箱素材就很值得裝來剪廣告，字幕要先改成中文友善；生成型短劇不適用。",
+  "keywords": [
+    "video-use",
+    "browser-use",
+    "Claude Code Skill",
+    "AI 剪片",
+    "自動剪輯",
+    "口播剪輯",
+    "剪掉贅字",
+    "ElevenLabs Scribe",
+    "語音轉文字",
+    "逐字稿",
+    "EDL",
+    "ffmpeg",
+    "燒字幕",
+    "SRT",
+    "調色",
+    "HDR 轉 SDR",
+    "loudnorm",
+    "音量標準化",
+    "HyperFrames",
+    "Remotion",
+    "Manim",
+    "子代理",
+    "廣告素材",
+    "直式影片",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/03-video-script/browser-use__video-use.md"
+}

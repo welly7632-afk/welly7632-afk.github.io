@@ -1,0 +1,132 @@
+{
+  "repo": "FujiwaraChoki/MoneyPrinterV2",
+  "category": "03-video-script",
+  "commit": "a734fa924adb9ffe5ab8472aa5526e469e42a8b5",
+  "scanned_at": "2026-11-04",
+  "stars": 32295,
+  "license": "AGPL-3.0",
+  "license_personal_zh": "個人使用：在自己電腦跑、修改都可以，不需公開任何東西；產出的影片不受 AGPL 約束。",
+  "license_commercial_zh": "公司商用：可商用，但若散布改過的程式，或把它（含複製的程式碼片段）做成網站／SaaS 給他人使用，就必須以 AGPL-3.0 公開整個衍生作品原始碼；拆零件進自家工具建議參考思路重寫。無付費版或閉源功能，但 Gemini 生圖、AssemblyAI、Post Bridge 為外部付費服務。",
+  "one_liner_zh": "本機LLM＋Gemini生圖，自動做並上傳YouTube短影片的Python工具",
+  "use_cases_zh": [
+    "當作最小可讀的短影片流水線範本，交給 Claude Code 改造成繁中電商影片工具",
+    "拆出 Gemini（Nano Banana）生圖 REST 呼叫片段",
+    "拆出 faster-whisper 產生 SRT 字幕的函式",
+    "參考 MoviePy 圖片輪播＋配音＋字幕＋配樂合成邏輯做投影片式商品短片",
+    "拆出 Post Bridge 客戶端，一支影片轉發 TikTok／Instagram",
+    "參考 4 段 LLM prompt（主題、腳本、標題描述、生圖提示詞）改寫成繁中廣告腳本範本"
+  ],
+  "stack": [
+    "Python 3.12",
+    "Ollama",
+    "Google Gemini 圖像 API",
+    "KittenTTS",
+    "faster-whisper",
+    "AssemblyAI（選用）",
+    "MoviePy 1.x",
+    "ImageMagick",
+    "Selenium + Firefox",
+    "schedule",
+    "yagmail",
+    "Go（外展爬蟲）",
+    "JSON 檔快取（無資料庫）"
+  ],
+  "run_requirements_zh": "純 CLI：python src/main.py。需 Python 3.12、本機 Ollama（已 pull 模型）、ImageMagick、Firefox 與已登入的 profile；外展功能另需 Go 與 SMTP 帳密。無 GPU 可跑（CPU 跑小模型、KittenTTS、Whisper base，建議 16GB RAM，未實測）。必要 API Key：Gemini（nanobanana2_api_key 或 GEMINI_API_KEY，付費，單價未確認）；選用 AssemblyAI、Post Bridge（付費）。注意 n_prompts=腳本字元數÷3，可能一支影片要求上百張圖，費用需先改程式控制。requirements 未鎖版本，moviepy 需手動鎖 <2。",
+  "key_features_zh": [
+    "YouTube Shorts 全自動：主題→腳本→標題描述→生圖提示詞→Gemini 生圖→KittenTTS→Whisper 字幕→背景音樂→MoviePy 合成 1080×1920",
+    "Selenium 自動上傳 YouTube（非官方 API）",
+    "Post Bridge 轉發 TikTok／Instagram",
+    "X（Twitter）LLM 自動發文",
+    "Amazon 聯盟行銷推銷文生成並發到 X",
+    "Google Maps 爬商家＋網站抓 email＋SMTP 冷郵件群發",
+    "cron.py 非互動入口可接系統排程"
+  ],
+  "reusable_parts": [
+    {
+      "name": "Gemini（Nano Banana）生圖 REST 呼叫",
+      "path": "src/classes/YouTube.py#L319-L378",
+      "difficulty": "低",
+      "note_zh": "約 60 行 requests.post 到 models/{model}:generateContent，取 inlineData base64；可改成獨立函式或在 Firebase Cloud Functions 用 fetch 重寫。"
+    },
+    {
+      "name": "faster-whisper → SRT",
+      "path": "src/classes/YouTube.py#L488-L550",
+      "difficulty": "低",
+      "note_zh": "純函式，輸入音檔輸出 SRT；中文可加 language=zh 並用 OpenCC 轉繁。"
+    },
+    {
+      "name": "圖片＋配音＋字幕＋配樂合成",
+      "path": "src/classes/YouTube.py#L552-L647",
+      "difficulty": "中",
+      "note_zh": "MoviePy 1.x＋ImageMagick，中心裁切 9:16、平均分配秒數；新專案建議改 FFmpeg 或程式化影片工具。"
+    },
+    {
+      "name": "LLM 單一入口",
+      "path": "src/llm_provider.py",
+      "difficulty": "低",
+      "note_zh": "只有 generate_text(prompt)，改成 Anthropic SDK 即可整個專案換用 Claude。"
+    },
+    {
+      "name": "4 段影片 prompt 範本",
+      "path": "src/classes/YouTube.py#L134-L295",
+      "difficulty": "低",
+      "note_zh": "改寫為繁中電商導向並要求 JSON 結構化輸出。"
+    },
+    {
+      "name": "Post Bridge 客戶端",
+      "path": "src/classes/PostBridge.py",
+      "difficulty": "低",
+      "note_zh": "有單元測試，可整包搬去做跨平台發佈（需付費帳號）。"
+    },
+    {
+      "name": "Selenium 上傳 YouTube",
+      "path": "src/classes/YouTube.py#L734-L884",
+      "difficulty": "高",
+      "note_zh": "依賴固定 DOM 與 sleep，易壞且有平台條款風險；正式用改 YouTube Data API。"
+    }
+  ],
+  "ai_integration_zh": "文字只支援本機 Ollama（src/llm_provider.py），圖像用 Google Gemini gemini-3.1-flash-image-preview，配音 KittenTTS mini 0.8，字幕 faster-whisper 或 AssemblyAI。prompt 全硬寫在 Python f-string。無 MCP、無 Claude Code Skill／plugin、無 OpenAI 相容介面；CLAUDE.md／AGENTS.md 只是給編碼助理的說明。改 llm_provider.py 一個檔即可接 Anthropic API。",
+  "claude_support": "可接",
+  "maintenance_zh": "作者個人專案，最後 commit 2026-09-16，3.2 萬星；5 個測試檔 19 個測試函式（只測 config、自訂主題與 Post Bridge），無 CI；文件部分過時（CLAUDE.md 說無測試、Roadmap 仍列字幕未完成）。commit 總數與 issue 回應速度未確認。",
+  "risks_zh": [
+    "AGPL-3.0：複製程式碼進自家網頁工具可能被要求整包開源",
+    "內建 CRON 排程永遠不會執行（全專案沒有 schedule.run_pending）",
+    "scripts/upload_video.sh 沒帶模型參數，cron.py 會直接退出",
+    "n_prompts=腳本字元數÷3，可能一支影片生上百張圖，Gemini 費用失控",
+    "生圖全失敗時 combine() 除以零當掉；多處無上限遞迴重試",
+    "requirements 未鎖版本，MoviePy 2.x 已移除 moviepy.editor，新環境易安裝失敗",
+    "不支援繁中配音，全形標點被刪，字型與字幕斷行未針對中文",
+    "Selenium 操作 YouTube／X 帳號違反平台自動化政策、有停權風險",
+    "Outreach 爬 email 群發可能觸及個資法、反垃圾郵件法與 Google Maps 條款",
+    "config.json 明文存 Gmail 密碼與 API Key；會 pkill 你正在用的 Firefox；外展會下載並編譯外部 Go 原始碼"
+  ],
+  "fit_for_user": 2,
+  "verdict_zh": "適合當「短影片流水線最小範本」拆零件（Gemini 生圖、Whisper 字幕、MoviePy 合成、換 Claude 很容易），但不吃商品圖、不支援繁中配音、排程與上傳有 bug，不建議直接拿來用。",
+  "keywords": [
+    "MoneyPrinterV2",
+    "YouTube Shorts 自動化",
+    "短影片自動生成",
+    "AI 影片流水線",
+    "Ollama",
+    "Gemini 生圖",
+    "Nano Banana",
+    "KittenTTS",
+    "文字轉語音",
+    "faster-whisper",
+    "字幕",
+    "MoviePy",
+    "ImageMagick",
+    "Selenium",
+    "Twitter bot",
+    "X 自動發文",
+    "聯盟行銷",
+    "冷郵件外展",
+    "Google Maps scraper",
+    "Post Bridge",
+    "TikTok",
+    "AGPL-3.0",
+    "Python",
+    "無臉頻道"
+  ],
+  "pack_path": "_oss-research/03-video-script/FujiwaraChoki__MoneyPrinterV2.md"
+}

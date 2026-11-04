@@ -1,0 +1,62 @@
+{
+  "repo": "frappe/erpnext",
+  "category": "02-price-erp",
+  "commit": "99ee596275abf0f99a74e2792ad4abf194aff16f",
+  "scanned_at": "2026-11-04",
+  "stars": 40922,
+  "license": "GPL-3.0（底層 Frappe 框架與 frappe-datatable 為 MIT）",
+  "license_personal_zh": "個人使用：完全可以，自架、修改都不必公開程式碼。",
+  "license_commercial_zh": "公司商用：公司內部使用沒問題；若把含 ERPNext 程式碼的軟體散布或賣給別人，整個衍生作品須以 GPL-3.0 開源。拆用時建議看懂演算法後重寫或只透過 API 串接。ERPNext 名稱與 logo 受商標政策限制，不能用於產品名、網域或廣告。程式碼中未見閉源付費功能，官方營利靠 Frappe Cloud 代管。",
+  "one_liner_zh": "全開源 ERP，採購比價、到岸成本、FIFO 估值、價格規則一應俱全",
+  "use_cases_zh": [
+    "把 FIFO／移動平均庫存估值演算法翻成 JS，放進自建的 Firebase 倉儲系統",
+    "參考到岸成本分攤（依數量／金額＋尾差吸收）做進口費用分攤小工具",
+    "參考供應商報價比價報表，做「換算成每單位本幣價、自動標最低價」的比價試算表",
+    "用 MIT 授權的 frappe-datatable 做可編輯的網頁版試算表介面",
+    "個人自架一套 ERPNext 當採購、進貨成本、毛利的後台，透過 REST API／Webhook 與 Firebase 同步",
+    "開啟 Frappe 內建 MCP 端點，讓 Claude 直接查庫存、比價、開採購單",
+    "直接使用繁中台灣會計科目表 JSON 作為記帳科目資料"
+  ],
+  "stack": ["Python 3.14", "Frappe Framework", "MariaDB", "PostgreSQL", "Redis", "JavaScript", "jQuery", "Vue 3", "React 19（banking 子應用）", "TypeScript", "frappe-datatable", "Docker"],
+  "run_requirements_zh": "建議用官方 frappe_docker（docker compose，埠 8080）試用，正式環境用 bench 或 Frappe Cloud。需 MariaDB（或 PostgreSQL）＋Redis＋Python worker，不需 GPU，經驗上至少 2 核 4GB RAM（官方最低規格未確認）。API Key 皆為選用：匯率預設 frankfurter.dev 免費、Google Maps、Plaid。軟體免費，自架 VPS 約每月 US$10–20（估計）。",
+  "key_features_zh": [
+    "詢價單 RFQ 寄信與供應商入口網站自填報價",
+    "供應商報價比價報表：單位換算成每庫存單位本幣價、自動標示最低價、一鍵設為預設供應商",
+    "到岸成本憑證：運費、關稅、雜費依數量／金額／手動分攤並重算庫存估值",
+    "庫存估值：FIFO、移動平均、LIFO、標準成本",
+    "價目表＋客戶別／供應商別價格＋有效期間＋價格修改版本紀錄",
+    "價格規則引擎：折扣 %、折扣金額、指定單價、加成、贈品、優先序",
+    "多幣別與自動匯率（frankfurter.dev／exchangerate.host）",
+    "毛利報表、品項採購歷史、客戶別品項價格報表",
+    "每日自動補貨請購與 Email 通知",
+    "Report View 可編輯網頁表格、Excel／CSV／Google Sheets 匯入匯出",
+    "REST API、Webhook（HMAC 簽章）、Frappe develop 版內建 MCP 伺服器"
+  ],
+  "reusable_parts": [
+    {"name": "FIFO／LIFO 估值佇列", "path": "erpnext/stock/valuation.py", "difficulty": "低", "note_zh": "只依賴 flt，資料結構為 [[qty, rate]]，可翻成 JS 類別存在 Firestore；GPL 建議重寫"},
+    {"name": "移動平均估值公式", "path": "erpnext/stock/stock_ledger.py", "difficulty": "低", "note_zh": "get_moving_average_values（約第 2129–2167 行），20 行純公式，放 Cloud Function 入庫觸發器"},
+    {"name": "到岸成本分攤＋尾差吸收", "path": "erpnext/stock/doctype/landed_cost_voucher/landed_cost_voucher.py", "difficulty": "低", "note_zh": "distribute_charges 與 absorb_rounding_difference，做進口費用分攤工具"},
+    {"name": "供應商報價比價", "path": "erpnext/buying/report/supplier_quotation_comparison/supplier_quotation_comparison.py", "difficulty": "低", "note_zh": "get_price_per_stock_unit＋flag_cheapest_quotes，搬進比價試算表"},
+    {"name": "品項價格查找順序", "path": "erpnext/stock/get_item_details.py", "difficulty": "中", "note_zh": "get_item_price：客戶價優先、有效期、最新生效日；照規則寫 Firestore 查詢"},
+    {"name": "價格規則引擎", "path": "erpnext/accounts/doctype/pricing_rule/", "difficulty": "高", "note_zh": "深度依賴 Frappe 文件模型，只參考欄位設計自行簡化"},
+    {"name": "自動補貨", "path": "erpnext/stock/reorder_item.py", "difficulty": "中", "note_zh": "改寫成 Firebase 排程函式，低於安全庫存即通知"},
+    {"name": "frappe-datatable 可編輯表格（companion repo frappe/datatable）", "path": "src/cellmanager.js", "difficulty": "低", "note_zh": "MIT 純 JS 元件，支援格子編輯、範圍選取、複製貼上、凍結欄、虛擬捲動；無公式引擎"},
+    {"name": "台灣會計科目表", "path": "erpnext/accounts/doctype/account/chart_of_accounts/verified/tw_chart_of_accounts.json", "difficulty": "低", "note_zh": "繁中科目樹含代號，直接當下拉選單資料"}
+  ],
+  "ai_integration_zh": "ERPNext 本體沒有任何 AI／LLM 程式碼與 prompt。底層 Frappe 框架 develop 版內建 MCP 伺服器（/api/v2/mcp，需在 System Settings 開 enable_mcp），提供 list/get/create/update/delete_document、call_method、search_doctypes 等工具，Claude 可用帳號 API Key 以遠端 MCP 連線操作 ERP；穩定版是否有未確認。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：掃描當天仍有推送，develop 版本 17.0.0-dev，23 個 GitHub Actions workflow（含 MariaDB 與 PostgreSQL 測試），581 個測試檔，Crowdin 持續翻譯。",
+  "risks_zh": [
+    "GPL-3.0 傳染：直接複製程式碼進自家產品再散布須開源",
+    "系統很重：MariaDB＋Redis＋worker＋建置，一人維運負擔大，大版本升級要跑大量 patch",
+    "develop 分支要求 Python 3.14 與 Frappe 17 開發版，建議試用穩定版",
+    "回溯修改單據會觸發整段庫存重算，資料多時很慢",
+    "沒有台灣電子發票、沒有網頁價格爬取與降價通知",
+    "Frappe Pulse 遙測在設定 pulse_api_key 並開啟 enable_telemetry 時會送出使用資料（含安裝精靈問卷）",
+    "ERPNext 商標不能用於產品名、網域與廣告"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不建議整套導入，但它的比價、到岸成本、FIFO 估值演算法與 MIT 的 frappe-datatable 是組合自建工具時最值得參考的來源。",
+  "keywords": ["ERPNext", "Frappe", "ERP", "進銷存", "採購比價", "供應商報價比較", "RFQ", "到岸成本", "Landed Cost", "庫存估值", "FIFO", "移動平均", "價目表", "Pricing Rule", "價格規則", "毛利", "多幣別", "自動補貨", "REST API", "Webhook", "MCP", "frappe-datatable", "網頁試算表", "台灣會計科目", "GPL-3.0"],
+  "pack_path": "_oss-research/02-price-erp/frappe__erpnext.md"
+}

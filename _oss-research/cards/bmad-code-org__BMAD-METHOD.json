@@ -1,0 +1,63 @@
+{
+  "repo": "bmad-code-org/BMAD-METHOD",
+  "category": "04-agent-rules-skills",
+  "commit": "022be9314e4facd16826104a9f8033e1c5ed4fdc",
+  "scanned_at": "2026-11-04",
+  "stars": 54994,
+  "license": "MIT（LICENSE 尾端另附商標聲明；BMad 名稱與 logo 為 BMad Code, LLC 商標，不在 MIT 範圍內）",
+  "license_personal_zh": "個人使用：完全免費，可自由修改、複製、拆出 SKILL.md 與腳本使用，無付費功能。",
+  "license_commercial_zh": "公司商用：MIT 允許商用與再散布，需保留版權與授權聲明；但產品名稱、網域不得使用 BMad／BMAD-METHOD 等商標，只能寫「compatible with BMad Method」。",
+  "one_liner_zh": "以角色、技能與工單樹讓 Claude／Codex 有紀律協作的 AI 開發方法",
+  "use_cases_zh": [
+    "用 bmad-project-context 的準則與範本整理現有 CLAUDE.md／AGENTS.md，讓 Claude 與 Codex 讀同一份規則（CLAUDE.md 只留 @AGENTS.md）",
+    "借用規則區塊的出處行（Verified 日期＋commit）與 refresh／audit 流程，偵測過期與互相矛盾的規則",
+    "把 PO 的 validate-checks 與 replan 改寫成倉儲 App 的需求一致性檢查與需求變更 SOP",
+    "依 memory-agent 的 PULSE＋tending 規則，自己做一個每日巡讀技能（找漏、找重複、找新舊衝突）",
+    "用 build／code-review 的審查鏡頭 prompt 讓 Claude 寫、Codex 審（官方寫明可在不同 LLM 的 session 執行）",
+    "參考 description 寫法與 triggers.json 評測，讓自己寫的技能被正確觸發"
+  ],
+  "stack": ["Markdown 指令檔（SKILL.md／workflow／references）", "TOML 設定", "Python 3.11+（uv run、PEP 723）", "Jinja2（rendered skills）", "Astro＋Starlight（僅文件網站）"],
+  "run_requirements_zh": "不需伺服器、資料庫或 GPU。V7：需 Node.js/npm、Git、uv，執行 npx skills add bmad-code-org/BMAD-METHOD --skill '*' 後在 AI 工具中執行 bmad setup；穩定版 v6.12 用 npx bmad-method install（Node 20.12+、Python 3.10+）。不需 BMAD 自己的 API Key，模型費用依你使用的 Claude Code／Codex 等方案；setup 會連 raw.githubusercontent.com 檢查更新。",
+  "key_features_zh": [
+    "6 個具名角色：Mary 分析師、John PM、Sofia PO、Winston 架構師、Sally UX、Amelia 開發者（V7 已移除 Scrum Master 與 QA 角色）",
+    "角色設定三層合併：customize.toml → _bmad/custom/<skill>.toml → .user.toml",
+    "bmad-project-context：setup／adopt／refresh／record／audit AGENTS.md，含刪除規則的四種理由與 ledger",
+    "工單樹（initiative→epic→story）與 tickets.py：next／status／find／mark，報出 drift、order_conflict、循環依賴",
+    "PO 的 VALIDATE 檢查清單（Ticket／Set／Tree／Dependencies／Closure）與 REPLAN 需求變更流程",
+    "Decision:／Source conflict: 註記與只追加的 memlog 作為單一事實來源",
+    "多鏡頭程式碼審查（blind-hunter、edge-case-hunter、verification-gap、intent-alignment）與跨 LLM 審查",
+    "retrospective 的重複地圖、模式偏離、規格對帳",
+    "memory-agent 形狀：聖所記憶、tending 合併重複與更新過期、Pulse 排程喚醒",
+    "SKILL.md 驗證規則與 description 觸發寫法、triggers.json 觸發評測"
+  ],
+  "reusable_parts": [
+    {"name": "AGENTS.md 撰寫準則", "path": "skills/bmad-project-context/references/best-practices.md", "difficulty": "低", "note_zh": "純文字，直接當規則撰寫指南；含該寫／不該寫／刪除四理由／子資料夾規則載入驗證"},
+    {"name": "AGENTS.md 六段範本＋出處行", "path": "skills/bmad-project-context/references/template.md", "difficulty": "低", "note_zh": "照範本寫倉儲 App 規則，用 <!-- bmad:context --> 標記包住"},
+    {"name": "bmad-project-context 技能", "path": "skills/bmad-project-context/SKILL.md", "difficulty": "低", "note_zh": "複製到 .claude/skills 與 .agents/skills；拿掉 uv run 設定步驟即可獨立使用，refresh／audit 可當巡讀核心"},
+    {"name": "一致性檢查清單", "path": "skills/bmad-agent-po/references/validate-checks.md", "difficulty": "低", "note_zh": "刪除 Jinja 佔位後改寫成需求／功能清單檢查"},
+    {"name": "需求變更流程", "path": "skills/bmad-agent-po/references/replan.md", "difficulty": "低", "note_zh": "五步驟＋帶日期的 Decision: 行，當需求變更 SOP"},
+    {"name": "任務單範本", "path": "skills/bmad-agent-po/assets/ticket-template.md", "difficulty": "低", "note_zh": "frontmatter 的 sources／after／refined 與 Notes 的 Decision／Source conflict 格式"},
+    {"name": "工單樹查詢腳本", "path": "skills/bmad-agent-po/scripts/tickets.py", "difficulty": "中", "note_zh": "需採用相同資料夾結構；巡讀時跑 status 抓 drift 與順序衝突"},
+    {"name": "三層設定合併", "path": "skills/bmad/scripts/config_utils.py", "difficulty": "低", "note_zh": "約 60 行，可移植成 JS 做預設→團隊→個人設定合併"},
+    {"name": "只追加日誌 memlog", "path": "skills/bmad/scripts/memlog.py", "difficulty": "低", "note_zh": "當 AI 交接日誌，新行取代舊決策，不改歷史"},
+    {"name": "Pulse 排程範本", "path": "skills/bmad-toolsmith/shapes/memory-agent/assets/PULSE-template.md", "difficulty": "中", "note_zh": "填入每日巡檢任務與安靜時段；搭配 HOW-I-REMEMBER 的 tending 規則"},
+    {"name": "審查鏡頭 prompt", "path": "skills/bmad-build/review-prompts/verification-gap.md", "difficulty": "低", "note_zh": "交給 Codex 當審查員，專抓未測到與過期測試"},
+    {"name": "Retrospective 彙總視角", "path": "skills/bmad-retrospective/references/aggregate-views.md", "difficulty": "低", "note_zh": "每週巡檢加入重複地圖、模式偏離、規格對帳"},
+    {"name": "技能 description 寫法", "path": "skills/bmod-toolsmith/help/craft-description.md", "difficulty": "低", "note_zh": "摘要＋Use when 引號句＋Not for 兄弟技能"}
+  ],
+  "ai_integration_zh": "不呼叫模型 API，所有能力以 Agent Skills（SKILL.md）形式交給 AI 程式工具執行；Claude Code 裝在 .claude/skills，Codex／Cursor 等裝在 .agents/skills。party mode 的 agent-team 模式為 Claude Code 專屬；bmad-eval 的 harness 範例同時支援 claude -p 與 codex exec；審查步驟無子代理時會輸出獨立 prompt 請你在另一個（最好不同的）LLM 執行。Codex／Claude plugin marketplace 尚未更新到 V7。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最新 commit 2026-11-02，CHANGELOG 59 個版本標題；穩定版 v6.12（V6.12 分支），main 為 V7 預覽 alpha，預計 2026 年 11 月中正式版。CI 在 ubuntu／windows 跑 ruff、技能驗證、檔案引用驗證與 pytest。",
+  "risks_zh": [
+    "main 是 V7 alpha，技能名稱與流程常有破壞性變更；網路教學多為 v4–v6，與現況不符",
+    "完整流程對一人小店過重，建議只取局部",
+    "技能會 uv run 專案內 Python，_bmad/custom 可加啟動步驟，安裝掃描器會標中／高風險；只放信任的客製檔",
+    "技能間刻意複製相同參考檔（如 deletion-check.md 三份），規則同步靠人工，有副本漂移風險",
+    "沒有內建每日排程巡檢；Pulse 需自己接排程",
+    "商標限制：自製工具不可使用 BMad 名稱"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "強烈建議借用其 AGENTS.md 準則、驗證清單、需求變更與記憶整理規則來建立你的 Claude＋Codex 基礎架構，但不必整套安裝 V7 流程。",
+  "keywords": ["BMAD-METHOD", "BMad Method", "AGENTS.md", "CLAUDE.md", "共用規則", "角色設計", "產品負責人", "SKILL.md", "Agent Skills", "description 觸發", "customize.toml", "工單樹", "需求變更", "replan", "單一事實來源", "drift 偵測", "過期規則", "一致性檢查", "重複偵測", "跨模型審查", "Claude Code", "Codex", "Pulse 排程", "每日巡讀", "memlog"],
+  "pack_path": "_oss-research/04-agent-rules-skills/bmad-code-org__BMAD-METHOD.md"
+}

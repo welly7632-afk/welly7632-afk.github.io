@@ -1,0 +1,59 @@
+{
+  "repo": "linyqh/NarratoAI",
+  "category": "03-video-script",
+  "commit": "29a11b6cdf61b69ba90321fc5babc160e0ca2657",
+  "scanned_at": "2026-11-04",
+  "stars": 11713,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：MIT，免費、可任意修改使用。",
+  "license_commercial_zh": "公司商用：程式可商用、可閉源，只需保留著作權與授權聲明；真正的風險在解說素材（影視／短劇）的版權、聲音複製的人格權，以及各 TTS／LLM／Sonilo 服務的條款。雲端版 narratoai.cn 是否有額外功能未確認。",
+  "one_liner_zh": "把現成影片用 AI 看懂、寫解說稿、配音剪成短片的工具",
+  "use_cases_zh": [
+    "把商品實拍／開箱長片自動剪成有配音字幕的 30–60 秒短片（需改寫 prompt）",
+    "短劇解說、短劇混剪、影視解說影片",
+    "同一支素材快速產出多個廣告版本（換文案、換聲音）",
+    "用 Claude Code 寫 OST 格式腳本 JSON，交給它做 TTS＋剪輯＋字幕",
+    "匯出剪映草稿：AI 粗剪、人工精修",
+    "拆出 prompt 管理系統、TTS 分派器、剪映草稿產生器給自己的工具用"
+  ],
+  "stack": ["Python 3.12", "Streamlit", "FFmpeg", "moviepy", "openai SDK（OpenAI 相容）", "edge-tts", "Azure Speech", "騰訊雲 TTS", "dashscope", "TOML 設定檔（無資料庫）", "Docker"],
+  "run_requirements_zh": "整合包（Windows x64／macOS Apple Silicon）、Docker 或 uv 本機執行，瀏覽器開 127.0.0.1:8501；建議 4 核 8GB，不需顯卡。需 FFmpeg。必要：一組 OpenAI 相容的視覺模型＋文字模型 API Key（預設矽基流動，作者稱剪 10 分鐘約 0.1 人民幣，未驗證）。TTS 可用免費 Edge TTS；聲音複製（IndexTTS、OmniVoice、VoxCPM）需另外自架本機服務。選配 Tavily、Sonilo（付費）、TwelveLabs。",
+  "key_features_zh": [
+    "5 種腳本模式：影視解說、短劇解說、逐幀分析、短劇混剪、自訂腳本",
+    "視覺模型逐幀分析（每 3 秒一幀、每批 10 張）產生帶時間戳解說稿",
+    "OST 0/1/2 腳本格式：純解說／播原聲／解說＋原聲",
+    "12 種 TTS 引擎，含本機聲音複製",
+    "FFmpeg 字幕燒錄、原字幕模糊遮罩、BGM、音量控制",
+    "匯出剪映草稿",
+    "Sonilo AI 配樂與音效、Fun-ASR 自動轉字幕、LLM 字幕翻譯",
+    "prompt 版本管理系統（4 類 17 個 prompt 檔）"
+  ],
+  "reusable_parts": [
+    {"name": "Prompt 版本管理系統", "path": "app/services/prompts/", "difficulty": "低", "note_zh": "純 Python，整個資料夾可搬；新增電商 category 即可"},
+    {"name": "爆款解說 prompt（黃金三秒、十大鉤子）", "path": "app/services/prompts/documentary/narration_generation.py", "difficulty": "低", "note_zh": "改成繁中與商品賣點就是廣告腳本 prompt"},
+    {"name": "短劇五段式 prompt 鏈", "path": "app/services/prompts/short_drama_narration/", "difficulty": "低", "note_zh": "劇情分析→片段規劃→文案→對畫面→修復，可改寫成 Claude Code skill"},
+    {"name": "OST 腳本 JSON 格式＋成片流程", "path": "app/services/task.py", "difficulty": "低", "note_zh": "start_subclip_unified 讀 narration/OST/timestamp；當成 AI 寫稿與剪輯之間的中介格式"},
+    {"name": "OpenAI 相容 LLM 封裝（文字＋視覺＋串流）", "path": "app/services/llm/openai_compatible_provider.py", "difficulty": "中", "note_zh": "需拔掉 app.config 相依；接 Claude 要移除 temperature/top_p 同送"},
+    {"name": "抽幀＋分批視覺分析", "path": "app/services/documentary/frame_analysis_service.py", "difficulty": "中", "note_zh": "影片→每幀描述 JSON→Markdown，可餵任何寫稿模型"},
+    {"name": "TTS 分派器", "path": "app/services/voice.py", "difficulty": "中", "note_zh": "3,044 行，建議只抽 Edge/Azure 與需要的引擎"},
+    {"name": "剪映草稿產生器", "path": "app/services/jianying_draft_builder.py", "difficulty": "中", "note_zh": "輸入腳本＋音檔＋字幕產生草稿資料夾；CapCut 國際版相容性未確認"},
+    {"name": "FFmpeg 字幕燒錄與遮罩", "path": "app/services/generate_video.py", "difficulty": "中", "note_zh": "可獨立成 SRT＋影片→成片工具"},
+    {"name": "ASR 結果轉 SRT", "path": "app/services/fun_asr_subtitle.py", "difficulty": "低", "note_zh": "fun_asr_result_to_srt：每段 ≤20 字、≤3.5 秒"}
+  ],
+  "ai_integration_zh": "只註冊 OpenAI 相容介面（文字＋視覺）與 TwelveLabs（視覺）兩種 provider；無 Anthropic SDK、無 MCP、無 Claude Code skill。Claude 可透過 OpenAI 相容 base_url 或 OpenRouter 接入（非白名單只會警告），但程式每次都同送 temperature 與 top_p、max_tokens 預設 65536，與新版 Claude 的相容性未確認，可能需改 _build_chat_completion_options。prompt 集中在 app/services/prompts/，可自行註冊新 provider。",
+  "claude_support": "可接",
+  "maintenance_zh": "活躍：最新 commit 2026-10-25，2026 年內 0.7.7→0.8.6 多次發版；34 個測試檔、218 個 test 函式，但 CI 只有 AI 程式碼審查、沒有自動跑測試；有同名死碼 app/services/llm.py。",
+  "risks_zh": [
+    "影視／短劇解說屬二次利用他人作品，著作權與平台下架風險高",
+    "內建參考音色清單含真人名稱（董宇辉、特朗普等），聲音複製有人格權疑慮",
+    "API Key 明文存在 config.toml",
+    "Docker 版綁 0.0.0.0、關閉 XSRF 且無登入，不可直接對外開放",
+    "影片畫面與字幕會上傳到第三方 LLM；Sonilo 會上傳整支成片",
+    "介面與 prompt 以簡體中文為主，逐幀分析 prompt 寫死簡體，需改程式碼才能穩定輸出繁中",
+    "不會生成新畫面，需要現成影片素材"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "想把現成影片快速剪成配音解說短片就很好用；當電商影片工具要改 prompt 與繁中設定，最有價值的是拆它的 prompt 系統、OST 腳本格式和剪映草稿匯出。",
+  "keywords": ["NarratoAI", "AI 影片解說", "影視解說", "短劇解說", "短劇混剪", "自動剪輯", "逐幀分析", "解說腳本", "TTS", "聲音複製", "剪映草稿", "字幕燒錄", "Streamlit", "FFmpeg", "Claude", "OpenAI 相容", "電商商品影片", "AI video narration", "auto video editing", "short drama recap", "voice cloning", "jianying draft"],
+  "pack_path": "_oss-research/03-video-script/linyqh__NarratoAI.md"
+}

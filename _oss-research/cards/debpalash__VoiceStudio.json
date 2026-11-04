@@ -1,0 +1,62 @@
+{
+  "repo": "debpalash/VoiceStudio",
+  "category": "03-video-script",
+  "commit": "7a896ed455e116d734f26437393a92cad090aadb",
+  "scanned_at": "2026-11-04",
+  "stars": 100711,
+  "license": "AGPL-3.0-only（App 本體）；omnivoice/ 套件 Apache-2.0；模型權重各自授權（預設 k2-fsa/OmniVoice 權重為 CC-BY-NC 非商用）",
+  "license_personal_zh": "個人使用：App 與預設模型都可免費在自己電腦使用，沒有問題。",
+  "license_commercial_zh": "公司商用：App 本體 AGPL 允許商用，但修改後透過網路提供給別人就要公開原始碼；預設 OmniVoice 權重是 CC-BY-NC 非商用，70 筆模型授權紀錄中沒有任何一筆標為可商用，拿配音做商業廣告要改用權重可商用的引擎並自行核對；閉源嵌入需購買商業授權，另有付費 VoiceStudio Pro／Cloud。",
+  "one_liner_zh": "本機版 ElevenLabs：聲音複製、影片翻譯配音與字幕，可接 Claude",
+  "use_cases_zh": [
+    "替商品影片、廣告、解說影片產生旁白配音（本機、免 API 費用）",
+    "用自己或已授權者的 10–20 秒錄音複製品牌固定聲音",
+    "把外國商品影片聽寫→翻成繁中→重新配音→燒字幕輸出 MP4",
+    "短劇多角色配音：用 [voice:角色] 標記一次輸出多個聲音",
+    "讓 Claude Code 透過 MCP 直接呼叫 generate_speech／clone_voice／transcribe",
+    "當 OpenAI 相容 TTS 伺服器，接給其他影片產生工具使用",
+    "用聽寫小工具口述倉儲盤點或備忘"
+  ],
+  "stack": ["Python 3.11", "FastAPI", "PyTorch", "transformers", "WhisperX / faster-whisper", "pyannote", "ffmpeg", "SQLite + Alembic", "Electron", "React", "Vite", "Tailwind", "TanStack", "Rust（native bridge）", "Kotlin / iOS（行動版）", "LiteLLM", "MCP"],
+  "run_requirements_zh": "用官方安裝檔（Windows／macOS Apple Silicon／Linux／Docker／Android／iOS）最省事；預設引擎 OmniVoice 宣告最低 6 GB VRAM，NVIDIA CUDA、AMD ROCm、Apple Silicon 皆可，純 CPU 可跑但慢；必要模型 2.4 GB，加 Whisper 約再 3 GB，建議 16 GB RAM 以上。配音完全不需 API Key、零費用；翻譯／改寫可選接 Anthropic、OpenAI、Gemini 等（依用量付費）或本機 Ollama／NLLB（免費）；分說話者需免費 Hugging Face token。",
+  "key_features_zh": [
+    "19 個 TTS 引擎 id（8 個直接註冊＋11 個延遲載入），預設 OmniVoice 646 種語言",
+    "零樣本聲音複製與文字描述的聲音設計",
+    "影片翻譯配音：網址或檔案匯入、Demucs 分離背景、Whisper 聽寫、LLM 電影級翻譯、依時長縮句、配音、畫面變速",
+    "字幕匯出 SRT／VTT／ASS，可燒入、雙語、卡拉 OK 逐字亮",
+    "有聲書與長文多角色標記語法，輸出含章節 m4b",
+    "OpenAI 相容 /v1/audio/speech 與 /v1/audio/transcriptions",
+    "MCP 伺服器 9 個工具＋SKILL.md",
+    "工作流程畫布批次處理（每次最多 50 筆）",
+    "AudioSeal 隱形浮水印"
+  ],
+  "reusable_parts": [
+    {"name": "OpenAI 相容 TTS API", "path": "backend/api/routers/openai_compat.py", "difficulty": "低", "note_zh": "不用拆，跑整個後端後把其他影片工具的 TTS base_url 指到 http://localhost:3900/v1"},
+    {"name": "MCP 配音工具", "path": "backend/mcp_server.py", "difficulty": "低", "note_zh": "Claude Code 的 .mcp.json 填 http://localhost:3900/mcp/，即可在對話中產生語音"},
+    {"name": "LLM 供應商註冊表與傳輸層", "path": "backend/services/llm_providers.py", "difficulty": "中", "note_zh": "30+ 家供應商（含 anthropic 與 claude-code CLI），env→設定→預設三層解析；搭配 llm_transport.py 一起拆"},
+    {"name": "電影級翻譯 REFLECT/ADAPT prompt", "path": "backend/services/translator.py", "difficulty": "低", "note_zh": "兩段 prompt 可直接複製，用 Claude 把外文文案改寫成台灣口吻"},
+    {"name": "依時長估算與縮句", "path": "backend/services/speech_rate.py", "difficulty": "低", "note_zh": "每秒字數表＋LLM 縮句迴圈，適合 15/30 秒廣告稿"},
+    {"name": "卡拉 OK ASS 字幕產生器", "path": "backend/services/karaoke_ass.py", "difficulty": "低", "note_zh": "純 Python；中文需把空白切詞改成逐字切"},
+    {"name": "長文多角色標記解析", "path": "backend/services/longform_parser.py", "difficulty": "低", "note_zh": "[voice:角色]、[pause]、# 章節，短劇腳本格式可沿用（另有 JS 版）"},
+    {"name": "長文切塊與交叉淡化", "path": "backend/services/chunked_tts.py", "difficulty": "低", "note_zh": "任何 TTS 的長文斷句都能借用"},
+    {"name": "影片依配音變速", "path": "backend/services/video_retime.py", "difficulty": "中", "note_zh": "ffmpeg setpts 分段變速並分批 concat"},
+    {"name": "TTS 引擎抽象與子行程隔離", "path": "backend/services/tts_backend.py", "difficulty": "高", "note_zh": "學 TTSBackend 介面與獨立 venv sidecar 設計，不建議整包拆"}
+  ],
+  "ai_integration_zh": "語音全用本機開源模型（OmniVoice、VoxCPM2、CosyVoice3、IndexTTS2.5、GPT-SoVITS、Breeze-TTS-2 等；聽寫 Whisper／Parakeet；翻譯 NLLB／Argos）。LLM 只用在 6 個可開關的 LLM Skills（翻譯、電影級改寫、對時長縮句、術語擷取、導演指令解析、聽寫潤飾），可接 Anthropic API（預設 claude-sonnet-4-6，經 LiteLLM）、Claude Code CLI（claude -p，經 Electron 橋接）或 OpenAI 相容端點、Ollama。另提供 MCP 伺服器（9 個工具）與 skills/voicestudio/SKILL.md。",
+  "claude_support": "原生",
+  "maintenance_zh": "極活躍：最後 commit 2026-11-04、版本 0.5.7、29 個 CI 工作流、約 806 個 Python 測試檔與 470 個前端測試檔（以檔案清單計數，未執行），由 Yupcha Softwares 維護並有 Pro／Cloud 商業化。",
+  "risks_zh": [
+    "預設模型權重 CC-BY-NC 非商用，商業廣告使用有授權風險",
+    "AGPL：改寫後做成網路服務需公開原始碼",
+    "沒有台灣腔選項，聲音設計方言只有中國大陸方言；需用台灣人錄音複製",
+    "卡拉 OK 字幕用空白切詞，中文翻譯字幕會整句同時亮",
+    "後端預設 localhost 無驗證，Docker／區網分享務必設 OMNIVOICE_API_KEY",
+    "依賴重、版本釘死多，從原始碼安裝易出錯",
+    "內建 yt-dlp 下載他人影片再配音有著作權與平台條款風險；聲音複製需本人同意",
+    "可選的 PostHog 遙測（預設關閉）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當 A+B+C 裡的「配音＋字幕」那一塊非常合適：本機免費、可接 Claude 與 MCP；但不會寫腳本或生畫面，且預設模型非商用，商業投放前要換可商用引擎。",
+  "keywords": ["VoiceStudio", "OmniVoice", "ElevenLabs 替代", "文字轉語音", "TTS", "聲音複製", "voice cloning", "聲音設計", "影片翻譯配音", "video dubbing", "AI 配音", "字幕", "SRT", "卡拉 OK 字幕", "Whisper", "有聲書", "多角色配音", "短劇", "MCP", "Claude Code", "OpenAI 相容 API", "本機 AI", "AGPL-3.0", "非商用模型", "繁體中文"],
+  "pack_path": "_oss-research/03-video-script/debpalash__VoiceStudio.md"
+}

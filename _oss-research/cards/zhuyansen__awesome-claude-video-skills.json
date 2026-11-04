@@ -1,0 +1,48 @@
+{
+  "repo": "zhuyansen/awesome-claude-video-skills",
+  "category": "03-video-script",
+  "commit": "68919a02567555301c17d8b2ab1254f0b9a4bc7c",
+  "scanned_at": "2026-11-04",
+  "stars": 1556,
+  "license": "自訂授權：清單本身 CC0 1.0（公眾領域）；收錄的 413 個專案各自授權，預覽圖版權屬原作者",
+  "license_personal_zh": "個人使用：完全自由，清單文字與 data/skills.json 可任意複製、改寫、匯入自己的工具。",
+  "license_commercial_zh": "公司商用：清單本身 CC0 可商用；但各 repo 描述屬原作者、預覽圖不可當素材；收錄的專案要逐一看授權（9 個 AGPL-3.0、103 個 NOASSERTION 或未標授權需特別注意）。",
+  "one_liner_zh": "讓 Claude Code 做影片的 413 個 skill 分類目錄，附安全評級與實測",
+  "use_cases_zh": [
+    "挑選電商產品宣傳片、IG/TikTok 廣告、短劇腳本要用的 Claude Code skill",
+    "參考 16 個 skill 同條件實測結果，決定先裝哪一個（explainroo、onetake、remotion-dev/skills）",
+    "把 data/skills.json 匯入自己的網頁版試算表或 Firebase，做影片工具選型表（依類型、星數、授權、安全評級篩選）",
+    "借用實測的四項客觀驗收規則，為自己批量產出的廣告影片做自動 QA",
+    "找到研究名單外的廣告／短劇相關工具：video-factory、remotion-ad-video-skill、ad-video-skills、qisi-video-remix、screenwriting-skills 等"
+  ],
+  "stack": ["Markdown", "JSON", "無可執行程式碼"],
+  "run_requirements_zh": "不需執行：純清單 repo（README 中英版、data/skills.json、預覽圖）。不需伺服器、GPU 或 API Key。被收錄工具的需求各自不同；純程式碼動畫類（Remotion/HyperFrames）只需 Claude 訂閱，生成式（Veo、MiniMax、HeyGen、ElevenLabs）需付費 API。",
+  "key_features_zh": [
+    "413 個影片相關 skill／外掛／MCP，分 10 類（框架 72、宣傳 77、講解 73、剪輯 53、短影音 51、數位人 9、故事 25、動效 26、劇本 10、音樂 17）",
+    "每筆附星數、語言、授權與安全評級（safe 401／caution 12，只依 README 與安裝步驟評級）",
+    "16 個 skill 用 Claude Code＋Opus 5.5 做同一支 15 秒宣傳片的實測（耗時 2.0–23.5 分鐘、四項客觀檢查）",
+    "機器可讀 data/skills.json，每日自動更新",
+    "中英雙語 README"
+  ],
+  "reusable_parts": [
+    {"name": "影片工具結構化資料", "path": "data/skills.json", "difficulty": "低", "note_zh": "純 JSON（kinds[10]＋skills[413]，8 個欄位），fetch 後直接放進網頁試算表或 Firestore 做篩選表"},
+    {"name": "10 類影片分類法（中英＋icon）", "path": "data/skills.json", "difficulty": "低", "note_zh": "kinds 陣列可直接當自家影片素材庫的分類下拉選單"},
+    {"name": "影片自動驗收四項檢查規格", "path": "README.zh-CN.md", "difficulty": "中", "note_zh": "第 75–79 行：可播放、時長尺寸、每秒抽 2 幀 OCR 讀文案、畫面在動；需自己用 ffprobe＋OCR 實作"},
+    {"name": "收錄門檻規則", "path": "README.zh-CN.md", "difficulty": "低", "note_zh": "第 65–72 行，可改寫為自己篩選開源專案的檢查清單"},
+    {"name": "預覽圖索引", "path": "assets/previews/index.json", "difficulty": "低", "note_zh": "每個專案預覽圖的原始網址與 alt，做工具卡片牆時只連結原圖"}
+  ],
+  "ai_integration_zh": "本 repo 無 prompt、SKILL.md 或 MCP；但收錄內容全是給 Claude Code／Codex 用的影片 skill、外掛、MCP，實測也用 Claude Code＋Claude Opus 5.5。分類與安全評級由 Agent Skills Hub 的決策模型讀 README 產生（模型未確認）。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-09-27 建立，2026-11-03 仍有每日自動更新 commit（Daily update）；repo 描述的 180 個已過時，實際 413 個。",
+  "risks_zh": [
+    "安全評級只看 README 與安裝步驟，不是程式碼審計；安裝任何 skill 前要自己看會執行什麼",
+    "64% 條目不到 50 星，多為 2026 年 10 月後的新 repo，存活與品質不明",
+    "103 個條目授權為 NOASSERTION 或未標、9 個 AGPL-3.0，商用前要逐一確認",
+    "分類由模型判斷，邊界項目可能歸錯；實測表星數為測試當時數字，與分類表不同",
+    "不涵蓋 MoneyPrinterTurbo、Toonflow、huobao-drama、ViMax、NarratoAI 等完整 AI 短劇／影片平台"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當作挑選 Claude 影片 skill 的入口與選型資料來源非常好用，但它本身沒有程式碼，真正要拆的是它指向的各個專案。",
+  "keywords": ["awesome-claude-video-skills", "Claude Code 影片", "Agent Skills", "Codex", "電商廣告影片", "產品宣傳片", "短影音", "短劇", "劇本", "分鏡", "拉片", "爆款復刻", "Remotion", "HyperFrames", "MCP", "數位人", "剪輯", "A/B 測試廣告", "UGC ads", "安全評級", "skills.json", "CC0", "Opus 5.5"],
+  "pack_path": "_oss-research/03-video-script/zhuyansen__awesome-claude-video-skills.md"
+}

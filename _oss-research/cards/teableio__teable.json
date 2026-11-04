@@ -1,0 +1,130 @@
+{
+  "repo": "teableio/teable",
+  "category": "01-web-excel",
+  "commit": "f8be01fadb86790d3d3a878bedd10cf949f9a8f8",
+  "scanned_at": "2026-11-04",
+  "stars": 21952,
+  "license": "混合授權：apps/（後端、前端）與 plugins/ 為 AGPL-3.0＋品牌保護附加條款；packages/（core、formula、sdk、openapi、v2 等）為 MIT",
+  "license_personal_zh": "個人使用：可以自由自架、修改，不需付費；只用基本試算表功能不需任何 API Key。",
+  "license_commercial_zh": "公司商用：內部使用可以；若修改 apps/ 後對外提供網路服務，須依 AGPL 公開修改後原始碼，且不得移除或替換 Teable 品牌與 Logo。只拆 packages/ 內的 MIT 元件（Canvas Grid、公式引擎、Excel 匯入器）可商用閉源。AI 對話、App Builder、AI 自動化等需付費授權或雲端版。",
+  "one_liner_zh": "PostgreSQL 上的資料庫型試算表，附 MIT 授權 Canvas 表格",
+  "use_cases_zh": [
+    "自架當進銷存／商品主檔／成本毛利後台，用關聯＋彙總＋公式算庫存與毛利",
+    "當自己 Firebase 倉庫網頁的資料管理介面，透過 REST API 與 Access Token 同步資料",
+    "把 packages/sdk 的 Canvas Grid 拆出來，包成 mountGrid() 嵌進自己的純 JS 網頁當網頁版 Excel 介面",
+    "用 packages/v2/import 的串流 Excel 解析器處理供應商報價單上傳",
+    "當比價資料庫：爬蟲結果寫入 Teable，用公式算價差，再用 Claude 讀資料產廣告文案或腳本"
+  ],
+  "stack": [
+    "TypeScript",
+    "Next.js 16",
+    "React 19",
+    "NestJS 12",
+    "PostgreSQL",
+    "Redis",
+    "Prisma",
+    "Knex",
+    "ShareDB（OT 即時協作）",
+    "ANTLR4（公式語法）",
+    "Tailwind／shadcn",
+    "Vercel AI SDK",
+    "Docker"
+  ],
+  "run_requirements_zh": "用官方 docker-compose 起 teable＋postgres:15.4＋redis:7.2.4 三個容器；不需 GPU，個人用估計 2 vCPU／4GB RAM（官方未標示最低規格）。無法放在 Firebase Hosting。基本功能免 API Key，只有主機費；AI 寫公式需自填 LLM 金鑰（可用 Anthropic），依用量付費；AI 對話／App Builder 需完整版部署與付費授權。",
+  "key_features_zh": [
+    "Canvas 繪製的表格，虛擬捲動＋分頁載入（64／300 筆），官方宣稱可撐百萬列",
+    "20 種欄位型別（文字、數字、單選／多選、附件、關聯、Lookup、Rollup、公式、按鈕等）",
+    "81 個公式函數（數值 19、文字 18、邏輯 9、日期 25、陣列 7、系統 3），以 {欄位} 參照，後端轉成 SQL 計算",
+    "Grid、表單、看板、相簿、日曆、外掛 6 種檢視；篩選、排序、分組、統計",
+    "ShareDB 即時多人協作、伺服器端復原／重做、紀錄歷史、留言",
+    "可從 Excel／Google 試算表直接貼上（取值），垂直拖拉填滿數字與日期數列",
+    "匯入 CSV／xlsx／xls／Google Sheets／Airtable；匯出只有 CSV",
+    "完整 REST API、Access Token、iframe 外掛機制、SQL 查詢"
+  ],
+  "reusable_parts": [
+    {
+      "name": "Canvas Grid 表格元件（MIT）",
+      "path": "packages/sdk/src/components/grid",
+      "difficulty": "中",
+      "note_zh": "77 檔、13,133 行非測試；需 React，依賴 lodash、lru-cache、scroller、react-hammerjs 等，少量 @teable/ui-lib、icons、core 函式可替換。用 Vite 包成 mountGrid()，getCellContent 讀資料、onCellEdited 寫回 Firestore。"
+    },
+    {
+      "name": "公式引擎（MIT）",
+      "path": "packages/core/src/formula",
+      "difficulty": "中",
+      "note_zh": "搭配 packages/formula 的 ANTLR 語法，evaluate() 可在瀏覽器計算 {售價}-{成本} 類欄位公式；需要 FieldCore 欄位模型。非 Excel A1 引擎。"
+    },
+    {
+      "name": "串流 Excel／CSV 匯入器（MIT）",
+      "path": "packages/v2/import/src/adapters",
+      "difficulty": "中",
+      "note_zh": "依檔頭判斷 xlsx／xls／Excel XML／HTML，逐列串流讀取、自動找表頭；適合放 Node 或 Cloud Functions 處理報價單上傳，需替換 v2-core 型別。"
+    },
+    {
+      "name": "剪貼簿 TSV 解析 parseClipboardText（MIT）",
+      "path": "packages/core/src/utils/clipboard.ts",
+      "difficulty": "低",
+      "note_zh": "純函式，把從 Excel 複製的文字轉成二維陣列，任何網頁可直接用。"
+    },
+    {
+      "name": "REST API 型別與用戶端（MIT）",
+      "path": "packages/openapi/src",
+      "difficulty": "低",
+      "note_zh": "zod schema＋axios 函式，自架 Teable 時前端可型別安全地讀寫紀錄。"
+    },
+    {
+      "name": "拖拉填滿數列邏輯（AGPL）",
+      "path": "apps/nextjs-app/src/features/app/blocks/view/grid/utils/fill.ts",
+      "difficulty": "低",
+      "note_zh": "數字等差、日期數列判斷，搭配 Grid 的 onFillSelection；AGPL，商用建議參考後自行重寫。"
+    },
+    {
+      "name": "欄位依賴拓撲排序（AGPL）",
+      "path": "apps/nestjs-backend/src/features/calculation/utils/dfs.ts",
+      "difficulty": "低",
+      "note_zh": "hasCycle、getTopoOrders，可參考做「改成本自動重算毛利」的重算順序；AGPL。"
+    }
+  ],
+  "ai_integration_zh": "後端用 Vercel AI SDK，支援 Anthropic、OpenAI、Google、Bedrock、DeepSeek、Ollama 等 17 種供應商，管理後台填 Anthropic 金鑰即可用 Claude。社群版實際可見的 AI 只有「AI 寫公式」（packages/openapi/src/formula/ai.ts 組 prompt）。AI 欄位只有設定 schema，執行端在開源碼中找不到；AI 對話、App Builder、AI 自動化屬付費版。有給 MCP 用戶端的 OAuth 動態註冊，但 MCP 伺服器本體不在此 repo（未確認）。無 Skills、無影片生成。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：掃描前一天仍有 commit，21,952 星；2,114 個測試檔（含 230 個後端 e2e），7 個 CI workflow。正大規模改寫為 packages/v2 新架構，fork 後合併上游成本高。",
+  "risks_zh": [
+    "不是真正的 Excel：無 A1 參照、跨表公式、合併儲存格、條件格式、樞紐分析",
+    "匯出只有 CSV，沒有 xlsx；匯入 Excel 只保留值，公式與樣式遺失",
+    "apps/ 為 AGPL 且有品牌保護條款，不能移除 Teable Logo 後對外提供",
+    "AI 對話、App Builder、自動化需付費授權，社群版顯示升級提示",
+    "需要 Node 伺服器＋PostgreSQL＋Redis，不能放 Firebase Hosting",
+    "沒有繁體中文介面（只有簡體 zh）",
+    "Grid 元件綁 React，嵌入純 JS 網頁需自行打包，打包大小未確認",
+    "架構正在 v1→v2 遷移，內部 API 變動頻繁"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "想要一個自架的「資料庫型試算表」當進銷存後台就直接用；想自己做網頁 Excel 則只拆它 MIT 的 Canvas Grid，公式與 xlsx 匯出另找 HyperFormula、SheetJS。",
+  "keywords": [
+    "Teable",
+    "網頁版 Excel",
+    "資料庫試算表",
+    "多維表格",
+    "Airtable 替代",
+    "自架",
+    "self-hosted",
+    "PostgreSQL",
+    "Canvas 表格",
+    "canvas grid",
+    "虛擬捲動",
+    "公式引擎",
+    "formula engine",
+    "即時協作",
+    "ShareDB",
+    "Excel 匯入",
+    "CSV 匯出",
+    "REST API",
+    "進銷存",
+    "成本計算",
+    "AGPL-3.0",
+    "MIT",
+    "Claude",
+    "Anthropic"
+  ],
+  "pack_path": "_oss-research/01-web-excel/teableio__teable.md"
+}

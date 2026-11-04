@@ -1,0 +1,153 @@
+{
+  "repo": "mattpocock/skills",
+  "category": "04-agent-rules-skills",
+  "commit": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+  "scanned_at": "2026-11-04",
+  "stars": 312707,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可複製、翻譯、改寫成自己的 skill。",
+  "license_commercial_zh": "公司商用：可以，含內部使用與包進付費產品；散布時保留原著作權與 MIT 授權文字即可。pr skill 有致謝 Humanlayer 的 CREDITS.md，其授權未確認，商用前先看。",
+  "one_liner_zh": "示範 Claude 與 Codex 共用規則、角色分工的工程 Skills 庫",
+  "use_cases_zh": [
+    "用 AGENTS.md -> CLAUDE.md symlink 讓 Codex 與 Claude 讀同一份共用規則，消除新舊版本分歧",
+    "照 SKILL.md + agents/openai.yaml 雙設定格式，寫出兩個 AI 都能用的自訂 skill",
+    "套用 writing-for-agents 準則精簡 CLAUDE.md：只放導航指標、刪 no-op、單一事實來源",
+    "以 chief-of-staff 的 wiki Lint 與 retro 的七類檢查為骨架，寫自己的每日巡讀 skill",
+    "用本地 .scratch/ 工單 + Blocked by + frontier 做任務追蹤，讓 GPT 與 Claude 分領工單不漏不撞",
+    "讓一個 AI 實作、另一個 AI 用 code-review 兩軸（Standards/Spec）審查",
+    "用 ADR（superseded 標記）、GLOSSARY（_Avoid_ 同義詞）、.out-of-scope 防新舊衝突與重複討論",
+    "用 handoff 在 Claude 與 Codex 之間交接工作"
+  ],
+  "stack": [
+    "Markdown",
+    "YAML",
+    "JSON（plugin manifest）",
+    "Bash",
+    "Node.js（僅版本同步腳本）",
+    "Changesets",
+    "GitHub Actions"
+  ],
+  "run_requirements_zh": "不需伺服器、資料庫、GPU。用 Claude Code／Codex／Copilot 的 plugin 指令或 npx skills@latest add 安裝；repo 本身不需 API Key，花費是你自己的 AI 訂閱用量（多 subagent 的 skill 會增加 token 用量，金額未確認）。若選 GitHub 工單需 gh CLI；git 防護 hook 需 jq。",
+  "key_features_zh": [
+    "AGENTS.md 是指向 CLAUDE.md 的 symlink，一份規則兩個 AI 共讀",
+    "每個 skill 同時有 SKILL.md（Claude）與 agents/openai.yaml（Codex），invocation 設定強制同步",
+    "User-invoked（24 個）vs Model-invoked（15 個）分類與 description 寫法規則",
+    "主流程 grill → to-spec → to-tickets → implement/implement-spec → tdd → code-review → retro",
+    "implement-spec 角色：exploration / implementer / merger subagent，以 context pointer 溝通",
+    "code-review 兩軸平行審查＋12 個 Fowler smell 基準（含 Duplicated Code）",
+    "triage 的 redundancy 與 prior rejection 檢查＋.out-of-scope 一概念一檔",
+    "chief-of-staff wiki：Ingest/Query/Lint、每句附日期或 commit、舊說法標 superseded",
+    "writing-for-agents：context pointer、progressive disclosure、sediment、no-op 修剪",
+    "software-factory 範例：每日 Ratchet、每夜 Architecture 掃描、每 10 個 PR 抽 1 做 Retro"
+  ],
+  "reusable_parts": [
+    {
+      "name": "共用規則 symlink 模式",
+      "path": "CLAUDE.md（AGENTS.md -> CLAUDE.md）",
+      "difficulty": "低",
+      "note_zh": "專案根目錄 ln -s CLAUDE.md AGENTS.md，規則只改一處；CLAUDE.md 只放導航指標"
+    },
+    {
+      "name": "Claude/Codex 雙設定規則",
+      "path": ".agents/invocation.md",
+      "difficulty": "低",
+      "note_zh": "每個自訂 skill 放 SKILL.md + agents/openai.yaml，user-invoked 兩邊同步關閉自動觸發"
+    },
+    {
+      "name": "writing-for-agents",
+      "path": "skills/productivity/writing-for-agents/",
+      "difficulty": "低",
+      "note_zh": "整包安裝，改規則檔前讓 AI 先讀"
+    },
+    {
+      "name": "retro 環境檢討",
+      "path": "skills/engineering/retro/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "每日收工跑，七類檢查依嚴重度列出；可併入巡讀"
+    },
+    {
+      "name": "wiki Lint 與寫歷史規則",
+      "path": "skills/in-progress/chief-of-staff/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "L26-L47 改寫成每日巡讀 skill：找矛盾、孤兒頁、被推翻的說法"
+    },
+    {
+      "name": "code-review 兩軸審查",
+      "path": "skills/engineering/code-review/SKILL.md",
+      "difficulty": "中",
+      "note_zh": "Claude 實作、Codex 審查（或反之），報告分 Standards/Spec 兩節"
+    },
+    {
+      "name": "本地工單系統與模板",
+      "path": "skills/engineering/setup-matt-pocock-skills/issue-tracker-local.md",
+      "difficulty": "低",
+      "note_zh": ".scratch/<feature>/issues/NN-*.md，Status 與 Blocked by，搭配 to-tickets 模板"
+    },
+    {
+      "name": "Agent Brief 與 out-of-scope",
+      "path": "skills/engineering/triage/",
+      "difficulty": "低",
+      "note_zh": "AGENT-BRIEF.md 當派工模板；OUT-OF-SCOPE.md 機制防重複提案"
+    },
+    {
+      "name": "ADR 與 GLOSSARY 格式",
+      "path": "skills/engineering/domain-modeling/",
+      "difficulty": "低",
+      "note_zh": "庫存詞彙統一（_Avoid_ 同義詞），決策用 superseded 標記新舊"
+    },
+    {
+      "name": "handoff 交接",
+      "path": "skills/productivity/handoff/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "Claude ↔ Codex 換手時產生交接文件，只放指標不重抄"
+    },
+    {
+      "name": "git 危險指令攔截 hook",
+      "path": "skills/misc/git-guardrails-claude-code/",
+      "difficulty": "低",
+      "note_zh": "Claude Code PreToolUse hook，防止 AI 誤 push/reset；需 jq，僅 Claude Code"
+    }
+  ],
+  "ai_integration_zh": "本身就是 Agent Skills 格式的 prompt 庫，Claude Code 原生支援（官方 plugin marketplace），Codex/Copilot 讀同一份 .claude-plugin manifest，Gemini CLI 與 Cursor 等用 skills.sh 安裝。skill 之間以「Call the Skill tool with X」互相呼叫，派 subagent 一律全新 context（因 Codex 預設 fork）。無 MCP server；有 Claude Code hook 範例與 claude --bg 背景交接 Beta skill。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-11-04 仍有推送，CHANGELOG 9 個版本段落（至 1.3.2），每版多條修正並對應真實 issue；changesets 發版、3 個 GitHub Actions。不接受新 skill 貢獻，PR 僅限協作者。",
+  "risks_zh": [
+    "沒有現成可執行的每日巡讀程式，只有概念與 prompt，需自行組合排程",
+    "沒有自動化測試，也沒有自動 drift／重複偵測腳本，皆靠 AI 依 prompt 執行",
+    "/code-review、/research、/prototype 可能與工具內建指令撞名，需用 /mattpocock-skills:xxx 呼叫",
+    "plugin 與 skills.sh 兩種安裝同時用會讓 skill 重複出現",
+    "多 subagent skill（implement-spec、code-review、chief-of-staff）token 用量高",
+    "大量預設 GitHub Issues 與 gh CLI；Codex plugin 安裝會丟 symlink；Windows 上 AGENTS.md symlink 行為未確認",
+    "in-progress 的 skill 可能隨時變動或消失；software-factory 缺 agents/openai.yaml"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "非常值得當你多 AI 協作的「基礎架構範本」：直接借用 symlink 共用規則、skill 雙設定、retro、wiki Lint、工單與 ADR；每日巡讀需自己用這些零件組出來。",
+  "keywords": [
+    "mattpocock/skills",
+    "Agent Skills",
+    "SKILL.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "Claude Code",
+    "Codex",
+    "共用規則",
+    "單一事實來源",
+    "角色分工",
+    "subagent",
+    "handoff 交接",
+    "retro 事後檢討",
+    "code-review 兩軸審查",
+    "巡讀",
+    "wiki lint",
+    "防重複",
+    ".out-of-scope",
+    "ADR superseded",
+    "新舊版本衝突",
+    "工單 blocking edges",
+    "triage 分診",
+    "writing-for-agents",
+    "description 觸發",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/mattpocock__skills.md"
+}

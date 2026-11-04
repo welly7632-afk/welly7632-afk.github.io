@@ -1,0 +1,56 @@
+{
+  "repo": "handsontable/handsontable",
+  "category": "01-web-excel",
+  "commit": "e5fe5bcd895c1a38b1f585c486743d274d2625d1",
+  "scanned_at": "2026-11-04",
+  "stars": 22075,
+  "license": "自訂授權：Handsoncode 雙授權（個人／評估用 non-commercial 條款免費，商業用途需購買授權；禁止開發競爭軟體）；公式引擎 HyperFormula 為 GPLv3／專有雙授權",
+  "license_personal_zh": "個人使用：填 licenseKey 'non-commercial-and-evaluation' 即可免費使用全部功能（含 xlsx 匯出入、公式），不會有浮水印；未填金鑰自 18.1 起會被鎖畫面。",
+  "license_commercial_zh": "公司商用：用在自家營運（含小生意倉儲系統）依條文屬商業用途，需購買商業授權，價格 repo 內未寫；新版權益金鑰可能只開部分功能（xlsx、公式等 token），且不得用它開發與 Handsontable 競爭的表格產品。",
+  "one_liner_zh": "像 Excel 的 JS 表格元件，含公式、貼上、xlsx 匯出入，非開源授權",
+  "use_cases_zh": [
+    "直接嵌入現有純 JavaScript 倉儲網頁，做庫存清單、進出貨單、盤點表",
+    "成本／報價／毛利試算表（HyperFormula 約 400 個 Excel 函數）",
+    "從 Excel／Google 試算表複製廠商報價直接貼上",
+    "匯出 .xlsx／.csv 給會計或廠商",
+    "用 dataProvider 或 afterChange 接 Firestore 存檔",
+    "商品清單表格搭配 Claude 批次產生商品文案或短影音腳本欄位"
+  ],
+  "stack": ["TypeScript", "瀏覽器 DOM（Walkontable 虛擬捲動）", "HyperFormula（chevrotain）", "ExcelJS（可選）", "React／Angular／Vue 3 包裝層", "rspack／babel／swc（僅建置用）"],
+  "run_requirements_zh": "純前端元件，無後端、無資料庫、不需 GPU；CDN 一支 handsontable.full.min.js（內含 HyperFormula）即可在純 JS 頁面使用，部署在 Firebase Hosting 即可。不需任何雲端 API Key，只需 Handsontable 自家 licenseKey（本地檢查不連網）。個人／評估免費，商用需購買授權（價格未確認）。",
+  "key_features_zh": [
+    "DOM 渲染＋虛擬捲動，官方效能測試含 10 萬列 × 100 欄情境",
+    "公式（HyperFormula）：420 個函數名（扣除內部運算子約 406 個），含 XLOOKUP、SUMIFS、FILTER、陣列公式、跨工作表、自訂函數；無 LET／LAMBDA／INDIRECT",
+    "從 Excel 貼上（HTML 表格與 TSV 解析）、拖拉填滿、復原／重做",
+    "合併儲存格、凍結窗格、欄寬列高、篩選、單欄／多欄排序、下拉與驗證",
+    "Intl 數字／貨幣／日期格式，條件格式需用自訂 renderer",
+    "CSV 匯出；XLSX 匯出（ExcelJS 或 develop 版內建引擎）；XLSX 匯入、多工作表分頁、公式列目前只在 develop 分支",
+    "287 個事件 hook、完整讀寫 API、DataProvider 伺服器端資料",
+    "繁體中文介面 zh-TW（缺 6 個字串）"
+  ],
+  "reusable_parts": [
+    {"name": "整個表格元件（黑盒子引用）", "path": "handsontable/src/index.ts", "difficulty": "低", "note_zh": "CDN 或 npm 引用，new Handsontable(el, settings)；用 registry.ts 按需註冊外掛縮小體積"},
+    {"name": "DataProvider 伺服器資料協定", "path": "handsontable/src/plugins/dataProvider/dataProvider.ts", "difficulty": "低", "note_zh": "fetchRows／onRowsCreate／onRowsUpdate／onRowsRemove 對到 Firestore 查詢與寫入，失敗自動還原"},
+    {"name": "SheetClip TSV 剪貼簿解析", "path": "handsontable/src/3rdparty/SheetClip/SheetClip.ts", "difficulty": "低", "note_zh": "195 行，parse／stringify Excel 複製的純文字；複製前先確認授權"},
+    {"name": "Excel HTML 剪貼簿轉格子", "path": "handsontable/src/utils/parseTable.ts", "difficulty": "中", "note_zh": "htmlToGridSettings 讀出資料與合併資訊，可參考實作方式"},
+    {"name": "欄型別自動推斷", "path": "handsontable/src/utils/columnTypeInference", "difficulty": "中", "note_zh": "透過 importFile.inferColumnTypes() 使用，CSV／貼上資料自動判斷數字、日期、下拉欄"},
+    {"name": "內建 xlsx 讀寫引擎", "path": "handsontable/src/utils/xlsxEngine", "difficulty": "高", "note_zh": "自寫 zip＋XML，與授權 token 綁定；要獨立函式庫建議改用 ExcelJS"},
+    {"name": "HyperFormula 公式引擎", "path": "hyperformula: src/HyperFormula.ts", "difficulty": "低", "note_zh": "獨立 npm 套件，可在 Cloud Functions 跑報價計算；單獨使用需 GPLv3 或購買授權"}
+  ],
+  "ai_integration_zh": "產品本身沒有任何 AI 功能或 prompt；repo 內的 CLAUDE.md、.claude/skills（約 30 個）、.mcp.json（ClickUp、GitHub 等）是開發團隊自己用 Claude Code 維護程式的設定。可透過 getData／setDataAtCell 與 contextMenu 自訂項目，經自己的後端呼叫 Claude API 做批次填寫、檢查價格、產生文案。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：2011 年建立，2026-11-04 仍有提交；18.0.0（2026-06-30）到 18.1.2（2026-10-07）約每 1–2 個月一版；約 2,639 個測試檔、30 個以上 CI 流程，由 Handsoncode 公司專職維護。",
+  "risks_zh": [
+    "非開源授權：商用需付費，且禁止開發與其競爭的軟體，不適合拆原始碼做自己的試算表產品",
+    "18.1 起未填或填錯 licenseKey 會出現關不掉的鎖畫面",
+    "xlsx 匯入、內建 xlsx 引擎、多工作表分頁、公式列尚在 develop 分支，正式版可能還沒有",
+    "沒有圖表、樞紐分析、多人即時協作",
+    "html 儲存格型別輸出原始 HTML，未設 sanitizer 有 XSS 風險",
+    "DOM 渲染，超大量格子時效能不如 Canvas 方案；大量公式在主執行緒重算",
+    "repo 的 .mcp.json 會在 Claude Code 中提示啟用外部 MCP 伺服器，應拒絕"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要最快把倉儲系統的表格做成 Excel 手感，選它；個人／評估可免費用，正式商用要買授權，要做完整試算表產品或多人協作請搭配 Univer 等開源方案。",
+  "keywords": ["Handsontable", "HyperFormula", "網頁版 Excel", "網頁試算表", "data grid", "spreadsheet", "純 JavaScript", "虛擬捲動", "公式引擎", "XLOOKUP", "複製貼上 Excel", "合併儲存格", "凍結窗格", "篩選排序", "下拉選單", "xlsx 匯出", "xlsx 匯入", "CSV", "Firestore", "DataProvider", "繁體中文", "授權金鑰", "non-commercial-and-evaluation", "庫存管理", "報價計算"],
+  "pack_path": "_oss-research/01-web-excel/handsontable__handsontable.md"
+}

@@ -1,0 +1,149 @@
+{
+  "repo": "heygen-com/hyperframes",
+  "category": "03-video-script",
+  "commit": "845bd638a7784d0859df047e16c61b8790b9a8bb",
+  "scanned_at": "2026-11-04",
+  "stars": 78761,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全免費，可改可私用；只做 HTML 動畫＋本機 TTS 不用花錢。",
+  "license_commercial_zh": "公司商用：Apache-2.0 可商用、可拆進閉源產品，保留 LICENSE／著作權聲明並註明修改即可；無按次渲染費。但桌面 App 原始碼不在 repo、/reverse-any-video 與 /style-sampling 屬 HyperFrames Pro 付費，HeyGen 生圖／生影片／數位人／配音要付 credits。",
+  "one_liner_zh": "用 HTML 寫影片、逐幀渲染成 MP4，原生支援 Claude Code",
+  "use_cases_zh": [
+    "用 Claude Code 外掛 /hyperframes 一句話做商品廣告短片（9:16、價格標、logo、配樂）",
+    "從倉儲系統匯出 rows.json，用 render --batch 一次產生每個商品一支廣告影片",
+    "做價格比較、熱銷排行等動畫圖表影片（data-chart、bar-chart-race 積木）",
+    "貼自己網站網址，capture 擷取畫面做產品介紹影片",
+    "把渲染 HTTP 伺服器放到 Cloud Run，讓 Firebase 網頁按鈕送出影片產生工作",
+    "當短劇／解說影片的最後合成與字幕層"
+  ],
+  "stack": [
+    "TypeScript",
+    "Bun monorepo",
+    "Node.js 22+",
+    "puppeteer-core / Chrome",
+    "FFmpeg",
+    "GSAP / CSS / Lottie / Three.js adapters",
+    "React 19 + Vite + CodeMirror 6（Studio 網頁編輯器）",
+    "Hono（渲染 HTTP 伺服器）",
+    "Kokoro ONNX TTS（Python）",
+    "whisper.cpp / Parakeet",
+    "AWS Lambda / GCP Cloud Run"
+  ],
+  "run_requirements_zh": "npx hyperframes 即可，需要 Node.js 22+ 與 FFmpeg；不需要 GPU（無 GPU 時 Chrome 用 SwiftShader，慢 5–50 倍），8 GB RAM 以下自動低記憶體模式。本機 Kokoro TTS 需 Python 3.10+。HeyGen 功能需登入（免費方案每月 3 分鐘配音、音樂庫與素材搜尋）；付費單價：生圖約 $0.04–0.067／張、生影片 $0.018–0.05／秒、數位人 $4.83／分、音樂 $0.08／首。CLI 預設開遙測，可設 HYPERFRAMES_NO_TELEMETRY=1 關閉。",
+  "key_features_zh": [
+    "HTML＋data-start／data-duration 定義時間軸，無需 build",
+    "window.__hf seek 協定＋13 個確定性動畫 adapter，同輸入同輸出",
+    "Puppeteer 逐幀截圖（BeginFrame／captureScreenshot）＋FFmpeg 串流編碼",
+    "六階段渲染管線：compile→probe→抽影格→音訊→截圖→編碼→組裝",
+    "--variables 與 --batch 批次渲染，適合大量電商素材",
+    "約 448 個積木（210 blocks＋238 components），含約 20 種字幕樣式",
+    "Claude Code／Codex／Cursor／Gemini CLI 外掛與 9 個 skills，另有託管 MCP",
+    "本機 Kokoro TTS、whisper 字幕、去背；HeyGen 生圖／生影片／數位人",
+    "Studio 網頁編輯器、<hyperframes-player> 嵌入式播放器",
+    "AWS Lambda／Cloud Run 分散式渲染、HTTP 渲染 API"
+  ],
+  "reusable_parts": [
+    {
+      "name": "批次＋變數渲染",
+      "path": "packages/cli/src/commands/batchRender.ts",
+      "difficulty": "低",
+      "note_zh": "直接用 CLI --batch，或學 rows.json＋manifest 設計，從 Firestore 匯出商品資料接上"
+    },
+    {
+      "name": "渲染 HTTP 伺服器",
+      "path": "packages/producer/src/server.ts",
+      "difficulty": "中",
+      "note_zh": "部署到 Cloud Run，前端呼叫 POST /render/stream 取得 SSE 進度與 MP4"
+    },
+    {
+      "name": "逐幀截圖引擎",
+      "path": "packages/engine/src/services/frameCapture.ts",
+      "difficulty": "高",
+      "note_zh": "5,714 行，建議整包引用 @hyperframes/engine，不要複製"
+    },
+    {
+      "name": "瀏覽器 runtime 與動畫 adapter",
+      "path": "packages/core/src/runtime/init.ts",
+      "difficulty": "中",
+      "note_zh": "讓任何網頁實作 window.__hf = {duration, seek} 即可被渲染成影片"
+    },
+    {
+      "name": "CSS 動畫 seek adapter",
+      "path": "packages/core/src/runtime/adapters/css.ts",
+      "difficulty": "低",
+      "note_zh": "235 行，學習讓 CSS 動畫停在任意時間點的技巧"
+    },
+    {
+      "name": "Kokoro 本機 TTS 封裝",
+      "path": "packages/cli/src/tts/manager.ts",
+      "difficulty": "低",
+      "note_zh": "免費配音，可抽給其他短劇工具用；中文只有普通話聲音"
+    },
+    {
+      "name": "HeyGen 報價邏輯",
+      "path": "packages/cli/src/heygen/pricing.ts",
+      "difficulty": "低",
+      "note_zh": "做 AI 影片成本試算時參考各模型單價"
+    },
+    {
+      "name": "嵌入式播放器",
+      "path": "packages/player/src/hyperframes-player.ts",
+      "difficulty": "中",
+      "note_zh": "在 Firebase 網站嵌 <hyperframes-player> 預覽影片範本"
+    },
+    {
+      "name": "字幕／圖表／商品積木",
+      "path": "registry/components/",
+      "difficulty": "低",
+      "note_zh": "npx hyperframes add <name> 或直接複製 HTML（caption-*、data-chart、product-turntable）"
+    },
+    {
+      "name": "Claude Code skills 寫法",
+      "path": "skills/hyperframes/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "參考契約＋工作流程＋references 分層，替自己的倉儲工具寫 skill"
+    }
+  ],
+  "ai_integration_zh": "專為 coding agent 設計：Claude Code 外掛（claude plugin install hyperframes@hyperframes）＋9 個 skills，Claude 讀 skill 寫 HTML 再呼叫 CLI；程式本身不直接呼叫 Anthropic API。外部模型走 HeyGen（nano-banana-2、gpt-image-2.5、heygen-video-1、Avatar IV、voice、music）；網站擷取圖片說明可用 OpenRouter／Gemini／Vertex。另有 HeyGen 託管 MCP（beta）與 Studio 的 WebMCP。",
+  "claude_support": "原生",
+  "maintenance_zh": "極活躍：2026-11-04 仍有 commit，PR 編號超過 #7163；版本 0.9.12（0.x 仍可能變動）；22 個 GitHub workflow、packages 下約 2,100 個測試檔；HeyGen 官方維護並在正式環境使用。",
+  "risks_zh": [
+    "CLI 預設開啟 PostHog 遙測，需設 HYPERFRAMES_NO_TELEMETRY=1 關閉",
+    "skills 會引導 agent 優先用 HeyGen 付費服務，且被指示不主動告知價格，需自設 credit-limit",
+    "內建字型無繁中，需自行 @font-face；中文轉錄需手動斷句、可能繁簡互換",
+    "本機 TTS 只有普通話，沒有台灣腔",
+    "桌面 App 原始碼不在 repo，Pro 功能需付費",
+    "無 GPU 時渲染慢 5–50 倍，3D／WebGL 積木更吃資源",
+    "capture 擷取他人網站做廣告有著作權／商標風險；數位人與聲音複製有肖像權問題"
+  ],
+  "fit_for_user": 5,
+  "verdict_zh": "電商商品廣告批次產片的首選引擎：搭配 Claude Code 外掛直接可用，再從倉儲資料匯出 JSON 做 --batch；台灣腔配音另接其他 TTS。",
+  "keywords": [
+    "HyperFrames",
+    "HeyGen",
+    "HTML 轉影片",
+    "HTML to video",
+    "程式化影片",
+    "programmatic video",
+    "headless Chrome",
+    "Puppeteer",
+    "FFmpeg",
+    "逐幀渲染",
+    "GSAP",
+    "Remotion 替代",
+    "Claude Code 外掛",
+    "Claude Code plugin",
+    "skills",
+    "MCP",
+    "批次渲染",
+    "batch render",
+    "商品廣告",
+    "電商影片",
+    "字幕",
+    "Kokoro TTS",
+    "數位人",
+    "Cloud Run",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/03-video-script/heygen-com__hyperframes.md"
+}

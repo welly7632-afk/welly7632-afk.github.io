@@ -1,0 +1,61 @@
+{
+  "repo": "HBAI-Ltd/Toonflow-app",
+  "category": "03-video-script",
+  "commit": "ecd5325c7f9b38721491382ee6952fa2318b4693",
+  "scanned_at": "2026-11-04",
+  "stars": 20452,
+  "license": "MIT（v2.x 起；v1.0.8 前為 AGPL-3.0，v1.0.8～v1.1.8 為 Apache-2.0＋附加協議）",
+  "license_personal_zh": "個人使用：完全免費，可自架、可修改，無功能鎖。",
+  "license_commercial_zh": "公司商用：MIT 允許商用與閉源再散布，只需保留著作權與授權聲明；只能拿 v2.x（master）程式碼，舊版仍受 AGPL／Apache 約束。官方付費模型平台 api.toonflow.net 為選用服務。",
+  "one_liner_zh": "畫布式 AI 短劇／商品影片工作室，原生接 Claude 與 MCP",
+  "use_cases_zh": [
+    "把商品照當參考圖，讓 Claude 寫 Seedance 分段提示詞，生成電商商品短影片與廣告素材",
+    "小說或一句話創意 → 劇本 → 角色場景資產 → 分鏡 → AI 影片片段，製作短劇／漫劇",
+    "用 Claude Code 透過 MCP 遙控 Toonflow 畫布，自動建節點、送出生圖生影片",
+    "用本機「逐帧拉片」節點拆解競品爆款廣告的鏡頭、關鍵影格與音軌",
+    "把 Seedance 導演 SKILL 與提示詞知識庫搬進自己的 Claude Code skills",
+    "沿用媒體供應商 adapter 介面（generate／resumeTask／getPrice／getBalance）做自己的多平台生成工具"
+  ],
+  "stack": ["TypeScript", "Vue 3", "Vite", "Element Plus", "Vue Flow", "Tiptap 3", "three.js", "Bun 1.4.3", "Express 5", "zod", "pi-ai / pi-coding-agent", "MCP TypeScript SDK", "FFmpeg", "Electrobun", "JSON 檔案儲存（無資料庫）"],
+  "run_requirements_zh": "桌面版（Windows／macOS Apple Silicon）或 Android APK 直接安裝；或 Docker compose（127.0.0.1:3000，含 FFmpeg）；或 Linux 用 Bun 1.4.3 建置執行。不需 GPU，生成全走雲端 API。需要語言模型 Key（Anthropic／OpenAI 相容／DeepSeek）與媒體平台 Key（內建 APIMart、優雲智算、秘塔）。官方案例 2 分鐘成片約人民幣 130 元（LLM 約 10、影片約 120、圖片不到 1）。",
+  "key_features_zh": [
+    "Vue Flow 無限畫布：文字、圖片、影片、音訊、生圖、生影片、生音訊、3D 導演台、拉片共 9 種節點",
+    "內建 AI Agent（pi-coding-agent），生成前強制列方案並取得同意",
+    "原生 anthropic-messages 協定，另支援 OpenAI Completions／Responses",
+    "1,406 行 Seedance 2.0/2.5 導演 workflow SKILL，含商品圖綁定與包裝文字保護規則",
+    "內建 MCP 伺服器（HTTP 127.0.0.1:10588 與 stdio），附給外部 Agent 的 toonflow SKILL",
+    "可插拔媒體供應商 adapter（Seedance、Wan3.0、MiniMax-H3、gpt-image-2、Seedream、Nano banana）",
+    "多 Agent 分鏡團隊（導演／編劇／審稿）與 A2A",
+    "本機場景切換偵測拉片，輸出關鍵影格、片段與音軌",
+    "21 種介面語言，含繁體中文"
+  ],
+  "reusable_parts": [
+    {"name": "Seedance 導演 workflow SKILL", "path": "packages/skills/workflow/SKILL.md", "difficulty": "低", "note_zh": "純 Markdown，放進 .claude/skills/ 即可；刪除畫布執行段落並改成繁中台灣用語。"},
+    {"name": "劇本／分鏡／提示詞知識庫", "path": "packages/skills/v118workflow/references/knowledge/", "difficulty": "低", "note_zh": "scriptCraft、shotCraft、imagePromptCraft、videoPromptCraft 等 7 檔，當 skill references。"},
+    {"name": "媒體供應商介面型別", "path": "packages/providers/types.d.ts", "difficulty": "低", "note_zh": "generateImage/Video/Audio＋resumeTask＋getPrice＋getBalance 的介面設計，可直接沿用。"},
+    {"name": "APIMart 影片／圖片 adapter", "path": "packages/providers/src/media/apiMart.ts", "difficulty": "中", "note_zh": "把 this.tool.fetch 換成一般 fetch，即可在 Node 或 Firebase Functions 呼叫 Seedance 與 gpt-image-2。"},
+    {"name": "場景切換偵測器", "path": "packages/nodes/frameAnalysisNode/src/sceneDetector.ts", "difficulty": "低", "note_zh": "183 行純 TS，無依賴；瀏覽器取幀後餵入即可做競品廣告拆鏡。"},
+    {"name": "影片剪裁／分離音軌", "path": "packages/nodes/videoNode/src/videoProcessing.ts", "difficulty": "低", "note_zh": "87 行 fluent-ffmpeg 風格，改成 Node 腳本使用。"},
+    {"name": "LLM 三協定封裝", "path": "apps/server/src/utils/ai/index.ts", "difficulty": "中", "note_zh": "同一份設定切換 Claude／OpenAI／DeepSeek；依賴 pi-ai。"},
+    {"name": "MCP 工具與脫敏設計", "path": "apps/server/src/utils/mcp/tools.ts", "difficulty": "高", "note_zh": "參考 target＋args、redactSecrets、預設關閉＋Bearer 權杖，為自己的倉儲 App 做 MCP。"},
+    {"name": "生成前確認規則（系統提示詞）", "path": "apps/server/src/agent/runtime/prompt.ts", "difficulty": "低", "note_zh": "第 34–38 行「消耗算力前的確認」抄進 CLAUDE.md，避免 Agent 亂燒影片額度。"},
+    {"name": "AI 協助寫 adapter 的提示詞", "path": "apps/web/src/components/settings/panels/mediaModel/providerPrompt.ts", "difficulty": "低", "note_zh": "改寫成 Claude Code skill，用來接任何新的影片平台 API。"}
+  ],
+  "ai_integration_zh": "語言模型原生支援 Anthropic Messages（自動抓模型列表、adaptive thinking），官方案例即用 Claude Opus 4.6 寫劇本與提示詞；圖片／影片由 Seedance、Wan、MiniMax、gpt-image-2、Seedream 等雲端模型生成。內建 Agent 的系統提示詞在 agent/runtime/prompt.ts，製作方法在 packages/skills/*/SKILL.md（與 Claude Code 同格式）。Toonflow 同時是 MCP 伺服器（Claude Code 可遙控畫布）與 MCP 客戶端（可匯入 JSON／.dxt）。注意系統提示詞預設優先選官方付費「Toonflow」供應商。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-01-29 建立，約九個月 2 萬星，HEAD 為 2026-11-02 提交，v2.0.x，有 CI 打包 Windows／macOS／Android；但無任何測試檔，文件與提示詞皆為簡體中文。",
+  "risks_zh": [
+    "Web 與 API 無身分驗證，對外部署必須只綁本機或加認證反向代理",
+    "匿名遙測預設開啟，每 60 秒回報使用統計到 api.toonflow.net（可在隱私設定關閉）",
+    "媒體 adapter 以 node:vm 執行，作者自承不是不可信程式碼隔離，勿匯入來路不明的外掛",
+    "內建媒體平台皆為中國服務，資料出境、付款與發票需自行評估",
+    "沒有內建 TTS、字幕、配樂與時間軸成片，需外部工具補足",
+    "SKILL 與 Agent 預設輸出簡體中文、強制走 Seedance 路由，需自行修改",
+    "舊版（v1.1.8 以前）仍為 AGPL-3.0／Apache-2.0＋附加協議，只能從 v2.x 取程式碼",
+    "用真人照片或他人商品圖當參考有肖像權與著作權風險"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "想用 Claude 做短劇或商品廣告影片的首選之一：MIT 可拆、原生 Claude＋MCP；但成片仍需搭配有 TTS／字幕的工具。",
+  "keywords": ["Toonflow", "短劇", "漫劇", "AI 影片生成", "無限畫布", "分鏡", "劇本", "Seedance", "Wan3.0", "MiniMax-H3", "gpt-image-2", "Claude", "Anthropic Messages", "MCP", "Claude Code", "SKILL.md", "AI Agent", "Vue Flow", "Bun", "FFmpeg", "拉片", "商品影片", "廣告素材", "short drama", "infinite canvas"],
+  "pack_path": "_oss-research/03-video-script/HBAI-Ltd__Toonflow-app.md"
+}

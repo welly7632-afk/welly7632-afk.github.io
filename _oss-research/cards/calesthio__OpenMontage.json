@@ -1,0 +1,136 @@
+{
+  "repo": "calesthio/OpenMontage",
+  "category": "03-video-script",
+  "commit": "d21f5d4eaa08422b09c7091757a05affcbabb35b",
+  "scanned_at": "2026-11-04",
+  "stars": 76348,
+  "license": "AGPL-3.0",
+  "license_personal_zh": "個人使用：完全可以，下載、修改、本機跑、產出的影片拿去投廣告都沒問題；AGPL 管程式碼，不管你做出來的影片。",
+  "license_commercial_zh": "公司商用：公司內部自己跑來做影片可以；若把它或改版包成網站／SaaS 給別人用，必須公開修改後原始碼。把其中程式碼抄進自家閉源系統對外服務也會受 AGPL 約束。另外合成引擎 Remotion 有獨立授權，公司商用可能要另購（細節未確認，可改用 HyperFrames／FFmpeg 避開）。沒有發現付費閉源版，費用主要來自各家雲端生成 API。",
+  "one_liner_zh": "給 Claude Code 用的開源影片產線：12 條流程，腳本到成片",
+  "use_cases_zh": [
+    "用商品照做首尾幀圖生影片的電商廣告短片（Veo／Kling），輸出 9:16 給 Reels、TikTok、Shorts",
+    "零成本做『商品圖＋Piper 旁白＋逐字字幕＋ProductReveal 動畫』的上架影片",
+    "貼一支爆款參考影片，讓 Claude 分析節奏後提出 2–3 個自己品牌版本並先估成本",
+    "幫自己的倉儲系統錄製操作教學影片（screen-demo 流程）",
+    "長影片切成多支短影音（clip-factory）、影片翻譯配音（localization-dub）",
+    "把流程 YAML＋階段導演 Markdown 的寫法，改寫成自己的『商品廣告影片 SOP』Claude Skill"
+  ],
+  "stack": [
+    "Python 3.10+",
+    "pydantic",
+    "jsonschema",
+    "FastAPI（Backlot 本機看板）",
+    "Remotion 4（React 18 + TypeScript）",
+    "HyperFrames（HTML/CSS/GSAP）",
+    "FFmpeg",
+    "WhisperX",
+    "CLIP ViT-B/32",
+    "PyTorch（選用，本機 GPU）",
+    "檔案式 JSON checkpoint（無資料庫）"
+  ],
+  "run_requirements_zh": "本機執行：Python 3.10+、Node.js 18+、FFmpeg，`make setup` 後用 Claude Code 打開資料夾直接講需求；不需要 Anthropic API Key（Claude Code 本身就是導演）。無 GPU 可走免費素材＋Piper＋Remotion 或雲端 API；本機生影片需 NVIDIA GPU 約 6–14 GB VRAM（工具宣告值）。API Key 全部選填：Pexels／Pixabay 免費；FAL_KEY（FLUX 約 $0.03/張、Kling 5 秒約 $0.10 起、Veo $0.20–0.40/秒）；GOOGLE_API_KEY（TTS 有免費額度、Imagen 約 $0.04/張）；另可接 ElevenLabs、OpenAI、Kling 官方、Seedance、Runway、Suno 等。作者自報 60 秒動畫短片約 $1.33。",
+  "key_features_zh": [
+    "Agent 主導：無 Python 總控，Claude Code 讀 YAML 流程＋Markdown 導演指南逐階段執行，每個創意決策停下來問你",
+    "12 條正式製作流程（另 1 條測試用）：解說、動畫、真人口播、虛擬主播、電影感、切片、紀錄片蒙太奇、混合、翻譯配音、Podcast、螢幕錄影、角色動畫",
+    "AST 統計 155 個工具：生影片 34、生圖 30、TTS 14、分析 14、後製 10 等",
+    "7 維度供應商評分自動挑服務，並有預算上限、單次超過 $0.50 需批准",
+    "Veo 首尾幀圖生影片，商品外觀不易走樣",
+    "Remotion ProductReveal（商品圖／品名／價格／標語／CTA）與 TikTok 式逐字字幕（支援 CJK 斷行）",
+    "免費實拍素材庫（16 個來源）＋CLIP 語意檢索挑片",
+    "合成前防投影片感檢查、合成後 ffprobe＋抽幀＋音量自我審查",
+    "Backlot 本機即時看板與分鏡核准頁"
+  ],
+  "reusable_parts": [
+    {
+      "name": "流程 YAML＋階段導演 Markdown 架構",
+      "path": "pipeline_defs/ + skills/pipelines/",
+      "difficulty": "低",
+      "note_zh": "照結構自己重寫一份商品廣告影片 SOP，放進自己 repo 的 .claude/skills/，可避開 AGPL"
+    },
+    {
+      "name": "ProductReveal 商品揭幕動畫",
+      "path": "remotion-composer/src/components/ProductReveal.tsx",
+      "difficulty": "低",
+      "note_zh": "從倉儲系統匯出商品圖、品名、售價 JSON 當 props，批次 render 上架影片；注意 Remotion 授權"
+    },
+    {
+      "name": "CaptionOverlay 逐字字幕",
+      "path": "remotion-composer/src/components/CaptionOverlay.tsx",
+      "difficulty": "低",
+      "note_zh": "餵 {word,startMs,endMs} 陣列；中文設 wordSeparator 為空字串"
+    },
+    {
+      "name": "成本追蹤器",
+      "path": "tools/cost_tracker.py",
+      "difficulty": "低",
+      "note_zh": "估價→保留→結算→退款模式，可套到 AI 生圖或廣告預算控管"
+    },
+    {
+      "name": "7 維度供應商評分",
+      "path": "lib/scoring.py",
+      "difficulty": "中",
+      "note_zh": "多家 API 自動挑選；加權邏輯也能移植到多供應商比價"
+    },
+    {
+      "name": "BaseTool＋ToolRegistry 外掛架構",
+      "path": "tools/base_tool.py",
+      "difficulty": "中",
+      "note_zh": "宣告式工具 metadata＋自動掃描，適合當自己 AI 工具箱骨架"
+    },
+    {
+      "name": "FFmpeg 字幕燒錄與 ASS 樣式",
+      "path": "tools/video/video_compose.py",
+      "difficulty": "低",
+      "note_zh": "抽出 _burn_subtitles／_build_subtitle_style；中文要改字型"
+    },
+    {
+      "name": "平台輸出規格表",
+      "path": "lib/media_profiles.py",
+      "difficulty": "低",
+      "note_zh": "Shorts／Reels／TikTok 解析度、長度、編碼參數直接沿用"
+    }
+  ],
+  "ai_integration_zh": "專為 Claude Code 設計：根目錄 CLAUDE.md 導向 AGENT_GUIDE.md，.claude/skills 有 49 個技能、.claude/commands 有 3 個斜線指令。Python 程式本身不呼叫任何 LLM（config.yaml 的 llm 設定只被定義、未被使用），腳本／分鏡／審稿都由 Claude Code 完成；生成類服務（Veo、Kling、FLUX、ElevenLabs 等）由各工具直接呼叫。本身沒有 MCP server，部分第三方 skill 需另接 HeyGen MCP。也支援 Cursor、Codex、Copilot、Windsurf。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-03-29 建立，最後 push 2026-11-03，持續跟進各家新模型；tests/ 有 154 個 .py、約 1,483 個 test_ 函式並有 GitHub Actions CI（未實際執行）。多數工具標示 EXPERIMENTAL。",
+  "risks_zh": [
+    "AGPL-3.0：做成對外網路服務須公開修改後原始碼",
+    "Remotion 對公司商用有獨立授權要求（細節未確認）",
+    "繁中／台灣口音沒有內建：程式碼找不到 zh-TW／cmn-TW，需自己指定 Google／Azure 聲音與中文字型",
+    "多數工具為 EXPERIMENTAL，雲端廠商 API 改版容易壞",
+    "安裝鏈長（Python＋Node＋FFmpeg＋HyperFrames＋選用 torch），且 Claude Code token 用量大",
+    "素材授權、yt-dlp 下載參考影片的平台條款、AI 肖像與廣告平台 AI 標示規定需自行把關",
+    "商品圖與腳本會上傳到所選雲端生成服務"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "做電商商品廣告短片與解說影片的最佳『Claude Code 範本庫』，建議先走免費路線試做，再拆 ProductReveal、字幕、成本控管與 SOP 寫法到自己的工具。",
+  "keywords": [
+    "OpenMontage",
+    "AI 影片製作",
+    "agentic video",
+    "Claude Code",
+    "Claude Skills",
+    "影片產線",
+    "腳本生成",
+    "分鏡",
+    "商品影片",
+    "電商廣告",
+    "短影音",
+    "圖生影片",
+    "image-to-video",
+    "Veo",
+    "Kling",
+    "fal.ai",
+    "TTS",
+    "配音",
+    "字幕",
+    "Remotion",
+    "HyperFrames",
+    "FFmpeg",
+    "ProductReveal",
+    "免費素材",
+    "成本控管"
+  ],
+  "pack_path": "_oss-research/03-video-script/calesthio__OpenMontage.md"
+}

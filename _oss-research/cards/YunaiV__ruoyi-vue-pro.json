@@ -1,0 +1,61 @@
+{
+  "repo": "YunaiV/ruoyi-vue-pro",
+  "category": "02-price-erp",
+  "commit": "42528bff6de57761430db057e628f7c5c979d676",
+  "scanned_at": "2026-11-04",
+  "stars": 40231,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：MIT，完全免費、可改、可不公開原始碼。",
+  "license_commercial_zh": "公司商用：MIT 允許商用與閉源，保留授權聲明即可；但內嵌的積木報表 JimuReport 為第三方 jar（據悉核心不開源、另有商業版，未在 repo 內驗證），UReport2 fork 授權未確認，商用前需另查。",
+  "one_liner_zh": "Java 全家桶後台，內含進銷存 ERP、WMS、報表設計器與 AI",
+  "use_cases_zh": [
+    "抄 ERP 的 33 張資料表設計（商品、倉庫、庫存、流水、採購／銷售單據）轉成 Firestore schema",
+    "參考「單據審核→寫庫存流水→更新庫存」流程，用 Firebase transaction 重寫",
+    "參考採購／銷售明細的單價×數量、稅額、折扣、其他費用計算，翻成 JavaScript",
+    "參考 Vue 明細表即時計算＋底部合計列，做採購單或盤點表輸入畫面",
+    "本機架起來試用完整 ERP／WMS 的操作流程，作為自建系統的功能對照",
+    "需要列印報表時，參考 UReport2／積木報表的網頁報表設計器整合方式"
+  ],
+  "stack": ["Java 8", "Spring Boot 2.7", "MyBatis Plus", "MySQL", "Redis", "Vue 3", "Element Plus", "Vite", "TypeScript", "Apache Fesod (EasyExcel)", "UReport2", "JimuReport", "Spring AI"],
+  "run_requirements_zh": "需要 JDK 8（或 jdk17 分支）、Maven、MySQL、Redis，前端另需 Node（yudaocode/yudao-ui-admin-vue3）。ERP 等業務模組在根 pom.xml 與 yudao-server/pom.xml 預設註解，須手動開啟；repo 內 SQL 只含 system/infra 共 48 張表，ERP 建表 SQL 不在 repo 內需另取。無 GPU 需求，ERP 不需 API Key；AI 模組需各家模型 API Key（含 ANTHROPIC_API_KEY），費用依模型計價。",
+  "key_features_zh": [
+    "ERP：商品／分類／單位、供應商、客戶、倉庫",
+    "採購訂單→採購入庫→採購退貨，銷售訂單→銷售出庫→銷售退貨，含稅率、折扣、其他費用",
+    "其他入庫／出庫、調撥、盤點（盤盈盤虧自動入出庫）",
+    "庫存流水 20 種異動類型、即時庫存、防負庫存",
+    "收款單／付款單、結算帳戶、採購與銷售金額統計",
+    "每種單據可匯出 Excel（ERP 無匯入）",
+    "WMS、MES、FMS（多幣別匯率、三大報表公式）、商城價格計算器鏈",
+    "UReport2、積木報表網頁報表設計器（iframe 嵌入）",
+    "AI 模組支援 Anthropic Claude、MCP、SKILL.md 技能"
+  ],
+  "reusable_parts": [
+    {"name": "ERP 資料模型（33 個 DO）", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/dal/dataobject", "difficulty": "低", "note_zh": "純欄位定義＋中文註解，交給 Claude Code 轉成 Firestore collection 與 TS interface，表頭＋明細結構可照搬"},
+    {"name": "審核→庫存流水→更新庫存", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/service/stock/ErpStockRecordServiceImpl.java", "difficulty": "中", "note_zh": "搭配 ErpPurchaseInServiceImpl 的 updatePurchaseInStatus，用 Firestore runTransaction 重寫；作廢寫反向流水"},
+    {"name": "庫存異動類型列舉", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/enums/stock/ErpStockRecordBizTypeEnum.java", "difficulty": "低", "note_zh": "直接翻成 JS 常數"},
+    {"name": "單據金額計算", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/service/purchase/ErpPurchaseInServiceImpl.java", "difficulty": "低", "note_zh": "calculateTotalPrice：商品金額＋稅−折扣＋其他費用；JS 端用整數或 decimal.js 計算"},
+    {"name": "盤點差異處理", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/service/stock/ErpStockCheckServiceImpl.java", "difficulty": "低", "note_zh": "帳面數 vs 實盤數，差異正負分別寫盤盈入庫／盤虧出庫"},
+    {"name": "單號產生器", "path": "yudao-module-erp/src/main/java/cn/iocoder/yudao/module/erp/dal/redis/no/ErpNoRedisDAO.java", "difficulty": "低", "note_zh": "前綴＋yyyyMMdd＋6 位自增；Firestore 用 counter 文件＋increment 取代 Redis"},
+    {"name": "明細表即時計算＋合計列（前端）", "path": "yudaocode/yudao-ui-admin-vue3: src/views/erp/purchase/order/components/PurchaseOrderItemForm.vue", "difficulty": "低", "note_zh": "el-table 每格 input、watch 深度監聽重算、show-summary 合計；改寫成純 JS 表格"},
+    {"name": "商城價格計算器鏈", "path": "yudao-module-mall/yudao-module-trade/src/main/java/cn/iocoder/yudao/module/trade/service/price/calculator/TradePriceCalculator.java", "difficulty": "中", "note_zh": "依順序常數串接多個計算器（活動→優惠券→積分→運費），可借設計做定價／促銷試算"},
+    {"name": "Excel 匯出匯入工具", "path": "yudao-framework/yudao-spring-boot-starter-excel/src/main/java/cn/iocoder/yudao/framework/excel/core/util/ExcelUtils.java", "difficulty": "高", "note_zh": "Java＋Fesod；JS 專案改用 SheetJS／exceljs，只抄範本下載→匯入→回報流程"},
+    {"name": "UReport2 模板存資料庫", "path": "yudao-module-report/src/main/java/cn/iocoder/yudao/module/report/framework/ureport2/core/provider/UReport2DatabaseReportProvider.java", "difficulty": "高", "note_zh": "需另架 Java 後端；只有要網頁報表設計器時才值得"}
+  ],
+  "ai_integration_zh": "yudao-module-ai 透過 Spring AI 支援 21 個平台，含 Anthropic Claude（AnthropicChatModel，ANTHROPIC_API_KEY）、OpenAI、Gemini、DeepSeek 等，功能為聊天、寫作、心智圖、繪圖、音樂、知識庫、工作流；寫作 prompt 寫死在 AiWriteTypeEnum。yudao-module-ai1-springai 支援 MCP、SKILL.md 技能（可在伺服器執行 Shell）、RAG，但對話模型只走 OpenAI 相容協定。MCP server/client 預設關閉。ERP 無 AI 功能，無影片或短劇生成。master 為 JDK 8，AI 模組能否直接編譯未確認，建議用 master-jdk17。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最新 commit 2026-11-03，有 GitHub Actions maven CI；但 ERP 模組 0 個單元測試（全 repo 測試集中在 IoT、HRM、BPM 等）。",
+  "risks_zh": [
+    "Java 生態，與使用者的純 JS＋Firebase 差異大，直接部署成本高",
+    "業務模組預設關閉，ERP 建表 SQL 不在 repo 內",
+    "ERP 無成本估值、無毛利、無多單位、無多幣別、無價目表、無比價／詢價",
+    "ERP 只能匯出 Excel 不能匯入，無 Webhook",
+    "前端預設載入百度統計（.env 的 VITE_APP_BAIDU_CODE），自用前需清空",
+    "報表 iframe 把 refresh token 放在網址參數",
+    "ai1 SKILL 工具可在伺服器執行 Shell 指令",
+    "積木報表為第三方 jar，授權需另查；介面與註解全為簡體中文，無台灣電子發票"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不要直接部署，把它當成進銷存資料模型與庫存流程的教科書，讓 Claude Code 照著改寫進你的 Firebase 倉儲系統；網頁版 Excel 與比價需求要找別的專案。",
+  "keywords": ["ruoyi-vue-pro", "芋道", "yudao", "進銷存", "ERP", "WMS", "庫存流水", "採購單", "銷售出庫", "盤點", "稅額計算", "Spring Boot", "MyBatis Plus", "Vue3", "Element Plus", "UReport2", "積木報表", "JimuReport", "報表設計器", "Excel 匯出", "Spring AI", "Claude", "MCP", "inventory", "purchase order"],
+  "pack_path": "_oss-research/02-price-erp/YunaiV__ruoyi-vue-pro.md"
+}

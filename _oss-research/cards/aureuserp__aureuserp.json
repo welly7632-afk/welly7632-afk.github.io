@@ -1,0 +1,60 @@
+{
+  "repo": "aureuserp/aureuserp",
+  "category": "02-price-erp",
+  "commit": "9b076df06a902cce5a14866650547ed13ffa140a",
+  "scanned_at": "2026-11-04",
+  "stars": 12166,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可下載、修改、自架，不用付費。",
+  "license_commercial_zh": "公司商用：可商用、可閉源改作或抄片段進自己產品，只要保留 Webkul 的版權與 MIT 授權聲明；第三方 composer 套件授權未逐一確認。",
+  "one_liner_zh": "Laravel＋Filament 輕量版 Odoo，價目表與供應商報價邏輯好抄",
+  "use_cases_zh": [
+    "把 PriceListResolver 價目表引擎翻成 JS，放進自己的 Firebase 倉儲系統做客戶別價格、批發級距、檔期價",
+    "抄 applyFormula 成本加成公式做「建議售價」：成本加成、進位到整數位、加固定費、限制最低／最高毛利",
+    "參考 ProductSupplier 資料結構建立多家供應商進價表，並改成跨供應商比價",
+    "抄 calculateMargin 毛利計算，再扣廣告費算含廣告毛利",
+    "在本機架一套完整 ERP 體驗 RFQ→採購單→入庫→帳單→付款流程，作為自建系統的規格參考",
+    "透過 /admin/api/v1 REST API 從 Firebase Cloud Functions 同步商品與庫存"
+  ],
+  "stack": ["PHP 8.3", "Laravel 13", "FilamentPHP 5", "Livewire 4", "TailwindCSS 4", "Vue 3（POS）", "MySQL 8 / MariaDB / PostgreSQL 16", "Laravel Sanctum", "Scribe API 文件", "dompdf", "maatwebsite/excel"],
+  "run_requirements_zh": "需要 PHP 8.3 伺服器＋MySQL/PostgreSQL，composer install 後執行 php artisan erp:install；也可用 docker-compose（Laravel Sail）或 docker/production。不需 GPU，一般小 VPS 即可（推估）；不能放在 Firebase Hosting。核心功能不需任何付費 API Key，選用 SMTP 寄信、Msg91 簡訊。",
+  "key_features_zh": [
+    "價目表規則引擎：固定價／打折／公式、數量級距、分類／商品／變體、有效期、價目表遞迴基準",
+    "客戶預設價目表（partners.price_list_id）",
+    "多家供應商報價（最低量、折扣、幣別、有效期、交期）並自動帶入採購單",
+    "RFQ 一次寄多家供應商、採購金額門檻核准、供應商簽章連結回覆接受／拒絕",
+    "銷售報價單逐行毛利與毛利率",
+    "多幣別依日期匯率換算、單位（UOM）換算",
+    "完整倉儲：入庫、出庫、調撥、代發、批號、包裹、盤點、報廢、上架規則",
+    "稅額計算與安全的稅公式解析器（不用 eval）",
+    "30 個模組化外掛、10 組 Sanctum REST API、Scribe 自動 API 文件"
+  ],
+  "reusable_parts": [
+    {"name": "價目表規則引擎", "path": "plugins/webkul/products/src/Services/PriceListResolver.php", "difficulty": "低", "note_zh": "334 行，當規格請 Claude Code 翻成純 JS 的 resolvePrice()，規則存 Firestore。"},
+    {"name": "價目表規則資料模型", "path": "plugins/webkul/products/src/Models/PriceRuleItem.php", "difficulty": "低", "note_zh": "照 fillable 欄位建 Firestore priceRules 集合，isApplicableFor() 一併翻寫。"},
+    {"name": "供應商報價表與取價", "path": "plugins/webkul/products/src/Models/ProductSupplier.php", "difficulty": "低", "note_zh": "搭配 Product.php getSeller()（L319-L442）；建議拿掉只取第一家供應商的限制改成跨供應商比價。"},
+    {"name": "毛利計算", "path": "plugins/webkul/sales/src/Filament/Clusters/Orders/Resources/QuotationResource/Schemas/QuotationForm.php", "difficulty": "低", "note_zh": "calculateMargin()（L1527-L1545）純數學，直接翻 JS。"},
+    {"name": "匯率與單位換算", "path": "plugins/webkul/support/src/Models/Currency.php", "difficulty": "低", "note_zh": "依日期取最近匯率＋UOM.php factor 換算；把找不到匯率回傳 1 改成報錯。"},
+    {"name": "稅公式解析器", "path": "plugins/webkul/accounts/src/Services/TaxFormulaEvaluator.php", "difficulty": "中", "note_zh": "不用 eval 的四則運算解析器，可改成讓使用者在表格欄位輸入簡單公式。"},
+    {"name": "採購單狀態機與 RFQ 寄送", "path": "plugins/webkul/purchases/src/Services/OrderWorkflow.php", "difficulty": "中", "note_zh": "參考 draft→sent→to_approve→purchase→done 流程，在 Cloud Functions 重寫。"},
+    {"name": "庫存 REST API 路由設計", "path": "plugins/webkul/inventories/routes/api.php", "difficulty": "中", "note_zh": "參考 receipts/{id}/validate、quantities/{id}/apply 等端點命名設計自己的 API。"}
+  ],
+  "ai_integration_zh": "執行時期沒有任何 AI 功能（grep openai/anthropic/gemini/llm 無命中）。開發依賴有 laravel/boost（附 laravel/mcp，給 Claude Code 等 AI 編碼工具用的 MCP），repo 內有 AGENTS.md（版本資訊已過時）、copilot-instructions、superpowers 實作計畫。可自行透過 REST API 寫 MCP server 或用 Anthropic PHP SDK 加 Filament Action 接 Claude。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：2025-01 建立，最後 push 2026-11-04，CHANGELOG 到 v1.8.0；Webkul 公司維護；310 個 Pest 測試檔＋Playwright E2E，CI 同時跑 MySQL 與 PostgreSQL。",
+  "risks_zh": [
+    "erp:install 會把網站網址、管理員 email 與名字 POST 到 updates.aureuserp.com（plugin-manager/src/Listeners/Installer.php）",
+    "找不到匯率時靜默以 1.0 換算（Currency.php L120）",
+    "沒有 FIFO／移動平均庫存估值、沒有到岸成本分攤，商品成本為手動欄位",
+    "沒有跨供應商比價畫面，RFQ 供應商不能線上回填報價",
+    "API 盤點 apply 直接覆寫數量、不產生庫存異動紀錄",
+    "補貨（Replenishment）頁面 canAccess() 回傳 false，尚未完成",
+    "沒有繁中介面、沒有台灣電子發票與稅表，TWD 預設停用",
+    "沒有 Webhook、沒有商品／庫存 CSV 匯入匯出，與 Firebase 串接需自寫",
+    "PHP＋關聯式資料庫架構，與使用者的 JS＋Firebase 技術棧不同，整套搬用成本高"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不建議整套導入，但價目表引擎、成本加成公式、供應商報價表與毛利計算非常值得請 Claude Code 翻成 JS 併進自己的倉儲系統。",
+  "keywords": ["AureusERP", "Webkul", "開源 ERP", "Laravel", "FilamentPHP", "PHP", "價目表", "price list", "定價規則", "成本加成", "markup", "毛利", "margin", "供應商報價", "vendor price list", "詢價單", "RFQ", "採購單", "purchase order", "庫存", "inventory", "多幣別", "匯率", "UOM", "REST API"],
+  "pack_path": "_oss-research/02-price-erp/aureuserp__aureuserp.md"
+}

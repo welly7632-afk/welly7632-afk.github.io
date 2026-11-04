@@ -1,0 +1,56 @@
+{
+  "repo": "SheetJS/sheetjs",
+  "category": "01-web-excel",
+  "commit": "3f44ddd99c704d7ca35ea76fef7b8af2d2d435cb",
+  "scanned_at": "2026-11-04",
+  "stars": 36341,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全自由，可修改、可複製進自己的倉儲 App，不需付費。",
+  "license_commercial_zh": "公司商用：可以（含閉源），需保留 LICENSE 與著作權聲明、修改過的檔案要註明；樣式寫入、公式計算、圖片、圖表、樞紐分析屬閉源付費的 SheetJS Pro（價格未確認）。",
+  "one_liner_zh": "純 JS 讀寫 xlsx/csv 的引擎，無試算表 UI、不算公式",
+  "use_cases_zh": [
+    "倉儲 App 加「匯入 Excel／CSV」：廠商報價單、電商後台訂單直接轉 JSON 寫進 Firestore",
+    "倉儲 App 加「匯出 Excel」：庫存、進貨成本、毛利表一鍵下載 .xlsx",
+    "比價／成本計算：讀多家供應商報價 xlsx，在 JS 比對後輸出比價結果檔",
+    "整理廣告平台匯出的 CSV 報表並合併成 xlsx",
+    "當網頁 Excel 組合（格子 UI＋公式引擎＋SheetJS）中的開檔／存檔層，參考 xlsxspread.js 橋接 x-spreadsheet",
+    "把 Excel 轉成 CSV 文字送給 Claude 整理，或把 Claude 產生的腳本清單輸出成 xlsx"
+  ],
+  "stack": ["JavaScript（ES5 相容）", "TypeScript 型別定義", "瀏覽器 / Node.js / Deno / Bun", "零執行期相依（自帶 ZIP/OLE 實作）"],
+  "run_requirements_zh": "一支 JS 檔即可（mini 版 gzip 約 83 KB、full 版約 324 KB），用 <script> 或 ESM import；不需伺服器、資料庫、GPU 或 API Key，費用 0 元。注意 npm 上的 xlsx 停在舊版（外部資訊，未連網驗證），新版需從 cdn.sheetjs.com 安裝。",
+  "key_features_zh": [
+    "XLSX.read 依檔頭自動判斷 29 種左右的格式（xlsx/xls/xlsb/ods/csv/numbers/html…）",
+    "XLSX.writeFile 寫出 xlsx/csv 等，CSV 自動加 UTF-8 BOM",
+    "sheet_to_json / json_to_sheet / aoa_to_sheet / table_to_sheet 資料轉換",
+    "SSF 數字格式引擎（支援上午/下午，不支援民國年）",
+    "保存公式字串、陣列公式、合併儲存格、欄寬列高、超連結、註解、篩選範圍",
+    "Big5（cp950）等字碼頁支援繁中舊檔",
+    "Web Worker 背景解析範例 xlsxworker.js"
+  ],
+  "reusable_parts": [
+    {"name": "整包 xlsx 讀寫函式庫", "path": "xlsx.mjs, dist/xlsx.full.min.js", "difficulty": "低", "note_zh": "直接引用，不建議拆；當所有網頁試算表 UI 的開檔／存檔層"},
+    {"name": "sheet_to_json / json_to_sheet", "path": "bits/90_utils.js", "difficulty": "中", "note_zh": "Excel 與 Firestore 文件陣列互轉核心；依賴位址工具與 SSF"},
+    {"name": "A1 位址工具", "path": "bits/27_csfutils.js", "difficulty": "低", "note_zh": "前 45 行 encode/decode cell/range，可直接複製給自製格子 UI 或公式引擎"},
+    {"name": "SSF 數字格式引擎", "path": "bits/10_ssf.js, packages/ssf/", "difficulty": "低", "note_zh": "用 Excel 格式字串顯示數字與日期；可自行補民國年換算"},
+    {"name": "HTML table 互轉", "path": "bits/79_html.js", "difficulty": "中", "note_zh": "把現有 <table> 一鍵匯出 xlsx；sheet_to_html 有 XSS 風險，陌生檔案勿直接 innerHTML"},
+    {"name": "x-spreadsheet 橋接 stox/xtos", "path": "demos/xspreadsheet/xlsxspread.js", "difficulty": "低", "note_zh": "133 行，照此模式寫 SheetJS 與 Luckysheet/Univer 的轉換器；第 100 行 Boolean(\"false\") bug 要修"},
+    {"name": "瀏覽器下載 write_dl", "path": "bits/19_fsutils.js", "difficulty": "低", "note_zh": "Blob + <a download> 產生檔案下載"},
+    {"name": "Web Worker 背景解析", "path": "xlsxworker.js", "difficulty": "低", "note_zh": "大檔解析不卡主畫面"}
+  ],
+  "ai_integration_zh": "專案本身沒有任何 AI、prompt、MCP 或 Skills；但非常適合當 Claude 的前後處理：sheet_to_csv 把 Excel 轉成省 token 的文字送給 Claude（經自己的 Cloud Function 代理 API Key），再把 Claude 回傳的 JSON 用 json_to_sheet 輸出 xlsx。",
+  "claude_support": "可接",
+  "maintenance_zh": "GitHub 版已停止更新：預設分支 github 只剩說明檔（2024-01-31），原始碼在 master 分支停在 2022-10-04 的 0.18.12；後續開發搬到 git.sheetjs.com（本次未連線，未確認）。專案成熟、測試完整（test.js 約 253 個測試案例、多版本 Node/Deno/Bun CI）。",
+  "risks_zh": [
+    "npm 的 xlsx 停在舊版，0.18.x 受 CVE-2023-30533（原型污染）與 CVE-2024-22363（ReDoS）影響（外部資訊，未連網驗證）；處理他人上傳檔案請用 CDN 的 0.20.2 以上",
+    "社群版寫檔不保留字型／顏色／框線、條件格式、資料驗證、凍結窗格、圖表、圖片（樣式等為付費 Pro 功能）",
+    "沒有公式計算引擎，寫入的公式要等 Excel 打開才算",
+    "sheet_to_html 未跳脫超連結與富文字 HTML，有 XSS 風險",
+    "寫檔預設不壓縮，需加 compression:true",
+    "不支援民國年日期格式；新版密碼保護 xlsx 無法開啟",
+    "整份活頁簿載入記憶體，超大檔在手機可能吃不消（未實測）"
+  ],
+  "fit_for_user": 5,
+  "verdict_zh": "倉儲 App 的 Excel 匯入匯出首選、幾乎必裝；但它不是網頁 Excel 介面，要搭配格子 UI 與公式引擎，且請從 SheetJS CDN 安裝新版。",
+  "keywords": ["SheetJS", "xlsx", "網頁版 Excel", "試算表", "匯入 Excel", "匯出 Excel", "讀寫 xlsx", "CSV", "Big5", "sheet_to_json", "json_to_sheet", "table_to_sheet", "SSF", "數字格式", "x-spreadsheet", "Firestore", "純 JavaScript", "Apache-2.0", "SheetJS Pro", "樣式不支援", "公式不計算", "CVE-2023-30533", "庫存匯出", "比價表"],
+  "pack_path": "_oss-research/01-web-excel/SheetJS__sheetjs.md"
+}

@@ -1,0 +1,150 @@
+{
+  "repo": "xixihhhh/clipforge",
+  "category": "03-video-script",
+  "commit": "1aab133dd75f4db57c3f62e6da2fdd121c5d509b",
+  "scanned_at": "2026-11-04",
+  "stars": 1193,
+  "license": "AGPL-3.0-only",
+  "license_personal_zh": "個人使用：完全可以，自己電腦裝、出片拿去賣貨都沒問題；產出的影片不受 AGPL 約束、無浮水印。",
+  "license_commercial_zh": "公司商用：內部自用可；若修改後架成網站給他人用，或把其程式碼複製進自家 App 對外提供，須依 AGPL 公開整份原始碼。建議只參考做法自行重寫，或把它當獨立服務以 HTTP API 呼叫。無付費版或閉源功能。",
+  "one_liner_zh": "一張商品圖自動出帶貨短影片：腳本、配畫面、免費配音字幕、FFmpeg 合成",
+  "use_cases_zh": [
+    "用商品圖或商品網址一鍵產生 3 套帶貨腳本＋分鏡，再出 9:16 直式影片給蝦皮、IG Reels、FB 廣告用",
+    "免費路線（免費圖庫＋Edge 配音＋本機 FFmpeg）0 元量產廣告素材",
+    "在 Claude Code 透過 MCP（30 個工具）與 Skill 直接下指令出片",
+    "拆出腳本 prompt、Edge TTS、SRT 匯出、FFmpeg 合成器接到自己的 Firebase 倉儲 App",
+    "批量出片：多個商品一次產出 A/B 版本素材"
+  ],
+  "stack": [
+    "TypeScript",
+    "Next.js 16",
+    "React 19",
+    "Tailwind 4",
+    "zustand",
+    "SQLite (better-sqlite3)",
+    "Drizzle ORM",
+    "FFmpeg (fluent-ffmpeg)",
+    "OpenAI SDK（OpenAI 相容協定）",
+    "@huggingface/transformers（Whisper）",
+    "@modelcontextprotocol/sdk",
+    "Electron",
+    "Docker"
+  ],
+  "run_requirements_zh": "Docker 一行指令或 Node ≥20＋pnpm 本機跑，也有 Electron 桌面版；需要常駐 Node 伺服器＋FFmpeg＋本機檔案，不適合 Firebase Hosting。不需 GPU（FFmpeg 用 CPU）。免費路線 0 Key 可出片，但 AI 寫腳本要一把 OpenAI 相容 LLM Key（或 Ollama 本地 7B 以上）；AI 生圖／圖生影片需 Atlas Cloud、fal.ai、Replicate、火山引擎、阿里百煉、硅基流動或 OpenAI 的 Key，依模型計費，每支實際金額未確認（README 稱數元人民幣／條）。",
+  "key_features_zh": [
+    "商品圖視覺分析→提煉 3 個賣點→一次 3 套腳本，10 種風格（含情景短劇、反轉劇場、街頭採訪）",
+    "貼商品網址解析 JSON-LD／OpenGraph 抓標題、價格、圖片",
+    "商品鏡頭用原圖＋圖生影片首幀與保真 prompt 約束",
+    "10 種素材來源（Openverse、Wikimedia 免 Key；Pexels、Pixabay、Coverr、Jamendo、Freesound 等）",
+    "微軟 Edge 免費 TTS（含逐字時間戳）＋4 種付費 TTS",
+    "FFmpeg 合成：字幕、卡拉 OK 字幕、BGM 閃避、價格貼、商品卡、片尾卡、封面",
+    "5 位毒舌判官審台詞、九宮格分鏡一致性、391 款廣告模板",
+    "付費任務先落庫可續查、成片 QC 與發布門禁、SRT/VTT 匯出",
+    "MCP Server 30 個工具、CLI、2 個 Claude Code Skill 與 plugin 市集設定"
+  ],
+  "reusable_parts": [
+    {
+      "name": "帶貨腳本 prompt 組",
+      "path": "src/lib/script-engine/prompts.ts",
+      "difficulty": "低",
+      "note_zh": "SYSTEM_PROMPT＋OUTPUT_FORMAT_PROMPT 改成繁中台灣用語，直接給 Claude 產 JSON 腳本存 Firestore"
+    },
+    {
+      "name": "LLM JSON 解析與重試",
+      "path": "src/lib/script-engine/generator.ts",
+      "difficulty": "低",
+      "note_zh": "extractJSON／completeWithJsonRetry 可通用於任何要求 LLM 回 JSON 的功能"
+    },
+    {
+      "name": "商品頁解析",
+      "path": "src/lib/product-ingest.ts",
+      "difficulty": "低",
+      "note_zh": "純函式，搭 src/lib/ssrf-guard.ts 放 Cloud Functions，做貼網址帶入商品名／價格／圖"
+    },
+    {
+      "name": "Edge 免費 TTS",
+      "path": "src/lib/edge-tts.ts",
+      "difficulty": "低",
+      "note_zh": "Node 端執行，音色換成 zh-TW 即台灣腔；非官方介面可能 403"
+    },
+    {
+      "name": "SRT/VTT 字幕匯出",
+      "path": "src/lib/subtitle-export.ts",
+      "difficulty": "低",
+      "note_zh": "分鏡台詞轉字幕檔，給剪映／CapCut 再修"
+    },
+    {
+      "name": "FFmpeg 合成器",
+      "path": "src/lib/video-composer/composer.ts",
+      "difficulty": "中",
+      "note_zh": "依賴 ffmpeg 執行檔與 transitions/motions/safe-zone，放本機或 VPS 跑"
+    },
+    {
+      "name": "圖生影片運鏡提示詞",
+      "path": "src/lib/motion-prompt.ts",
+      "difficulty": "低",
+      "note_zh": "運鏡＋商品保真＋防閃爍句型，可用於任何 i2v 服務"
+    },
+    {
+      "name": "AI 供應商介面與付費任務落庫",
+      "path": "src/lib/providers/types.ts",
+      "difficulty": "中",
+      "note_zh": "AIProvider 介面＋src/app/api/ai/video/route.ts 先存任務 ID 再輪詢，避免重複扣款"
+    },
+    {
+      "name": "廣告違禁詞掃描",
+      "path": "src/lib/ad-compliance.ts",
+      "difficulty": "低",
+      "note_zh": "架構沿用，詞庫需換成台灣食安法、化粧品法、公平法用語"
+    },
+    {
+      "name": "391 款廣告模板",
+      "path": "src/lib/ad-templates.ts",
+      "difficulty": "低",
+      "note_zh": "純資料，可當廣告素材配方庫"
+    }
+  ],
+  "ai_integration_zh": "LLM 全走 OpenAI 相容協定（openai SDK），預設 DeepSeek、Kimi、GLM、豆包、OpenAI、OpenRouter、Ollama 等，src 內無 Anthropic SDK；Claude 可經 OpenRouter 或 Anthropic 的 OpenAI 相容端點接入（未實測，json mode 只對特定網址送出所以參數乾淨）。prompt 集中在 src/lib/script-engine/prompts.ts 等檔。附 MCP Server（mcp/clipforge-mcp.mjs，30 個工具，需先啟動 ClipForge）、skills/clipforge-video 與 skills/script-judges 兩個 Skill，以及 .claude-plugin/marketplace.json。生圖／生影片支援 GPT Image 2、Seedream、Seedance、Kling、Veo、Hailuo 等。",
+  "claude_support": "可接",
+  "maintenance_zh": "2026-03 建立、2026-10-26 最後推送，版本 0.9.12，更新非常頻繁；有 CI（lint＋vitest＋build）、139 個測試檔、Docker 與 Release 流程；單一作者維護。",
+  "risks_zh": [
+    "AGPL-3.0：程式碼混入自家對外服務須公開原始碼",
+    "API 無登入驗證，Docker 預設綁 0.0.0.0，不可直接公開到網路",
+    "API Key 存瀏覽器 localStorage 並隨請求送到後端",
+    "Edge TTS 為非官方介面，微軟改版會 403，條款風險未確認",
+    "合規詞庫、平台規則、prompt 全針對中國大陸，台灣使用需改寫；無簡轉繁、介面音色只有 zh-CN",
+    "商品保真靠 prompt＋首幀，影片模型仍可能改字改 logo",
+    "AI 素人主播／測評式內容在台灣可能觸及不實廣告與功效宣稱法規",
+    "程式量大（src 非測試約 6.6 萬行），整套改造成本高"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "做電商帶貨短影片的最佳參考之一：個人直接裝來用很值得，日後拆腳本 prompt、Edge TTS、FFmpeg 合成器給自己的工具，但要改成繁中台灣用語並留意 AGPL。",
+  "keywords": [
+    "ClipForge",
+    "带货剪手",
+    "帶貨短影片",
+    "電商短影片",
+    "商品圖轉影片",
+    "AI 腳本",
+    "分鏡",
+    "圖生影片",
+    "image-to-video",
+    "Seedance",
+    "商品保真",
+    "Edge TTS",
+    "免費配音",
+    "字幕 SRT",
+    "FFmpeg",
+    "免費圖庫",
+    "MCP",
+    "Claude Code Skill",
+    "OpenAI 相容",
+    "Next.js",
+    "SQLite",
+    "AGPL-3.0",
+    "廣告違禁詞",
+    "短劇帶貨",
+    "批量出片"
+  ],
+  "pack_path": "_oss-research/03-video-script/xixihhhh__clipforge.md"
+}
