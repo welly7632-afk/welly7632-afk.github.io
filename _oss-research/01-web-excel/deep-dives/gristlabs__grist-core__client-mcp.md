@@ -95,7 +95,7 @@ const begin = this.rowOffsetTree.getIndex(this.scrollTop) - this.numBuffered;
 #### 2-2 原理：core 子模組＋ext 覆寫
 
 - [DEV.md 第 3–22 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/DEV.md#L3-L22)：`core/` 是不改動的 grist-core 子模組，`ext/` 放替換檔，webpack 與 TypeScript paths 兩套覆寫機制。
-- 子模組固定在 grist-core 的 `2d13642`（`git ls-tree HEAD core` 讀到），**不是**本篇掃描的 `484236f`，兩者可能有落差（日期未確認）。
+- 子模組固定在 grist-core 的 `2d13642`（`git ls-tree HEAD core` 讀到；我另外 `git fetch` 這一個 commit，`git log` 顯示日期 2026-08-27），比本篇掃描的 `484236f`（2026-11-04）早約 10 週，兩者程式碼可能有落差。
 - [webpack.config.js 第 28–65 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/buildtools/webpack.config.js#L28-L65)：逐行數到 31 條 alias，例如 `express`、`@gristlabs/sqlite3` → 空 stub，`app/client/components/Comm`（WebSocket）→ `CommStub`，`exceljs` → 瀏覽器版。
 - [create.ts 第 60–97 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/server/lib/create.ts#L60-L97)：`StaticCreate` 覆寫 grist-core 的 `ICreate`：`getSqliteVariant()` 回傳 sql.js 版，`NSandbox()` 回傳 `PyodideSandbox`（postMessage 給 Web Worker，用 Mutex 保證一次一個呼叫）。
 
@@ -194,15 +194,23 @@ GRIST_OIDC_CIMD_ALLOWED_HOSTS: claude.ai,cursor.com,cursor.sh,vscode.dev,openai.
 
 #### 4-1 規模與認證
 
-- 計數：`grep -c -E 'this\._app\.(get|post|patch|put|delete)\('`，DocApi.ts 72、DocApiTriggers.ts 13（webhooks，例如 [L408](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApiTriggers.ts#L408)）、`app/gen-server/ApiServer.ts` 52（組織、工作區、文件、使用者管理）。
-- 認證：[Authorizer.ts 第 178–215 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/Authorizer.ts#L178-L215)，格式必須是 `Bearer XXX`；程式碼裡也處理「service account」型別的使用者，到期或擁有者被停用會拒絕（core 介面能否建立 service account：未確認）。
-- 架構：瀏覽器打的是首頁伺服器，[DocApiProxy.ts 第 124–169 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/gen-server/lib/DocApiProxy.ts#L124-L169) 列出要轉給 doc worker 的路徑（我數到 43 條 `app.use`／`app.delete`，含條件式的 mcp）。單機 Docker 時兩者在同一個程序裡。
+- 計數：`grep -c -E 'this\._app\.(get|post|patch|put|delete)\('`，DocApi.ts 72、DocApiTriggers.ts 13（webhooks，例如 [L408](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApiTriggers.ts#L408)）、`app/gen-server/ApiServer.ts` 52（依 `/api/` 後第一段分組：orgs 11、workspaces 8、profile 8、docs 8、service 7、users 3、session 3、其他 4）。
+- 認證：[Authorizer.ts 第 178–215 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/Authorizer.ts#L178-L215)，格式必須是 `Bearer XXX`；程式碼裡也處理「service account」型別的使用者，到期或擁有者被停用會拒絕；ApiServer.ts 有 7 個 `/api/service...` 路由，API 層看來支援，介面入口未確認。給 AI 用的金鑰最好用這類專用帳號，而不是你自己的帳號。
+- 架構：瀏覽器打的是首頁伺服器，[DocApiProxy.ts 第 124–169 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/gen-server/lib/DocApiProxy.ts#L124-L169) 列出要轉給 doc worker 的路徑（我數到 43 條 `app.use`／`app.delete`，含條件式的 mcp）。官方 Docker 映像啟動時，[stubs/app/server/server.ts 第 194 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/stubs/app/server/server.ts#L194) 預設 `GRIST_SERVERS=home,docs,static`，也就是首頁伺服器與 doc worker 在同一個程序裡。
 
 #### 4-2 常用端點
 
 - `POST /apply`（[L210–213](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L210-L213)）：直接送 UserActions，能力最強，等同前端在做的事。
 - 讀取：`/tables/:tableId/data`（欄導向）、`/records`（列導向）、`/records/list`（參數放 body）、`/columns`、`/tables`，見 [L289–340](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L289-L340)。
 - 新增：[L591–618](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L591-L618)；upsert：[L818–832](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L818-L832)，可用 `noadd`、`noupdate`、`onmany=first|none|all` 控制。對「每天匯入供應商價格表、以料號更新」這種需求非常合用。
+- upsert 的 body 形狀見 [DocApiTypes.ts 第 40–45、88–90 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/plugin/DocApiTypes.ts#L40-L90)：每筆是 `{require, fields}`。以「用料號更新成本」為例（網址與表名為示意）：
+
+```bash
+curl -X PUT "https://<你的 Grist>/api/docs/<docId>/tables/Products/records" \
+  -H "Authorization: Bearer $GRIST_API_KEY" -H "Content-Type: application/json" \
+  -d '{"records":[{"require":{"SKU":"A-001"},"fields":{"Cost":120,"Supplier":"甲公司"}}]}'
+```
+
 - SQL：[L620–640](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L620-L640)；[runSQLQuery.ts 第 20–42 行](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/runSQLQuery.ts#L20-L42) 先要求 `canCopyEverything`，再檢查語句含 select，之後包成 `select * from (...)` 並設逾時。
 - 下載：`/download/csv`、`/tsv`、`/xlsx`（[L1302–1310](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/DocApi.ts#L1302-L1310)）。
 
@@ -300,7 +308,7 @@ GRIST_OIDC_CIMD_ALLOWED_HOSTS: claude.ai,cursor.com,cursor.sh,vscode.dev,openai.
 4. **沒有欄虛擬化**，超寬表格的效能未實測；最小列高固定 23px，多行文字的列高靠實際量測。
 5. **公式一律在 Python 算。** 自架要處理 Python 沙箱（`NSandbox.ts` 第 523–538 行列出 gvisor、docker、macSandboxExec、pyodide 等選項）；grist-static 首次載入要下載 Pyodide 與 wheel，README 的 roadmap（[第 218–238 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/README.md#L218-L238)）也承認資料引擎啟動慢。
 6. **grist-static 改動不會保存、沒有權限控制**（[README 第 135–146 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/README.md#L135-L146)）；`behaviorOverrides.onChange`／`save` 看似可以接你自己的儲存（[GristOverrides.ts 第 42–53 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/pipe/GristOverrides.ts#L42-L53)），但 `elementId` 嵌入模式會把這些函式在 JSON 序列化時丟掉（[bootstrap.js 第 169–180 行](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/pipe/bootstrap.js#L169-L180) 註解），能否用來存到 Firebase 未確認。README 的「Differences」寫匯入匯出未移植，但程式碼已有 xlsx 下載 stub 與 `initialData` 匯入，實際可用程度未確認。
-7. **grist-static 綁的是舊版 core**（子模組 `2d13642`），本篇描述的 core 程式碼不一定和它完全一致。
+7. **grist-static 綁的是較舊的 core**（子模組 `2d13642`，2026-08-27），本篇描述的 core 程式碼（2026-11-04）不一定和它完全一致；另外 MCP 在 grist-static 裡派不上用場，因為頁面裡沒有可讓 Claude 連進來的伺服器。
 8. **xlsx 不互轉公式**；舊 .xls 不支援；`/sql` 只能 SELECT，受權限規則限制的使用者無法使用。
 9. **權限規則跟著文件走**，規則寫錯就等於資料外洩；條件語法刻意精簡（`predicate_formula.py` 註解說不需要支援太多），複雜邏輯要靠使用者屬性表。
 10. **授權**：grist-core（`package.json` 第 4 行）與 grist-static 都是 Apache-2.0，可商用、可修改，複製程式碼要保留 LICENSE 與 NOTICE（Copyright Grist Labs）並註明修改；完整版擴充不是開源授權，不能拆用。
