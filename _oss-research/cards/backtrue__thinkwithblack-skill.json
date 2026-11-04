@@ -1,0 +1,56 @@
+{
+  "repo": "backtrue/thinkwithblack-skill",
+  "category": "03-video-script",
+  "commit": "7095cbc70ec71bfcbc15c512fbec29da166598d8",
+  "scanned_at": "2026-11-04",
+  "stars": 255,
+  "license": "MIT（supplements/speak-human-tw、speak-human-en、extensions 另附上游 MIT 著作權聲明）",
+  "license_personal_zh": "個人使用：完全可以，下載、修改、丟給 Claude 用都沒問題。",
+  "license_commercial_zh": "公司商用：可以，改寫成內部 SOP 或包進產品都行，只要保留 MIT 授權文字與著作權聲明（含 supplements 的上游聲明）；方法來源指向的作者課程講義不在 repo 內，授權未確認。帳戶串接與自動化屬付費 thinkwithblack-mcp，不在此 repo。",
+  "one_liner_zh": "小黑老師 365 個繁中行銷 Skills，可直接當 Claude Skills 用",
+  "use_cases_zh": [
+    "用 MK-284／285／286 從零寫商品短影片（Shorts、Reels）逐鏡腳本",
+    "用 MK-280 診斷影片開場前幾秒鉤子並產替代開場",
+    "用 MK-137 產 FB／IG 三行式廣告文案的積極／友善／專業三組 A/B 版",
+    "用 MK-058～075 公式做單品貢獻毛利、損平 ROAS、獲客成本上限試算，轉成倉庫系統的成本試算表欄位",
+    "用 forecast-event-profit 估雙 11／黑五檔期預算與利潤",
+    "用 INF-05-07、MK-372～387 算回購週期、RFM、沉睡會員",
+    "參考它的 SKILL.md 結構，自己用 Claude Code 寫短劇分鏡或商品影片 Skill",
+    "用 speak-human-tw 把 AI 寫的腳本與貼文去 AI 味"
+  ],
+  "stack": ["Markdown（Claude Skills SKILL.md 格式）", "JSON（catalog、context-contract）", "Python 3 標準函式庫（打包、驗證、check-context.py）", "GitHub Actions"],
+  "run_requirements_zh": "不需要伺服器、資料庫、GPU 或 API Key。把 skills/*/SKILL.md 放進 Claude Code 的 .claude/skills/，或在 ChatGPT／Claude／Gemini 對話上傳 INDEX.md 與 packs/*.md 即可；費用只有你用的 AI 服務。單份 pack 約 900+ 行，上傳較吃 token。",
+  "key_features_zh": [
+    "365 份方法（catalog.json 計數）＋ 5 份附加實作工具，packs/ 共 370 份單檔方法包",
+    "繁中與英文雙語（en/ 鏡像）",
+    "每份方法有必要資料、方法步驟、固定交付欄位、核對案例與來源",
+    "影片專區 14 份（MK-279～292）：開場鉤子、Shorts／In-stream／Bumper 重組、影片序列、YouTube 媒體計畫",
+    "context-contract.json + check-context.py 驗證輸入資料的證據狀態，防止 AI 編造",
+    "INDEX.md 兩段式路由：先選方法再上傳全文"
+  ],
+  "reusable_parts": [
+    {"name": "Skill 撰寫骨架", "path": "skills/mk-284/SKILL.md", "difficulty": "低", "note_zh": "照抄目的／必要資料／步驟／固定交付欄位／核對案例結構，寫自己的短劇或商品影片 Skill"},
+    {"name": "影片腳本方法組", "path": "skills/mk-279 ～ skills/mk-292", "difficulty": "低", "note_zh": "複製到 .claude/skills/；固定交付欄位可當影片生成工具的逐鏡 JSON schema"},
+    {"name": "三行式廣告文案與字數規格", "path": "skills/mk-137/SKILL.md", "difficulty": "低", "note_zh": "規格明確，可請 Claude Code 寫 JS 字數驗證接在產文案功能後面"},
+    {"name": "毛利／損平／ROAS 公式組", "path": "skills/mk-059/SKILL.md（MK-058～075）", "difficulty": "低", "note_zh": "轉成 Firebase 倉庫系統的成本試算表欄位與公式"},
+    {"name": "檔期預算與獲利預估", "path": "extensions/forecast-event-profit/SKILL.md", "difficulty": "中", "note_zh": "需歷史廣告報表；做檔期預算情境表"},
+    {"name": "版位安全區座標公式", "path": "supplements/resize-ad-creatives/SKILL.md", "difficulty": "低", "note_zh": "自動擺放字幕、價格、Logo 的安全矩形計算"},
+    {"name": "繁中去 AI 味校稿", "path": "supplements/speak-human-tw/SKILL.md", "difficulty": "低", "note_zh": "腳本、旁白、貼文最後一關校稿"},
+    {"name": "品牌背景底稿", "path": "context/MARKETING_CONTEXT.template.md", "difficulty": "低", "note_zh": "改成 CLAUDE.md 或 Firebase 品牌事實表，供所有 AI 工具共用"}
+  ],
+  "ai_integration_zh": "不綁模型、無 API 呼叫、無 MCP（付費 thinkwithblack-mcp 另售，程式未確認）。SKILL.md 採 Claude Skills 標準 frontmatter（name/description），可原生放進 Claude Code；一般對話則上傳 INDEX.md 與 packs/*.md。prompt 就是各 SKILL.md 與 PUBLIC_SKILL_RULES.md。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-10-09 建立、2026-11-01 最後推送，版本 2026.11.02-free.2，一個月內頻繁改版，活躍但很新；CI 只驗證打包一致性，不驗方法內容。",
+  "risks_zh": [
+    "不少方法是從課程大綱延伸，步驟只有 3 步左右，深度不一",
+    "單份 pack 900+ 行（多為附錄 JSON 與 Python），上傳對話吃 token",
+    "內含導流到付費 MCP 的文字，自用可刪",
+    "沒有劇情型短劇方法，影片方法偏廣告影片",
+    "方法來源的課程講義不在 repo，授權未確認",
+    "專案很新，結構與編號可能變動（目前已有跳號）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "值得收藏：挑影片腳本、三行文案、毛利試算等 10 份放進 Claude Code 直接用，並學它的 Skill 寫法來做自己的短劇與商品影片工具。",
+  "keywords": ["thinkwithblack", "小黑老師", "行銷 Skills", "Claude Skills", "SKILL.md", "Claude Code", "繁體中文", "廣告文案", "三行式文案", "Meta 廣告", "Google Ads", "YouTube Shorts", "影片腳本", "分鏡", "開場鉤子", "素材企劃", "單品毛利", "損平 ROAS", "檔期預算", "RFM", "回購週期", "去 AI 味", "marketing skills", "video script", "ad copy"],
+  "pack_path": "_oss-research/03-video-script/backtrue__thinkwithblack-skill.md"
+}

@@ -1,0 +1,155 @@
+{
+  "repo": "Vincentwei1021/video-shotcraft",
+  "category": "03-video-script",
+  "commit": "1266a3ec4831289c4d893d42dd5102723658039a",
+  "scanned_at": "2026-11-04",
+  "stars": 16909,
+  "license": "Apache-2.0（底層 Remotion 另有獨立授權）",
+  "license_personal_zh": "個人使用：Apache-2.0 可自由使用、修改；Remotion 對個人免費；BGM／Freesound CC0 音效可用，CC BY 需署名。",
+  "license_commercial_zh": "公司商用：本專案程式碼可商用、可閉源改作（保留聲明）；但渲染引擎 Remotion 對超過一定規模的公司要買授權（門檻與價格未確認，需自行查官網）；bgm-tech-house.mp3 來源無法反查，商用前應更換。無閉源或付費版功能。",
+  "one_liner_zh": "Claude Code 技能：用 Remotion 把網頁截圖做成產品宣傳片",
+  "use_cases_zh": [
+    "幫自己的倉儲／進銷存網頁做 30–40 秒功能介紹片",
+    "把商品實拍影片用 ClipCard 套進聚光燈、前後對比等運鏡做廣告素材",
+    "拆出瀏覽器多軌剪輯台（workbench）做自己的線上簡易剪輯器或廣告範本產生器",
+    "用 capture-template.mjs 自動截網頁全頁圖與元素座標",
+    "用 sfx-source.py 找 CC0 音效並自動記錄授權",
+    "成片匯出剪映草稿或用 Upload-Post 一鍵發到 IG／TikTok／YouTube"
+  ],
+  "stack": [
+    "TypeScript",
+    "React 19",
+    "Remotion 4.0.484",
+    "three.js / @react-three/fiber",
+    "Vite 6",
+    "Zustand 5",
+    "zod 4",
+    "Puppeteer",
+    "Python 標準庫",
+    "ffmpeg",
+    "librosa（方法論範例）",
+    "pyJianYingDraft"
+  ],
+  "run_requirements_zh": "Claude Code 或 Codex 安裝為 skill；本機需 Node.js、npm、ffmpeg/ffprobe，截圖需 puppeteer，卡拍分析需 uv。不需要 GPU，Remotion 以 CPU＋無頭 Chrome 逐幀渲染（低核數 Linux 要 --concurrency=1）。核心流程零 API key；選用 Upload-Post 要 UPLOAD_POST_API_KEY。主要成本是 Claude 用量（一支片 token 偏多）與可能的 Remotion 公司授權。",
+  "key_features_zh": [
+    "124 張鏡頭配方卡、150 個樣式，各附 Remotion demo 原始碼（152 個 TSX）",
+    "三種製作模式：套 Ink Press 模板／AI 自主創作／共同創作",
+    "Puppeteer 截圖三件套：2x 全頁圖、元素去背 PNG、layout.json 座標",
+    "PageCam 2.5D 頁面運鏡元件",
+    "BGM 節拍網格擬合與卡拍方法（≤3 幀誤差回測）",
+    "Freesound 音效搜尋下載與授權／響度紀錄",
+    "逐幀靜幀驗收＋獨立子代理終檢清單",
+    "Motion Workbench：剪映風瀏覽器多軌剪輯台，可改文案顏色、變速、匯出 MP4",
+    "剪映草稿匯出（Mac 實測）與 Upload-Post 多平台發布"
+  ],
+  "reusable_parts": [
+    {
+      "name": "瀏覽器多軌剪輯台",
+      "path": "workbench/src/",
+      "difficulty": "中",
+      "note_zh": "Project→Track→Clip 資料模型＋Zustand＋Remotion Player，拿掉 demo 卡索引即可當通用線上剪輯器"
+    },
+    {
+      "name": "時間重映射合成器",
+      "path": "workbench/src/preview/Composition.tsx",
+      "difficulty": "低",
+      "note_zh": "JSON 時間軸直接渲成 Remotion 影片，支援變速、裁入、定格"
+    },
+    {
+      "name": "schema 屬性面板與 zod 轉換",
+      "path": "workbench/src/cards/types.ts",
+      "difficulty": "低",
+      "note_zh": "把價格、商品名等做成可填欄位的廣告範本；搭配 workbench/src/remotion/zodFromCard.ts"
+    },
+    {
+      "name": "匯出渲染 API",
+      "path": "workbench/vite.config.ts",
+      "difficulty": "中",
+      "note_zh": "POST /api/export spawn remotion render 並回報進度，可改寫成獨立伺服器端點"
+    },
+    {
+      "name": "網頁截圖三件套",
+      "path": "assets/scripts/capture-template.mjs",
+      "difficulty": "低",
+      "note_zh": "改 CONFIG 指向自己的網頁即可；可延伸做定時截圖"
+    },
+    {
+      "name": "PageCam 2.5D 運鏡",
+      "path": "assets/lib/PageCam.tsx",
+      "difficulty": "低",
+      "note_zh": "單檔複製，關鍵幀控制平移縮放與 3D 傾斜"
+    },
+    {
+      "name": "ClipCard 實拍素材卡",
+      "path": "assets/lib/ClipCard.tsx",
+      "difficulty": "低",
+      "note_zh": "把商品 mp4 或 AI 生成影片包進鏡頭卡運鏡，含交叉淡化循環"
+    },
+    {
+      "name": "鏡頭配方卡與 demo",
+      "path": "references/shots/",
+      "difficulty": "低",
+      "note_zh": "當作自己 Claude skill 的動效詞彙庫，對應實作在 demos/"
+    },
+    {
+      "name": "Freesound 音效 CLI",
+      "path": "assets/scripts/sfx-source.py",
+      "difficulty": "低",
+      "note_zh": "標準庫爬網頁＋ffmpeg 量測，自動產生授權與署名清單"
+    },
+    {
+      "name": "剪映草稿匯出",
+      "path": "jianying-export/mac_draft.py",
+      "difficulty": "中",
+      "note_zh": "需 pyJianYingDraft；Mac 剪映 11.2 實測，Windows 未實測"
+    },
+    {
+      "name": "社群多平台發布",
+      "path": "publish/upload_post.py",
+      "difficulty": "低",
+      "note_zh": "標準庫呼叫 Upload-Post，有 dry-run 與防重複發布"
+    }
+  ],
+  "ai_integration_zh": "原生 Claude Code skill（SKILL.md＋.claude-plugin/plugin.json），也支援 Codex。程式碼內不呼叫任何 LLM API；所有智慧來自 Claude 讀 references/*.md 與鏡頭卡後自己寫 Remotion 程式碼、看靜幀驗收，並派子代理獨立終檢。無 MCP。prompt 全為簡體中文。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-07-19 建立、2026-10-29 最後推送，PR 已到 #123，單人作者高頻更新；有 vitest、Python 離線單元測試與 PR CI（tsc 編譯全部 demo、冒煙渲染）。專案新、改版快（10 月一次下架 66 個鏡頭至 _legacy）。",
+  "risks_zh": [
+    "Remotion 對較大規模公司需付費授權（門檻未確認）",
+    "沒有 TTS 配音、沒有 AI 生圖／生影片，商品素材要自備",
+    "預設 16:9 橫式，短影音 9:16 要另做且部分鏡頭需重標座標",
+    "中文字型預設 PingFang SC（簡中、Mac），繁中字幕需自行設定字型",
+    "Freesound 以爬網頁取得，網站改版即失效，使用條款未確認",
+    "截圖若未先灌假資料會洩漏真實客戶與進價",
+    "剪映 Mac 草稿含本機裝置識別碼，不可外傳",
+    "一支片 Claude token 用量大；SKILL.md 會讓 AI 主動推廣作者帳號並自動起本機伺服器"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "做自家網頁系統介紹片與拆剪輯台／運鏡元件很值得；做電商商品影片要自備素材，做短劇不適合。",
+  "keywords": [
+    "video-shotcraft",
+    "Remotion",
+    "Claude Code skill",
+    "產品宣傳片",
+    "product promo",
+    "鏡頭配方卡",
+    "shot recipe",
+    "動態設計",
+    "2.5D 運鏡",
+    "網頁截圖",
+    "Puppeteer",
+    "節拍同步",
+    "beat sync",
+    "音效設計",
+    "Freesound",
+    "Motion Workbench",
+    "瀏覽器剪輯器",
+    "多軌時間軸",
+    "剪映草稿",
+    "CapCut",
+    "Upload-Post",
+    "廣告素材",
+    "Apache-2.0",
+    "程式繪製影片"
+  ],
+  "pack_path": "_oss-research/03-video-script/Vincentwei1021__video-shotcraft.md"
+}
