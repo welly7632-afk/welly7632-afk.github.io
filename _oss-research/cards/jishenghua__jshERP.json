@@ -1,0 +1,58 @@
+{
+  "repo": "jishenghua/jshERP",
+  "category": "02-price-erp",
+  "commit": "8f5dc0877ffb4cf863f6cdd675ecac8fc1ce4ea1",
+  "scanned_at": "2026-11-04",
+  "stars": 4686,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全可以自由使用、修改，不必公開原始碼。",
+  "license_commercial_zh": "公司商用：可以，也可改成閉源產品；需保留版權與 Apache-2.0 授權聲明並標註修改。注意盤點、生產、多級審批、總帳等是作者付費外掛，不在開源 repo；內含 translate.js 等第三方檔案授權未逐一確認。",
+  "one_liner_zh": "簡中開源進銷存＋財務 ERP，多單位四價格、移動平均成本",
+  "use_cases_zh": [
+    "照抄商品×多單位×四種價格（採購／零售／銷售／最低售價）資料模型到自己的 Firebase 倉儲系統",
+    "借用「客戶上次成交價自動帶入」與「低於最低售價擋單」的查價規則",
+    "移植移動平均成本與出庫成本快照，做出毛利報表",
+    "參考 JEditableTable 的 Excel 式明細輸入（Enter 跳格、自動加列、合計列、大量列虛擬渲染）",
+    "參考商品／單據 Excel 匯入欄位設計",
+    "自架一套簡中介面的進銷存先試用，或用其 REST API 寫 MCP 讓 Claude 查庫存與開單"
+  ],
+  "stack": ["Java 8", "Spring Boot 2.0.0", "MyBatis / MyBatis-Plus", "MySQL 8", "Redis 6", "Vue 2.7", "Ant Design Vue 1.5", "Jeecg-Boot 範本", "jxl（.xls）", "springboot-plugin-framework"],
+  "run_requirements_zh": "需 JDK 8、MySQL 8、Redis、Nginx；後端 jar 跑在 port 9999（/jshERP-boot），前端 Vue build 後由 Nginx 提供。一般 CPU 即可，無 GPU；不需要任何 AI 或付費 API Key（微信登入、阿里雲 OSS 為選用）。自架只花主機費；作者雲端版 198 元人民幣／年。預設帳密 admin/123456、DB root/123456 必須修改。",
+  "key_features_zh": [
+    "零售、採購（請購→訂單→入庫→退貨）、銷售（訂單→出庫→退貨）、調撥、組裝拆卸共 14 種單據",
+    "商品多單位（基本＋3 個副單位）、多屬性 SKU、序號、批號、效期、多倉庫",
+    "每個條碼 4 種價格＋開單依單據類型自動帶價、客戶上次成交價、最低售價防呆",
+    "移動平均成本（可開關）與出庫成本快照",
+    "收款、付款、收入、支出、轉帳、預收款與客戶／供應商對帳",
+    "14 支報表（進銷存統計、庫存預警、出入庫明細等）、Excel 匯入匯出",
+    "多租戶 SaaS、角色權限到按鈕、角色可遮蔽進價",
+    "外掛機制（官方付費外掛：盤點、生產、多級審批、總帳）"
+  ],
+  "reusable_parts": [
+    {"name": "商品／多單位／四價格資料模型", "path": "jshERP-boot/docs/jsh_erp.sql", "difficulty": "低", "note_zh": "看 jsh_material、jsh_material_extend、jsh_unit 三張表，翻成 Firestore products/{id}/variants/{barcode}。"},
+    {"name": "多單位單價換算", "path": "jshERP-boot/src/main/java/com/jsh/erp/service/UnitService.java", "difficulty": "低", "note_zh": "parseUnitPriceByUnit／parseAllPriceByUnit 改寫成 JS 小函式。"},
+    {"name": "開單自動帶價＋客戶上次成交價", "path": "jshERP-boot/src/main/java/com/jsh/erp/controller/MaterialController.java", "difficulty": "低", "note_zh": "getMaterialByBarCode（L581 起）＋ DepotItemMapperEx.xml getLastUnitPriceByParam，改成 Firestore 查最近一筆明細。"},
+    {"name": "移動平均成本演算法", "path": "jshERP-boot/src/main/java/com/jsh/erp/service/DepotItemService.java", "difficulty": "中", "note_zh": "updateCurrentUnitPrice（L1137-L1207）；移植成 Cloud Function 時改為增量計算，不要每次全量重算。"},
+    {"name": "最低售價防呆與出庫成本快照", "path": "jshERP-boot/src/main/java/com/jsh/erp/service/DepotItemService.java", "difficulty": "低", "note_zh": "L562-L584；出貨時存 costAtSale，毛利報表直接可算。"},
+    {"name": "JEditableTable 可編輯明細表格", "path": "jshERP-web/src/components/jeecg/JEditableTable.vue", "difficulty": "高", "note_zh": "綁 Vue2＋Ant Design Vue 1.x＋jQuery，不建議整個搬；取 Enter 跳格自動加列、合計列、>200 列虛擬渲染的作法用原生 JS 重寫。"},
+    {"name": "數量／單價／稅額連動計算", "path": "jshERP-web/src/views/bill/mixins/BillModalMixin.js", "difficulty": "低", "note_zh": "onValueChange（L478 起）抽成 calcLine 純函式，套台灣 5% 營業稅與含稅／未稅切換。"},
+    {"name": "商品 Excel 匯入欄位與驗證", "path": "jshERP-boot/src/main/java/com/jsh/erp/service/MaterialService.java", "difficulty": "中", "note_zh": "importExcel（L574 起）27 欄設計可參考；前端改用 SheetJS 讀 .xlsx。"}
+  ],
+  "ai_integration_zh": "完全沒有 AI／LLM 功能、prompt、MCP 或 Skills（grep openai/anthropic/claude/llm/gpt 結果 0 筆）。前端 translate.js 用微軟 Edge 翻譯做多語系。可自行用其 337 個 REST API（X-Access-Token 認證、Swagger 文件）寫 MCP server 讓 Claude 查庫存、查價、開單。",
+  "claude_support": "可接",
+  "maintenance_zh": "活躍：2016 年建立，最新 commit 2026-10-21，作者有官網、直播與付費雲端版；但框架老舊（Spring Boot 2.0.0、Java 8、Vue 2），幾乎沒有自動化測試。",
+  "risks_zh": [
+    "Spring Boot 2.0.0、Vue 2、jQuery 1.12、fastjson 1.x 等過時套件，公開上網需自行評估弱點",
+    "密碼為不加鹽 MD5；預設帳密 admin/123456、DB root/123456、Redis 1234abcd",
+    "切換繁體中文時，畫面文字（含商品、客戶名稱）會送到微軟 Edge 翻譯服務",
+    "盤點、生產、多級審批、總帳為付費外掛，開源版不含",
+    "移動平均成本每存一張單就全量重算該商品歷史，資料量大會變慢",
+    "沒有多幣別、FIFO、到岸成本分攤、多供應商比價、網路價格追蹤、Webhook",
+    "介面原文為簡體中文，無台灣電子發票與營業稅申報",
+    "只支援 .xls 舊格式 Excel 匯入"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不建議整套採用，但很適合當作進銷存資料模型與查價／成本規則的參考範本，挑資料表設計、帶價邏輯、移動平均成本與明細表格的作法移植到自己的 Firebase 系統。",
+  "keywords": ["jshERP", "管伊佳ERP", "華夏ERP", "進銷存", "ERP", "庫存管理", "採購", "銷售", "多單位", "多價格", "最低售價", "客戶別價格", "移動平均成本", "moving average cost", "Spring Boot", "MySQL", "Vue 2", "Ant Design Vue", "JEditableTable", "可編輯表格", "Excel 匯入匯出", "多租戶", "Apache-2.0", "REST API", "inventory"],
+  "pack_path": "_oss-research/02-price-erp/jishenghua__jshERP.md"
+}

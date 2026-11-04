@@ -1,0 +1,61 @@
+{
+  "repo": "glideapps/glide-data-grid",
+  "category": "01-web-excel",
+  "commit": "0875d78cc41535a39f8b417ff88ce1ebe129c363",
+  "scanned_at": "2026-11-04",
+  "stars": 5426,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全免費，可任意修改、不需開源自己的程式碼。",
+  "license_commercial_zh": "公司商用：可以，含閉源收費產品；只需保留 MIT 著作權與授權聲明。沒有付費版功能切割；但要另外確認你搭配的公式引擎（如 HyperFormula 為 GPLv3／商業雙授權）與依賴套件授權。",
+  "one_liner_zh": "Canvas 繪製的超快 React 表格，可貼 Excel、拖拉填滿，但無公式",
+  "use_cases_zh": [
+    "庫存／商品總表的 Excel 式批次編輯畫面，改完經 onCellsEdited 寫回 Firestore",
+    "比價、成本、毛利試算表的顯示層（公式自己算或外接公式引擎）",
+    "十萬列以上的廣告成效報表檢視，用 themeOverride 做條件上色",
+    "當 A＋B＋C 組合中的「試算表畫面層」，搭配公式引擎與 SheetJS／ExcelJS",
+    "抄出 TSV／HTML 剪貼簿解析程式碼，讓自己的純 JS 庫存系統支援從 Excel 貼上",
+    "AI 影片腳本／分鏡表的編輯介面（圖片欄可顯示縮圖）"
+  ],
+  "stack": ["TypeScript", "React 16–19", "HTML Canvas 2D", "linaria (CSS)", "react-number-format", "marked", "lodash", "vitest", "Storybook"],
+  "run_requirements_zh": "純前端 React 元件，npm i @glideapps/glide-data-grid 並 import dist/index.css，HTML 需有 <div id=\"portal\">。不需後端、不需 GPU、不需任何 API Key，費用 0；可放在 Firebase Hosting 等靜態主機。純 JS 網頁可用 ESM CDN 載入 React 後以 React.createElement 使用（未實測）。",
+  "key_features_zh": [
+    "Canvas 2D 繪製＋雙緩衝＋捲動 blit，只畫可見範圍，官方範例 100 萬列",
+    "超過瀏覽器 33,554,400px 高度限制時以分段 padder 換算虛擬捲動",
+    "儲存格編輯、validateCell 驗證",
+    "從 Excel／Google 試算表／Apple Numbers 複製貼上（text/html 表格與 TSV），複製時同時輸出 TSV 與 HTML",
+    "拖拉填滿（只循環複製，不會遞增）",
+    "凍結左側欄、凍結底部列、橫向合併儲存格（span）",
+    "內建搜尋、列分組、欄拖拉排序與調寬、列標記勾選",
+    "12 種內建儲存格＋cells 套件 13 種（下拉選單、日期、多選、sparkline 等）",
+    "source 套件提供 useUndoRedo、useColumnSort、useAsyncDataSource",
+    "隱藏 role=grid 表格提供無障礙支援"
+  ],
+  "reusable_parts": [
+    {"name": "DataEditor 整體表格", "path": "packages/core/src/index.ts", "difficulty": "低", "note_zh": "直接用 npm 套件當試算表畫面層，資料由 getCellContent 提供，公式與存檔交給其他專案。"},
+    {"name": "TSV 剪貼簿解析 unquote", "path": "packages/core/src/data-editor/data-editor-fns.ts", "difficulty": "低", "note_zh": "約 65 行純函式，處理引號內 Tab／換行，可直接複製到純 JS 庫存系統做從 Excel 貼上；注意 emoji 可能錯位。"},
+    {"name": "HTML 表格剪貼簿讀寫 decodeHTML / createHtmlBuffer", "path": "packages/core/src/data-editor/copy-paste.ts", "difficulty": "低", "note_zh": "只用 DOM API，讓自製表格複製到 Excel 不跑格、能讀 Excel／Numbers 貼上的 HTML。"},
+    {"name": "拖拉填滿 fillPattern", "path": "packages/core/src/data-editor/data-editor.tsx", "difficulty": "低", "note_zh": "幾十行循環複製邏輯，可改寫成偵測等差數列的 Excel 式遞增填滿。"},
+    {"name": "復原／重做 useUndoRedo", "path": "packages/source/src/use-undo-redo.ts", "difficulty": "中", "note_zh": "reducer 是兩個 stack，可抽成純 JS class 給任何表格用。"},
+    {"name": "智慧排序 compareSmart", "path": "packages/source/src/use-column-sort.ts", "difficulty": "低", "note_zh": "數字字串當數字比，其餘 localeCompare；可改 zh-Hant-TW 排序。"},
+    {"name": "超大高度虛擬捲動 InfiniteScroller", "path": "packages/core/src/internal/scrolling-data-grid/infinite-scroller.tsx", "difficulty": "中", "note_zh": "處理 33.5M px 瀏覽器上限的手法可參考，移植成原生 JS 需改寫 React 部分。"},
+    {"name": "下拉選單儲存格", "path": "packages/cells/src/cells/dropdown-cell.tsx", "difficulty": "低", "note_zh": "allowedValues 即資料驗證下拉選單，適合倉位、商品狀態欄。"},
+    {"name": "Sparkline 迷你圖儲存格", "path": "packages/cells/src/cells/sparkline-cell.tsx", "difficulty": "低", "note_zh": "自己用 canvas 畫，無圖表庫依賴，可顯示近 30 天銷量。"}
+  ],
+  "ai_integration_zh": "無任何 AI 整合（原始碼無網路請求、無 prompt、無 MCP／Skills）。因資料完全由使用者掌控，容易接 Claude：例如加「AI 建議售價／文案」欄，經 Firebase Cloud Functions 呼叫 Claude API 後更新陣列並 updateCells 重畫；或用自然語言產生篩選條件。型別完整、74 個 Storybook 範例，適合讓 Claude Code 參考開發。",
+  "claude_support": "可接",
+  "maintenance_zh": "2020 年建立，5426 星；main 最後一次程式碼變動 2026-01-21（6.0.4-alpha25），之後約 9 個月無新 commit，屬穩定但更新緩慢。36 個測試檔、約 399 個測試案例，CI 每次 push 跑 build 與 coverage。",
+  "risks_zh": [
+    "沒有公式引擎、沒有 .xlsx／.csv 匯入匯出、沒有多人協作，需自行組合其他函式庫",
+    "必須使用 React，純 JS 網頁要額外載入 React",
+    "預設 onPaste 未設定時整段剪貼簿只貼進一格，需設 onPaste={true}；複製需設 getCellsForSelection",
+    "Markdown 儲存格以 innerHTML 輸出 marked 結果未消毒，內容不可信時有 XSS 風險",
+    "中文輸入法直接打字可能不會進入編輯（event.key 為 Process），需先 Enter 或雙擊（依程式碼推論，未實測）",
+    "拖拉填滿只循環複製不會遞增；合併儲存格只支援橫向",
+    "無 i18n，搜尋列等少量 UI 字串寫死英文",
+    "6.0.4 長期停在 alpha，更新節奏慢"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合當自製網頁 Excel 的高效能「畫面層」，搭配公式引擎與 xlsx 函式庫使用；剪貼簿解析程式碼也值得直接抄進現有庫存系統。",
+  "keywords": ["glide-data-grid", "網頁版 Excel", "線上試算表", "資料表格", "data grid", "React 表格", "Canvas 表格", "虛擬捲動", "virtual scrolling", "百萬列", "複製貼上", "從 Excel 貼上", "clipboard", "拖拉填滿", "fill handle", "復原重做", "凍結欄", "合併儲存格", "下拉選單", "sparkline", "custom renderer", "無公式引擎", "Firestore", "庫存管理", "MIT"],
+  "pack_path": "_oss-research/01-web-excel/glideapps__glide-data-grid.md"
+}

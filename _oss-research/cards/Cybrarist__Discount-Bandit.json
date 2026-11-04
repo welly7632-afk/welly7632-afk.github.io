@@ -1,0 +1,61 @@
+{
+  "repo": "Cybrarist/Discount-Bandit",
+  "category": "02-price-erp",
+  "commit": "7a58522f431ff22e772cbe76274bb8fe79590770",
+  "scanned_at": "2026-11-04",
+  "stars": 762,
+  "license": "未明確授權：儲存庫無 LICENSE 檔；composer.json 的 MIT 是 Laravel 範本預設值，不能視為作者授權",
+  "license_personal_zh": "個人使用：自己下載、架設來追價格，實務風險低。",
+  "license_commercial_zh": "公司商用：沒有授權等於保留所有權利，直接複製或改寫後散布、放進商業產品都沒有法律依據；建議先請作者補授權，或只參考設計自己用 Claude 重寫。",
+  "one_liner_zh": "自架多使用者電商降價追蹤：自訂商店爬蟲＋價格歷史＋多通道通知",
+  "use_cases_zh": [
+    "監看競品或上游供應商商品頁，降價、缺貨、補貨時手機收到通知",
+    "同一商品掛多家商店網址，並排比價並看每日最低價歷史圖",
+    "參考其『自訂商店』selector／schema.org 設定格式，用 JS 在 Firebase Cloud Functions 重做台灣電商（蝦皮、momo、PChome）抓價",
+    "把 SchemaParser、價格字串正規化、通知條件引擎拆出來給自己的倉儲系統用",
+    "用 RSS feed 或 ntfy 把降價事件送進自己的系統或試算表"
+  ],
+  "stack": ["PHP 8.4", "Laravel 12", "Laravel Octane", "Filament 4", "Livewire", "Tailwind CSS", "ApexCharts", "chrome-php/chrome（無頭 Chromium）", "SQLite（預設）", "MySQL", "Laravel Sanctum", "Docker（FrankenPHP）"],
+  "run_requirements_zh": "建議用官方 Docker 映像 cybrarist/discount-bandit:v4 架在 NAS／家用電腦／VPS（不能放 Firebase Hosting），需 APP_KEY；內含 Chromium，不需 GPU，記憶體估計 1–2 GB 以上。唯一可選 API Key 是 exchangerate-api.com（每日匯率，有免費方案，額度未確認）；通知用 Telegram／ntfy／Gotify／Apprise 皆免費或可自架；無任何 AI API 費用。",
+  "key_features_zh": [
+    "27 個內建商店爬蟲類別（Amazon、AliExpress、eBay、Costco、Walmart、Best Buy、Newegg 等），種子資料 90 個商店／地區",
+    "自訂商店：填 CSS selector 或 schema.org JSON 路徑即可新增網站，支援 * 萬用字元與依網址參數挑規格",
+    "Smart Setup：用 Chromium 開商品頁自動猜 selector 與 schema key",
+    "HTTP 直接抓與無頭 Chromium 兩種抓取器，共用瀏覽器＋最多 4 分頁併發控制",
+    "每日最低價歷史與多商店價格折線圖",
+    "通知條件：目標價（可加額外費用與百分比）、跌幅%、X 天內最低、任何變動、有貨、只限官方賣家、暫停提醒",
+    "通知通道：ntfy、Telegram、Gotify、Apprise、RSS／Atom feed",
+    "多使用者：商品依 user_id 隔離，同一網址多人共用只抓一次；2FA、登入紀錄",
+    "多幣別與每日匯率換算",
+    "短網址展開（平行追轉址）"
+  ],
+  "reusable_parts": [
+    {"name": "schema.org 商品資料解析", "path": "app/Services/SchemaParser.php", "difficulty": "低", "note_zh": "約 100 行，抽 JSON-LD Product／ProductGroup 與 microdata；請 Claude 改寫成 JS（cheerio／DOMParser）即可通用於多數電商頁。"},
+    {"name": "自訂商店通用爬蟲與設定格式", "path": "app/Classes/CustomStoreTemplate.php", "difficulty": "中", "note_zh": "把 custom_settings 欄位（*_selectors、*_schema_key、庫存判斷規則）照搬成 Firestore 文件，爬蟲依設定運作，新增網站不改程式；欄位全貌見 app/Jobs/AddStoreToDiscountJob.php。"},
+    {"name": "Smart Setup 自動猜 selector", "path": "app/Http/Controllers/Actions/NewStoreSmartSetupAction.php", "difficulty": "低", "note_zh": "候選 schema 路徑與 og/meta selector 清單可直接沿用，也可改成把 HTML 丟給 Claude 產生 selector。"},
+    {"name": "價格字串正規化", "path": "app/Helpers/GeneralHelper.php", "difficulty": "低", "note_zh": "處理 1.234,56 與 1,234.56 兩種格式的純函式，翻成 JS 即可。"},
+    {"name": "通知條件引擎", "path": "app/Services/NotificationService.php", "difficulty": "中", "note_zh": "抽成純函式：輸入新舊價格、歷史最低、使用者設定，輸出通知理由陣列；注意 is_shipping_included 與每日上限其實沒被使用。"},
+    {"name": "爬蟲管線範本", "path": "app/Classes/StoreTemplate.php", "difficulty": "低", "note_zh": "9 個步驟各自 try/catch 的範本方法模式，做成 JS 抽象類別，每個網站一個子類別。"},
+    {"name": "Chromium 共用與併發號誌", "path": "app/Classes/Crawler/ChromiumCrawler.php", "difficulty": "中", "note_zh": "一個瀏覽器、檔案鎖、最多 4 分頁；思路可搬到 Node＋Puppeteer。"},
+    {"name": "短網址展開", "path": "app/Services/URLParserService.php", "difficulty": "低", "note_zh": "expand_short_urls 以 Http::pool 平行追 Location；JS 可用 fetch redirect:'manual' 重寫。"},
+    {"name": "每日最低價歷史資料表", "path": "database/migrations/2025_09_15_055158_create_link_histories_table.php", "difficulty": "低", "note_zh": "一條連結一天一筆只存最低價，對應 Firestore priceHistory/{linkId}_{date}，方便接試算表或圖表。"}
+  ],
+  "ai_integration_zh": "產品本身沒有任何 AI／LLM 功能與 prompt。儲存庫內的 .claude/skills、.mcp.json、boost.json 是作者開發時給 Claude Code／Codex 用的 Laravel Boost MCP 設定，對終端使用者無功能；若要加 Claude，可自行做 AI 產生 selector、跨店同款比對、價格摘要。",
+  "claude_support": "無",
+  "maintenance_zh": "活躍：最新 commit 2026-10-23（v4.0.5），2026-09～10 仍有新 migration；14 個測試檔、50 個 test 方法；有 Discord 社群與官方 Docker 映像。",
+  "risks_zh": [
+    "沒有 LICENSE 檔，商用或改寫散布沒有授權依據",
+    "爬蟲靠 CSS selector，網站改版即失效，且可能違反電商服務條款",
+    "Chromium 以 --no-sandbox、--disable-web-security、忽略憑證錯誤執行，需隔離部署",
+    "Costco Taiwan 幣別被設成 USD，台灣使用要手動改 TWD",
+    "匯率欄位為 unsignedInteger，在 MySQL 可能把小數匯率截成整數，匯率為 0 時通知換算會除以零",
+    "is_shipping_included 與 max_notifications_daily 有欄位與表單但通知邏輯沒用到",
+    "REST API 多數端點是空殼，瀏覽器外掛的控制器沒有接路由",
+    "沒有繁中介面、沒有台灣電商（蝦皮、momo、PChome）內建爬蟲",
+    "沒有庫存、成本、採購、CSV／Excel 匯入匯出"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "適合拿來追競品／供應商價格，最有價值的是自訂商店爬蟲與 schema 解析的設計，建議參考思路用 Claude 以 JS 重寫進自己的 Firebase 系統，而非直接沿用程式碼。",
+  "keywords": ["價格追蹤", "降價通知", "比價", "競品價格監控", "補貨通知", "價格歷史", "網頁爬蟲", "自訂商店", "schema.org", "JSON-LD", "無頭瀏覽器", "多幣別", "自架", "price tracker", "price drop alert", "web scraping", "self-hosted", "Laravel", "Filament", "Chromium", "Amazon", "AliExpress", "eBay", "ntfy", "Telegram"],
+  "pack_path": "_oss-research/02-price-erp/Cybrarist__Discount-Bandit.md"
+}

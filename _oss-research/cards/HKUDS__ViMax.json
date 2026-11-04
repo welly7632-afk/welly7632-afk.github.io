@@ -1,0 +1,57 @@
+{
+  "repo": "HKUDS/ViMax",
+  "category": "03-video-script",
+  "commit": "fd4b72e7731be6e5f88486206d25ea59849b0285",
+  "scanned_at": "2026-11-04",
+  "stars": 12853,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、可自用，不需公開程式碼。",
+  "license_commercial_zh": "公司商用：可商用、可閉源修改，只需保留 MIT 授權聲明；但 AI 生成影片的商用權要看 Veo／Seedance／OpenRouter 等模型服務條款，程式碼授權管不到。無付費版或閉源功能。",
+  "one_liner_zh": "多代理把點子／劇本／小說拆成分鏡、關鍵影格，再呼叫 Veo 等生成整支影片",
+  "use_cases_zh": [
+    "短劇／故事型廣告的前期企劃：只跑文字規劃，取得結構化的分場劇本與分鏡 JSON",
+    "參考它的角色三視圖＋參考圖＋視覺 LLM 挑圖技巧，改成商品三視圖做電商影片（需改程式）",
+    "把長篇故事拆成多集短劇的事件／場景大綱（Novel2Video）",
+    "照抄生圖／生影片的統一介面與 Veo、OpenRouter 呼叫程式，當自己影片工具的底層"
+  ],
+  "stack": ["Python 3.12", "uv", "LangChain", "OpenAI SDK（OpenAI 相容）", "google-genai", "moviepy", "PySceneDetect", "OpenCV", "FAISS", "Pydantic", "React 18 + Vite（Web UI）", "Node.js 18+（本機伺服器）", "檔案系統儲存（無資料庫）"],
+  "run_requirements_zh": "個人電腦即可，不需 GPU（生圖、生影片全走雲端 API）；需 Python 3.12＋uv，Web UI 另需 Node 18+。要三組 API Key：支援看圖的 LLM（GPT-5.5／Gemini／MiniMax，可經 OpenRouter 接 Claude）、生圖（Gemini Flash Image／Seedream／GPT Image 2）、生影片（Veo 3.1／Seedance）。成本主要在影片：一支 2 分鐘短片估計 USD 20～60（估算，依模型而定）。",
+  "key_features_zh": [
+    "Idea2Video／Script2Video／Novel2Video 三種流程",
+    "編劇、分鏡師、攝影機規劃、參考圖挑選、視覺評審等多代理 prompt",
+    "每鏡首影格／尾影格＋運鏡＋聲音描述的結構化分鏡 schema",
+    "角色正／側／背三視圖維持一致性",
+    "攝影機樹＋過場影片＋場景偵測抽格，提升換機位連戲",
+    "多候選圖並行生成＋視覺 LLM 挑最一致的一張",
+    "每步產物落檔、可中斷續跑",
+    "代理對話模式（TUI／Web UI）：先規劃文字、確認後再算圖",
+    "YAML class_path 切換生圖／生影片供應商，含速率限制"
+  ],
+  "reusable_parts": [
+    {"name": "鏡頭資料結構 ShotDescription", "path": "interfaces/shot_description.py", "difficulty": "低", "note_zh": "直接當短劇分鏡表欄位，或轉 JSON Schema 給 Claude 結構化輸出"},
+    {"name": "編劇／分鏡 prompt", "path": "agents/screenwriter.py, agents/storyboard_artist.py", "difficulty": "低", "note_zh": "複製字串改成電商 15/30 秒廣告版本，放進 Claude Code skill"},
+    {"name": "生圖／生影片統一介面＋動態載入", "path": "tools/protocols.py, tools/render_backend.py", "difficulty": "低", "note_zh": "Protocol＋class_path，換模型不改程式"},
+    {"name": "Veo／OpenRouter 影片呼叫", "path": "tools/video_generator_veo_google_api.py, tools/video_generator_openrouter_api.py", "difficulty": "低", "note_zh": "單檔可獨立用，含 429 重試與輪詢"},
+    {"name": "多候選圖＋視覺評審", "path": "pipelines/script2video_pipeline.py (generate_and_select_best_image), agents/best_image_selector.py", "difficulty": "中", "note_zh": "改成商品圖挑選，需拿掉 width<=height 的橫式限制"},
+    {"name": "角色三視圖生成", "path": "agents/character_portraits_generator.py", "difficulty": "低", "note_zh": "prompt 改成商品三視圖；或把自有照片寫入 character_portraits_registry.json（未實測）"},
+    {"name": "攝影機樹＋場景偵測抽格", "path": "agents/camera_image_generator.py", "difficulty": "中", "note_zh": "連戲技巧參考，成本高"},
+    {"name": "速率限制器", "path": "utils/rate_limiter.py", "difficulty": "低", "note_zh": "每分鐘／每日上限防止燒錢"},
+    {"name": "容錯 JSON 解析", "path": "utils/robust_json_parser.py", "difficulty": "低", "note_zh": "去尾逗號後 Pydantic 解析，任何 LLM 結構化輸出可用"}
+  ],
+  "ai_integration_zh": "LLM 一律走 OpenAI 相容介面（AsyncOpenAI／LangChain init_chat_model），預設 GPT-5.5 經 yunwu.ai 或 Gemini Flash Lite 經 OpenRouter，另有 MiniMax 預設組；生圖 Gemini Flash Image／Seedream 4.0／GPT Image 2；生影片 Veo 3.1／Seedance 1.0／Omni。prompt 寫死在 agents/*.py 與 prompts/*.md。沒有 MCP、Claude Code skill 或 Anthropic SDK；可透過 OpenRouter 或 Anthropic 的 OpenAI 相容端點接 Claude（未實測）。",
+  "claude_support": "可接",
+  "maintenance_zh": "活躍：最後推送 2026-09-30，v1.2.0（2026-07）新增 Web UI；香港大學 HKUDS 實驗室研究專案，有論文。26 個測試檔、205 個 pytest 函式，無 CI 設定。",
+  "risks_zh": [
+    "強制 16:9 橫式，直式短影音要改多處程式",
+    "沒有 TTS、字幕、配樂；對白聲音全靠影片模型，繁中／台灣口音無法控制",
+    "README 宣稱的 AutoCameo 在程式碼中找不到實作",
+    "預設走 yunwu.ai 第三方中轉站，提示詞與 API key 會經過它",
+    "影片 API 費用高，換機位會額外生成過場影片",
+    "Web UI 無登入，只靠綁 127.0.0.1",
+    "AI 影片商用、肖像權、小說改作授權需自行處理"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "適合拿來學短劇企劃與分鏡、角色一致性的作法並拆 prompt／介面；不適合直接產出台灣電商直式廣告成品。",
+  "keywords": ["ViMax", "HKUDS", "AI 影片生成", "多代理", "Agentic Video", "Idea2Video", "Script2Video", "Novel2Video", "短劇", "分鏡", "storyboard", "關鍵影格", "角色一致性", "三視圖", "Veo 3.1", "Seedance", "Nano Banana", "OpenRouter", "LangChain", "moviepy", "Python", "MIT", "Claude 可接", "無字幕", "橫式 16:9"],
+  "pack_path": "_oss-research/03-video-script/HKUDS__ViMax.md"
+}

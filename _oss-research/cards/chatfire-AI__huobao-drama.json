@@ -1,0 +1,59 @@
+{
+  "repo": "chatfire-AI/huobao-drama",
+  "category": "03-video-script",
+  "commit": "5ac2a3446855bf8ad0d3f013d1fe22e9b3cbc6ff",
+  "scanned_at": "2026-11-04",
+  "stars": 16997,
+  "license": "CC BY-NC-SA 4.0（GitHub 顯示 NOASSERTION，LICENSE 檔為 CC BY-NC-SA 4.0 全文）",
+  "license_personal_zh": "個人使用：可以，自己跑、自己改、自己研究都沒問題，需保留署名。",
+  "license_commercial_zh": "公司商用：NC 條款禁止以商業利益為主要目的使用，用來產出店家廣告、帶貨短劇屬高風險，需向作者取得商業授權；改作再散布須同樣以 CC BY-NC-SA 公開（SA），程式碼不宜直接貼進自家商用系統，建議看懂後自行重寫。",
+  "one_liner_zh": "小說一句話到成片：AI 寫劇本、拆分鏡、生圖生影片再拼接的短劇工作台",
+  "use_cases_zh": [
+    "把產品故事改寫成分場劇本並拆成 8–15 秒分鏡，批次生成劇情型廣告影片",
+    "把商品當「道具」先生成白底參考圖，再用 @商品名 讓每段影片中的商品外觀一致",
+    "上傳代言人音檔當 #角色 音色參考，讓 Seedance／MiniMax 影片用同一個聲音說台詞",
+    "參考它的分鏡提示詞（時長公式、3 秒一行）改寫成自己的 Claude Code skill",
+    "拆出多家影片 API 的 adapter 與「建任務→輪詢→下載→中斷復原」任務引擎放進自己的工具"
+  ],
+  "stack": ["TypeScript", "Node.js 20+", "Hono", "Mastra (@mastra/core)", "Vercel AI SDK (@ai-sdk/openai, @ai-sdk/google)", "Drizzle ORM", "SQLite (better-sqlite3)", "Nuxt 3 / Vue 3 (SPA)", "Electron 37", "FFmpeg (fluent-ffmpeg, ffmpeg-static)", "sharp", "Docker"],
+  "run_requirements_zh": "桌面安裝包（macOS/Windows，未簽章）或 Node 20+ 分別跑 backend（:5679）與 frontend（:3013），也可 Docker。不需 GPU，FFmpeg 已內建。需自備三類雲端 API Key：文字（OpenAI 相容／Gemini／火山）、圖片（gpt-image-2／Gemini 3 image／Seedream）、影片（Seedance 2.0／Wan 3.0／MiniMax H3），或用作者的 FireMux 閘道一個 Key 搞定。程式碼內無價格資訊，實際費用未確認；影片任務（每段 8–15 秒）是主要成本。",
+  "key_features_zh": [
+    "4 個 Mastra Agent：劇本改寫、角色／場景／道具抽取去重、分鏡拆解、圖片與影片提示詞生成",
+    "Agent 提示詞與 SKILL.md 可在設定頁線上編輯，支援中英日韓內容語言",
+    "生圖 adapter：OpenAI gpt-image-2（含 edits 參考圖）、Gemini 3 image、火山 Seedream",
+    "生影片 adapter：Seedance 2.0（多模態參考＋原生聲音）、Wan 3.0、MiniMax H3",
+    "@名字→@圖片N 參考圖映射維持角色／商品一致性；#名字 角色音色參考",
+    "統一任務引擎：sys_task 表、輪詢、下載落地、服務重啟後自動復原影片任務",
+    "FFmpeg 整集拼接（可只拼勾選鏡頭）、16:9／9:16、MP4 輸出",
+    "Electron 桌面版＋sha256 校驗自動更新、Docker＋Watchtower 部署"
+  ],
+  "reusable_parts": [
+    {"name": "影片／圖片 Adapter 介面與註冊表", "path": "backend/src/services/adapters/types.ts, backend/src/services/adapters/registry.ts", "difficulty": "低", "note_zh": "純 TS 介面，五個方法（組請求、解析回應、組輪詢、解析輪詢、取 URL），可當自己多供應商影片 API 的統一層。"},
+    {"name": "Seedance 2.0 影片 adapter", "path": "backend/src/services/adapters/volcengine-video.ts", "difficulty": "低", "note_zh": "多模態參考圖／影片／音訊＋generate_audio；可改寫成 Firebase Cloud Function。"},
+    {"name": "Wan 3.0 與 MiniMax H3 影片 adapter", "path": "backend/src/services/adapters/aliyun-wan-video.ts, backend/src/services/adapters/minimax-video.ts", "difficulty": "低", "note_zh": "作為備援供應商，介面與 Seedance 相同。"},
+    {"name": "生成任務引擎（含中斷復原）", "path": "backend/src/services/generation.ts", "difficulty": "中", "note_zh": "SQLite sys_task 換成 Firestore，背景執行換 Cloud Tasks／排程；保留 resumeInterruptedTasks 避免付費影片遺失。"},
+    {"name": "中轉站相容 LLM fetch 補丁與模型工廠", "path": "backend/src/agents/index.ts", "difficulty": "低", "note_zh": "getModel() 疊關 thinking、固定溫度、拉高 max_tokens；加 @ai-sdk/anthropic 一個分支即可接 Claude。"},
+    {"name": "分鏡拆解與提示詞規範（Agent Skills）", "path": "backend/workspace/skills/storyboard-breaker/SKILL.md, backend/workspace/skills/prompt-generator/", "difficulty": "低", "note_zh": "格式近似 Claude Code skill；注意 NC/SA 授權，建議參考後用繁中重寫成台灣電商版。"},
+    {"name": "@名字→@圖片N 參考圖映射", "path": "frontend/app/views/drama/episode.vue (resolveVideoPromptRefs, L3298-L3311)", "difficulty": "低", "note_zh": "純字串函式，讓影片模型知道哪張參考圖是哪個角色／商品。"},
+    {"name": "#角色名 音色引用解析", "path": "backend/src/services/character-voice-references.ts", "difficulty": "低", "note_zh": "resolveVoiceMentions 為純函式，把 #名字 換成音訊序號並收集音檔 URL。"},
+    {"name": "@／# 提及輸入框", "path": "frontend/app/components/MentionTextarea.vue, frontend/app/utils/prompt-mentions.js", "difficulty": "中", "note_zh": "Vue 3 元件；純 JS 專案需改寫，可用於倉儲系統備註欄 @商品。"},
+    {"name": "FFmpeg 整集拼接", "path": "backend/src/services/ffmpeg-merge.ts", "difficulty": "低", "note_zh": "concat demuxer＋libx264／aac 重新編碼＋faststart，可做本機 Node 腳本。"}
+  ],
+  "ai_integration_zh": "文字模型透過 Mastra Agent＋Vercel AI SDK 呼叫，provider 白名單只有 openai（相容介面）、gemini、volcengine；無 Anthropic SDK、無 MCP。提示詞在 backend/workspace/prompts 與 skills/**/SKILL.md（Mastra Agent Skills，可線上編輯）。Claude 可透過 OpenAI 相容端點（provider=openai、Base URL 指向 Anthropic 或中轉站，建議 AI_DISABLE_THINKING=false，未實測）或在 getModel() 加 @ai-sdk/anthropic 約 20 行改程式接入；生圖與生影片仍需 OpenAI／Gemini／火山／阿里／MiniMax。",
+  "claude_support": "可接",
+  "maintenance_zh": "2026-01 建立、2026-11-01 仍有 push，約 1.7 萬星，已出到桌面版 v4.0.5，維護活躍；測試 39 檔但多為 regex 檢查原始碼的結構測試，前端 episode.vue 單檔 6,239 行。",
+  "risks_zh": [
+    "CC BY-NC-SA 4.0：商用受限，改作需同授權公開",
+    "API 無登入驗證，GET /api/v1/ai-configs 回傳 API Key 原文，不可直接開在公網",
+    "沒有 TTS、字幕、配樂（欄位存在但無實作），需另找專案補齊",
+    "介面與內容語言無繁體中文，提示詞為簡中",
+    "全部依賴付費雲端 API，影片成本高；程式內無價格資訊",
+    "與作者 FireMux 閘道深度綁定，使用時內容會經過第三方／境外伺服器",
+    "Seedance 引用本機素材需公網 PUBLIC_BASE_URL，桌面版受限；安裝包未簽章",
+    "Seedance adapter 關閉浮水印，上架平台需自行標註 AI 生成，另有肖像權／聲音權風險"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "做劇情型廣告或短劇很值得個人先玩，並參考它的分鏡提示詞與影片 adapter；但授權禁商用、缺配音字幕，商用請概念重寫並搭配其他專案補齊。",
+  "keywords": ["火寶短劇", "huobao-drama", "AI 短劇", "短劇生成", "劇本改寫", "分鏡", "storyboard", "影片提示詞", "角色一致性", "參考圖", "Seedance 2.0", "Wan 3.0", "MiniMax H3", "gpt-image-2", "Mastra", "Agent Skills", "SKILL.md", "Hono", "Nuxt 3", "SQLite", "FFmpeg", "音色參考", "FireMux", "CC BY-NC-SA 4.0", "劇情廣告"],
+  "pack_path": "_oss-research/03-video-script/chatfire-AI__huobao-drama.md"
+}
