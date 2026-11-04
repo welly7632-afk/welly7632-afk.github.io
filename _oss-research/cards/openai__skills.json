@@ -1,0 +1,128 @@
+{
+  "repo": "openai/skills",
+  "category": "04-agent-rules-skills",
+  "commit": "49f948faa9258a0c61caceaf225e179651397431",
+  "scanned_at": "2026-11-04",
+  "stars": 28518,
+  "license": "混合授權：根目錄無 LICENSE；44 個 skill 中 31 個 Apache-2.0（含 skill-creator、migrate-to-codex、define-goal）、1 個 MIT（vercel-deploy）、4 個 Notion MIT 式授權、2 個 Figma Developer Terms、6 個 figma-* 無授權檔",
+  "license_personal_zh": "個人使用：Apache-2.0 / MIT 的技能可自由複製、修改，拿來改寫成自己的規則與技能沒有問題；Figma 相關 8 個只參考概念。",
+  "license_commercial_zh": "公司商用：Apache-2.0 / MIT 部分可商用，需保留授權與版權聲明、標註修改；Figma 2 個受 Figma Developer Terms 約束、6 個無授權檔（預設保留所有權利），不要複製商用。執行技能需 Codex 或 OpenAI API 付費。",
+  "one_liner_zh": "OpenAI 官方 Codex 技能庫與 Claude 轉 Codex 對照表",
+  "use_cases_zh": [
+    "讓 GPT（Codex）和 Claude 讀同一份規則：AGENTS.md symlink 到中性的 CLAUDE.md",
+    "照 differences.md 把 Claude 的 skills、subagents、hooks、MCP 對應到 Codex 的檔案位置與格式",
+    "用 skill-creator 守則與 quick_validate.py 統一兩家 AI 共用的 SKILL.md 寫法並在巡讀時驗證格式",
+    "借 migrate-to-codex 的 Status｜Item｜Notes 報告表格與「修到乾淨為止」迴圈，當每日巡讀報告格式",
+    "借「Docs last checked 日期＋過期就重查」機制防止參考文件新舊版本衝突",
+    "用 define-goal 的 Goal Quality Bar 在派工給任何 AI 前先寫清楚完成條件與驗證證據"
+  ],
+  "stack": [
+    "Markdown（SKILL.md）",
+    "YAML（frontmatter、agents/openai.yaml）",
+    "Python 3.11+ 標準函式庫（migrate-to-codex）",
+    "PyYAML（quick_validate.py）",
+    "少量 Node.js 腳本",
+    "TOML（Codex agent / config）"
+  ],
+  "run_requirements_zh": "不是應用程式，只讀檔案就能借用，不需硬體或 GPU。要在 Codex 實際使用需 ChatGPT 方案或 OpenAI API；imagegen CLI、speech、transcribe 需 OPENAI_API_KEY 按用量計費；gh-*／yeet 需 GitHub CLI；linear、notion、figma、sentry 需對應 MCP 與帳號。轉換器需 Python 3.11+。",
+  "key_features_zh": [
+    "44 個技能：.system 5 個（Codex 內建）＋ .curated 39 個；README 提到的 .experimental 已不存在",
+    "skill-creator：三層載入、description 是唯一觸發依據、SKILL.md <500 行、資訊只放一處",
+    "quick_validate.py：檢查 frontmatter 欄位、名稱格式、description ≤1024 字元",
+    "migrate-to-codex：CLAUDE.md→AGENTS.md（中性則 symlink）、.claude/skills→.agents/skills、.claude/agents→.codex/agents/*.toml、hooks→.codex/hooks.json、.mcp.json→config.toml",
+    "migrate-to-codex 的 --scan-only / --plan / --doctor / --validate-target 唯讀健檢模式，AGENTS.md 32KB 門檻檢查",
+    "openai-docs 的 Surface Map：一次性要求、AGENTS.md、config、skill、plugin、MCP、automation、hook 各該用在哪",
+    "define-goal：可量測目標的品質門檻與好壞範例"
+  ],
+  "reusable_parts": [
+    {
+      "name": "Claude↔Codex 對照表",
+      "path": "skills/.curated/migrate-to-codex/references/differences.md",
+      "difficulty": "低",
+      "note_zh": "整份放進 docs/ai-team/，保留 Docs last checked 日期並定期重查"
+    },
+    {
+      "name": "規則檔中性判斷＋32KB 檢查",
+      "path": "skills/.curated/migrate-to-codex/scripts/migrate/instructions.py",
+      "difficulty": "低",
+      "note_zh": "7 個 Claude 專屬關鍵字比對＋檔案大小檢查，可改寫成巡讀腳本的兩個檢查項（Python 或 Node 皆可）"
+    },
+    {
+      "name": "SKILL.md 驗證器",
+      "path": "skills/.system/skill-creator/scripts/quick_validate.py",
+      "difficulty": "低",
+      "note_zh": "101 行，需 PyYAML；對 .agents/skills 與 .claude/skills 都能跑"
+    },
+    {
+      "name": "技能寫作守則",
+      "path": "skills/.system/skill-creator/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "抽 Core Principles、What to Not Include、Frontmatter 段落進共用規則"
+    },
+    {
+      "name": "巡讀報告格式與修正迴圈",
+      "path": "skills/.curated/migrate-to-codex/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "第 51–80 行：三種狀態＋Notes 必填的表格，plan→dry-run→修→validate→重跑"
+    },
+    {
+      "name": "Surface Map",
+      "path": "skills/.system/openai-docs/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "第 86–100 行，寫進共用規則說明每種規則該放哪"
+    },
+    {
+      "name": "目標品質門檻",
+      "path": "skills/.curated/define-goal/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "把 get_goal/create_goal 換成寫入 backlog.md 即可在 Claude 使用"
+    },
+    {
+      "name": "Claude→Codex 完整轉換器",
+      "path": "skills/.curated/migrate-to-codex/scripts/cli.py",
+      "difficulty": "中",
+      "note_zh": "15 個 .py 共 3,212 行、Python 3.11+；單向轉換，可產生 .codex/agents/*.toml 讓兩家都有同樣角色"
+    }
+  ],
+  "ai_integration_zh": "目標是 OpenAI Codex；遵循 Agent Skills 開放標準，SKILL.md 格式與 Claude 相同（name、description、Markdown 內文、scripts/references/assets），agents/openai.yaml 只有 Codex 讀，Claude 會忽略。Claude 專屬欄位（disable-model-invocation、model、hooks 等）Codex 不支援，allowed-tools 在 Codex 只是文字建議。轉換器把 claude-opus 對應 gpt-5.4、sonnet/haiku 對應 gpt-5.4-mini。技能可透過 agents/openai.yaml 宣告 MCP 依賴。",
+  "claude_support": "可接",
+  "maintenance_zh": "README 宣告 deprecated，官方改推 openai/plugins（62 個 plugin、536 份 SKILL.md）；但 2026-10-28 仍有推送。沒有測試、沒有 CI。repo 內本身有重複（openai-docs 在 .system 與 .curated 各一份且新舊交錯）與文件漂移（.experimental 已不存在、安裝路徑 ~/.codex/skills 與 .agents/skills 不一致）。",
+  "risks_zh": [
+    "已停止維護，新格式請以 openai/plugins 與 Codex 官方文件為準",
+    "differences.md 的對照查證日期是 2026-04-20，Codex 與 Claude Code 功能變化快，需重查",
+    "沒有任何測試與 CI，轉換器行為未經自動驗證",
+    "Figma 8 個技能授權受限或沒有授權檔",
+    "第三方技能等於會被 AI 執行的 prompt 與腳本，安裝前需人工審閱",
+    "Codex 的 hook 只對 shell 指令觸發、子代理權限只是預設值，不能當成和 Claude 一樣的硬限制",
+    "沒有現成的角色清單、交接協定、每日巡讀技能，需要自己組合"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要讓 GPT 和 Claude 共用規則與技能時必讀：直接借 AGENTS.md symlink、差異對照表、SKILL.md 驗證器與報告格式；角色、防漏、巡讀要搭配 superpowers、spec 類工具自己補。",
+  "keywords": [
+    "openai/skills",
+    "Codex",
+    "GPT",
+    "Agent Skills",
+    "SKILL.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "symlink",
+    "單一事實來源",
+    "migrate-to-codex",
+    "Claude Code 轉 Codex",
+    ".agents/skills",
+    ".codex/agents",
+    "subagent",
+    "hooks",
+    "MCP",
+    "skill-creator",
+    "quick_validate",
+    "define-goal",
+    "巡讀",
+    "版本衝突",
+    "重複規則",
+    "技能格式驗證",
+    "openai/plugins"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/openai__skills.md"
+}

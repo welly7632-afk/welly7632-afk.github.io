@@ -1,0 +1,112 @@
+{
+  "repo": "majiabin2020/majiu-management",
+  "category": "04-agent-rules-skills",
+  "commit": "86665bb362462a575d469e06472a13d091c1b09b",
+  "scanned_at": "2026-11-04",
+  "stars": 8,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可複製、修改、翻成繁體並改寫成 Claude Code／Codex 版本。",
+  "license_commercial_zh": "公司商用：可以，只需在散布的副本保留原作者版權聲明與 MIT 授權文字；無任何保證，也沒有付費版功能。",
+  "one_liner_zh": "工作空間治理 Skill：台帳狀態機＋草稿三分法＋只讀巡檢報告",
+  "use_cases_zh": [
+    "把季度巡檢規程與報告模板改成每日巡讀（漏做／重複／新舊衝突）的 skill 骨架",
+    "用 STALL_LOG.md 台帳讓 Claude 與 Codex 開工前先查、狀態即時登記，防止任務漏掉或爛尾",
+    "用記憶蒸餾規則限制 CLAUDE.md／AGENTS.md 字數，衝突時新規則勝出、過時條目封存",
+    "用草稿三分法整理 AI 影片、廣告素材與腳本資料夾",
+    "把非破壞性鐵律（備份先行、每批≤10 檔、回收桶優先、出錯即停）寫進共用規則",
+    "當作 SKILL.md description 與 references/scripts 資料夾結構的寫法範本"
+  ],
+  "stack": [
+    "Markdown（SKILL.md 規則）",
+    "Bash（workspace_scan.sh）",
+    "WorkBuddy skills／memory／自動化排程"
+  ],
+  "run_requirements_zh": "無需伺服器、資料庫、GPU 或 API Key。原生安裝為把資料夾複製到 ~/.workbuddy/skills/ 或專案 .workbuddy/skills/；改成 Claude Code 需換路徑（.claude/skills/、CLAUDE.md）、排程改用 cron 或 GitHub Actions、把 macOS osascript 回收桶指令換掉。費用只有你使用的 AI 訂閱或 token。",
+  "key_features_zh": [
+    "一馬一廄：一個工作空間只放一類任務，一級資料夾命名 任務名_年月日",
+    "STALL_LOG.md 台帳狀態機：空欄→在廄→出欄，同時最多一個在廄",
+    "收尾五步：歸位→草稿三分法→提煉經驗→寫重生成指引→更新台帳並歸檔",
+    "草稿三分法：配方型可刪但留重生成指引、資產型必留壓縮、依賴型直接刪",
+    "整理優化的非破壞流程：先出方案等同意、備份、每批≤10 檔、回收桶優先",
+    "季度只讀巡檢：磁碟大戶、_archive 冷檔（>90 天）、爛尾任務（>30 天）、記憶健康，出報告等拍板",
+    "記憶蒸餾：每 30 天合併日誌進 MEMORY.md、≤3000 字元、新規則勝出"
+  ],
+  "reusable_parts": [
+    {
+      "name": "巡檢報告模板",
+      "path": "references/quarterly-inspection.md",
+      "difficulty": "低",
+      "note_zh": "L45-L74 報告模板＋L8-L13 安全鐵律，改段落為漏做／重複／新舊衝突即成每日巡讀報告。"
+    },
+    {
+      "name": "自足型排程 prompt 模板",
+      "path": "references/quarterly-inspection.md",
+      "difficulty": "低",
+      "note_zh": "L76-L88；放進 cron 呼叫 claude -p 或 codex exec，保留「只讀、出報告就停」條款。"
+    },
+    {
+      "name": "STALL_LOG 台帳模板與狀態機",
+      "path": "references/stall-log-template.md",
+      "difficulty": "低",
+      "note_zh": "放專案根目錄，加「負責 AI」欄，AGENTS.md 規定開工前必讀、狀態即時寫。"
+    },
+    {
+      "name": "記憶蒸餾規則",
+      "path": "SKILL.md",
+      "difficulty": "低",
+      "note_zh": "L91-L93；套到 CLAUDE.md／AGENTS.md，刪除舊日誌建議改為移入封存。"
+    },
+    {
+      "name": "草稿三分法與非破壞整理流程",
+      "path": "SKILL.md",
+      "difficulty": "低",
+      "note_zh": "L63-L80；直接抄進共用規則的安全與歸檔段落。"
+    },
+    {
+      "name": "只讀掃描腳本",
+      "path": "scripts/workspace_scan.sh",
+      "difficulty": "低",
+      "note_zh": "需先修 set -euo pipefail 導致 .workbuddy 不存在時中斷的問題，再放進巡讀 skill 的 scripts/。"
+    }
+  ],
+  "ai_integration_zh": "不呼叫任何模型或 API，本身就是一份 Agent Skills 格式的 SKILL.md（name／description＋references／scripts），原生給 WorkBuddy 使用。沒有 MCP、沒有多 AI 角色、沒有 Codex 支援說明。格式與 Claude Code skills 相容，換掉 .workbuddy 路徑與排程方式即可使用（未實測）。",
+  "claude_support": "可接",
+  "maintenance_zh": "2026-09-12 一次發布（建立與最後推送同日），淺層 clone 只見 1 個 commit，⭐ 8，無測試；屬個人方法論作品，非持續維護的框架。",
+  "risks_zh": [
+    "workspace_scan.sh 的 set -euo pipefail 會在 .workbuddy 不存在時讓腳本在第 1 段後中斷（依 Bash 語意推論，未實際執行）",
+    "回收桶指令只支援 macOS osascript",
+    "記憶蒸餾會刪除舊日誌，與自身非破壞原則矛盾",
+    "新舊規則衝突靠 AI 判斷，沒有版本號或日期標記",
+    "沒有多 AI 角色、交接與 GPT／Claude 共用規則設計，需搭配其他專案",
+    "原文為簡體中文，資料夾名為簡體，需在地化"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不是多 AI 協作框架，但它的台帳、記憶蒸餾與只讀巡檢報告模板很適合拆來當你每日巡讀 skill 的骨架。",
+  "keywords": [
+    "馬廄管理法",
+    "马厩管理法",
+    "majiu-management",
+    "WorkBuddy",
+    "工作空間治理",
+    "workspace governance",
+    "SKILL.md",
+    "Agent Skills",
+    "STALL_LOG",
+    "台帳",
+    "狀態機",
+    "草稿三分法",
+    "重生成指引",
+    "記憶蒸餾",
+    "memory distillation",
+    "MEMORY.md",
+    "巡檢",
+    "每日巡讀",
+    "inspection report",
+    "非破壞性",
+    "staleness",
+    "_archive",
+    "CLAUDE.md",
+    "AGENTS.md"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/majiabin2020__majiu-management.md"
+}
