@@ -1,0 +1,133 @@
+{
+  "repo": "mennanov/blockwatch",
+  "category": "04-agent-rules-skills",
+  "commit": "5c4e4510c43b7a853327b614f21c21b8f05f8104",
+  "scanned_at": "2026-11-04",
+  "stars": 30,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、放進自己的專案。",
+  "license_commercial_zh": "公司商用：可以，含閉源；散布其程式碼時保留版權聲明與 MIT 全文即可。只在自家 CI／電腦執行無任何義務。沒有付費版功能。",
+  "one_liner_zh": "用註解標籤寫規則，確定性檢查程式碼、設定、文件與 AI 規則檔是否漂移",
+  "use_cases_zh": [
+    "每日巡讀的第一關：零成本全掃描，抓出版本號、清單、規則段落在不同檔案間不一致",
+    "讓 AGENTS.md 成為唯一規則來源，CLAUDE.md 用 symlink 或 same-as 綁定，Codex 與 Claude 讀同一份",
+    "用 same-as-paths 讓規則檔中的角色／技能索引必須等於實際 skills 資料夾",
+    "用 keep-unique 防止規則編號、角色名、SKU／倉位代碼清單重複",
+    "用 affects 強制改了倉儲 App 的 JS 資料結構就必須同步改文件",
+    "用 line-pattern-forbidden 禁止已廢棄的舊流程字眼再出現",
+    "借用它的 AGENTS.md 骨架與 stub SKILL.md 寫法建立自己的基礎架構"
+  ],
+  "stack": [
+    "Rust",
+    "tree-sitter",
+    "Lua 5.4（mlua）",
+    "async-openai（OpenAI 相容 API）",
+    "TOML 設定檔",
+    "GitHub Actions",
+    "pre-commit"
+  ],
+  "run_requirements_zh": "單一 CLI 執行檔，有 Windows／macOS／Linux 預編譯版（PowerShell 安裝腳本、Homebrew、pipx install blockwatch-cli、cargo install）。不需 GPU、不需資料庫。預設不需 API Key、免費；只有選用的 check-ai 需要 BLOCKWATCH_AI_API_KEY（預設 gpt-5.4-nano，每個 block 一次呼叫，單價未確認）。",
+  "key_features_zh": [
+    "在 37 種語言（39 個 parser 模組）的註解中用 <block> 標籤寫規則",
+    "same-as：兩處以上內容必須相同，不需 diff 即可全掃描抓漂移",
+    "affects：改 A 區塊必須同時改 B 區塊（需 git diff）",
+    "keep-unique／keep-sorted／line-pattern／line-count 機械式規則",
+    "blockwatch.toml 的 [[block]] 可對 JSON、prompt、規則檔等不能加註解的檔案加規則，支援 glob",
+    "file#/path 可指到 JSON key、Markdown 章節、JS const／function",
+    "check-ai（自然語言條件，OpenAI 相容端點）與 check-lua（自訂腳本，預設沙箱）",
+    "輸出 JSON／SARIF、--verbosity 摘要、list／explain 指令、exit code 0/1/2",
+    "內建 Agent Skill：blockwatch skill 印出與版本同步的技能，附 Claude Code plugin"
+  ],
+  "reusable_parts": [
+    {
+      "name": "blockwatch CLI 本體（當漂移檢查零件）",
+      "path": "README.md",
+      "difficulty": "低",
+      "note_zh": "直接安裝執行檔，在 hook、CI 或每日巡讀腳本中呼叫，解析 stderr JSON 與 exit code。"
+    },
+    {
+      "name": "AGENTS.md 單一規則檔 + CLAUDE.md symlink",
+      "path": "AGENTS.md",
+      "difficulty": "低",
+      "note_zh": "照它的分段（寫作、讀改程式、問人類、註解、測試、commit、產品 vs 指引）換成自己的內容；ln -s AGENTS.md CLAUDE.md。"
+    },
+    {
+      "name": "Stub 技能（動態載入最新版）",
+      "path": ".agents/skills/blockwatch/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "專案只放 14 行 stub，用 !`指令` 載入最新技能，避免存到過期副本。"
+    },
+    {
+      "name": "技能本體寫法",
+      "path": "src/skill.md",
+      "difficulty": "低",
+      "note_zh": "借用「看到什麼→加什麼→為什麼」情境表、編輯時必守規則、完成前驗證指令等結構。"
+    },
+    {
+      "name": "排程巡檢 workflow",
+      "path": ".github/workflows/trusted-checks.yml",
+      "difficulty": "低",
+      "note_zh": "cron 改成每天（台灣 06:17 = UTC 22:17），即為每日巡讀第一關。"
+    },
+    {
+      "name": "版本號單一來源與 skip 清單互綁設定",
+      "path": "blockwatch.toml",
+      "difficulty": "低",
+      "note_zh": "抄 [[block]] same-as subset 寫法，把 package.json 版本綁到 JS 常數與文件。"
+    },
+    {
+      "name": "二元判官 prompt",
+      "path": "src/validators/check_ai.rs",
+      "difficulty": "低",
+      "note_zh": "CONDITION + BLOCK、通過只回 OK 的 system prompt，可直接給自己的 AI 巡讀員用。"
+    },
+    {
+      "name": "技能一致性測試概念",
+      "path": "tests/skill.rs",
+      "difficulty": "中",
+      "note_zh": "檢查 stub 的 description 等於本體、技能內不含標籤；可用 JS 重寫同樣測試。"
+    }
+  ],
+  "ai_integration_zh": "核心檢查不用 AI。選用的 check-ai 透過 async-openai 呼叫 OpenAI 相容 Chat Completions（預設 gpt-5.4-nano），BLOCKWATCH_AI_API_URL 可改端點，理論上可接 Claude 的 OpenAI 相容端點但 repo 內無範例（未確認）。無 MCP。提供 Agent Skill（src/skill.md）與 Claude Code plugin，另有 Cursor、Copilot、Codex（AGENTS.md）安裝說明。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：CHANGELOG 41 個版本標題，最新 0.16.7（2026-11-04），掃描當天仍有 push。單人作者、30 星，巴士因子低。CI 含 fmt、clippy、測試、覆蓋率、fuzz、CodeQL；約 1,330 個測試標記。",
+  "risks_zh": [
+    "刪掉標籤＝刪掉規則且不會警告，需靠 blockwatch list 比對 block 數或人工 review",
+    "不支援的副檔名會靜默跳過，成功時預設不輸出，需加 --verbosity summary 確認實際讀了幾個檔",
+    "affects 只在有 git diff 時觸發，每日無 diff 全掃描抓不到",
+    "只偵測字面／regex 層級的不一致，抓不到語意重複或說法矛盾",
+    "same-as-paths 不列 .gitignore 排除的路徑（如 .claude/）",
+    "check-ai 會把內容送到第三方、結果不可重現、可被 prompt injection",
+    "單人維護的小型專案",
+    "中文 Markdown 標題作為符號路徑未實測；Windows 上 git symlink 需另外設定"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不是角色框架，但是每日巡讀與防新舊版本衝突最可靠的確定性零件，建議直接安裝並借用其 AGENTS.md 與 stub 技能寫法。",
+  "keywords": [
+    "blockwatch",
+    "跨檔案漂移檢查",
+    "drift detection",
+    "cross-file sync",
+    "確定性檢查",
+    "單一事實來源",
+    "single source of truth",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "symlink",
+    "每日巡讀",
+    "scheduled check",
+    "pre-commit",
+    "GitHub Actions",
+    "same-as",
+    "affects",
+    "keep-unique",
+    "check-ai",
+    "SKILL.md",
+    "Claude Code plugin",
+    "Codex",
+    "版本衝突",
+    "防重複",
+    "Rust CLI"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/mennanov__blockwatch.md"
+}

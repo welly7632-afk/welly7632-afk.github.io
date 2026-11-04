@@ -1,0 +1,59 @@
+{
+  "repo": "ruilisi/fortune-sheet",
+  "category": "01-web-excel",
+  "commit": "94346608877db4747406707a177c4b8f3bacdbf9",
+  "scanned_at": "2026-11-04",
+  "stars": 3748,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：MIT，可自由使用、修改，沒有任何限制。",
+  "license_commercial_zh": "公司商用：可商用、可閉源再散布，只需保留原版權與 MIT 授權全文；repo 內沒有付費版或閉源功能，但 xlsx 外掛 FortuneExcel 屬第三方 repo，授權未確認。",
+  "one_liner_zh": "Luckysheet 的 TS＋React 改寫，MIT 網頁試算表元件",
+  "use_cases_zh": [
+    "在自己的倉儲／庫存網頁中嵌入 Excel 式介面直接編輯數量、成本、售價",
+    "做比價表與成本試算表，用公式與跨工作表參照計算毛利",
+    "透過 onOp／onChange 把試算表內容存進 Firebase Firestore",
+    "用 hooks.beforeUpdateCell 限制可編輯欄位，做簡易權限",
+    "拆出 Excel HTML 貼上解析，讓 App 支援從 Excel 批次貼上匯入",
+    "自訂工具列按鈕呼叫後端 Claude 做資料整理或估價"
+  ],
+  "stack": ["TypeScript", "React 18", "immer", "lodash", "HTML5 Canvas", "Jison 公式文法（fork handsontable/formula-parser）", "@formulajs/formulajs", "dayjs", "numeral", "協作範例：Node.js Express＋ws＋MongoDB"],
+  "run_requirements_zh": "純前端元件，npm 安裝 @fortune-sheet/react（需 React 18）後打包進網站即可，可放 Firebase Hosting；不需 GPU、不需任何 API Key、無雲端費用。多人協作需自架 WebSocket 伺服器或改用 Firestore。",
+  "key_features_zh": [
+    "Canvas 繪製＋只畫可視範圍的虛擬捲動",
+    "公式引擎：Jison 解析＋formulajs 函數，依賴圖只重算受影響公式，支援跨工作表參照",
+    "繁中函數說明 371 個（locale/zh_tw.ts functionlist 自行計數）",
+    "條件格式、資料驗證下拉、篩選、排序、凍結、合併、拖拉填滿、數字格式（SSF）",
+    "從 Excel 貼上 HTML 表格保留值、合併與基本樣式",
+    "immer patch 實作復原／重做，onOp 輸出 JSON 操作供存檔與協作",
+    "ref API 共 43 個（getCellValue、setCellValue、applyOp 等）與多種 hooks",
+    "內建 zh-TW 等 6 種語系、基本觸控支援、圖片、註解、超連結、截圖、保護"
+  ],
+  "reusable_parts": [
+    {"name": "Workbook React 元件", "path": "packages/react/src/components/Workbook/index.tsx", "difficulty": "低", "note_zh": "直接 npm 安裝使用，傳入 celldata，監聽 onOp/onChange"},
+    {"name": "Op 協定（immer patch ↔ op）", "path": "packages/core/src/utils/patch.ts", "difficulty": "中", "note_zh": "參考 patchToOp/opToPatch 的設計做自己 App 的差異同步，可寫入 Firestore"},
+    {"name": "MongoDB op 套用器與協作伺服器", "path": "backend-demo/op.js", "difficulty": "低", "note_zh": "約百行，請 Claude 改寫成 Firestore 批次寫入版本"},
+    {"name": "Excel 數字格式引擎 SSF", "path": "packages/core/src/modules/ssf.js", "difficulty": "低", "note_zh": "獨立 JS，可直接用 Excel 格式碼顯示金額與日期"},
+    {"name": "Excel HTML 貼上解析", "path": "packages/core/src/events/paste.ts", "difficulty": "中", "note_zh": "抽出 L1685-L1960 的 table→二維陣列＋樣式＋合併邏輯，做批次貼上匯入"},
+    {"name": "公式解析器", "path": "packages/formula-parser/src/parser.js", "difficulty": "低", "note_zh": "可獨立使用並 setFunction 自訂函數；上游已棄用，長期可換 HyperFormula"},
+    {"name": "繁中函數說明清單", "path": "packages/core/src/locale/zh_tw.ts", "difficulty": "低", "note_zh": "371 個函數的繁中說明與參數範例，可做公式提示"},
+    {"name": "Canvas 可視範圍繪製", "path": "packages/core/src/canvas.ts", "difficulty": "高", "note_zh": "與 Context 綁定緊，適合參考 visibledatarow＋sortedIndex 的算法"}
+  ],
+  "ai_integration_zh": "完全沒有 AI 功能，也沒有任何對外連線。可自行用 customToolbarItems 加按鈕，經 getCellsByRange 讀資料、由 Firebase Cloud Functions 呼叫 Claude、再以 setCellValuesByRange 或 applyOp 寫回；公式是同步計算，做 =AI() 自訂函數需改原始碼。",
+  "claude_support": "可接",
+  "maintenance_zh": "仍有維護但趨緩：抽樣 486 個 commit 中 2023 年 225、2024 年 190、2025 年 71；最新 v1.0.4（2025-11-06），近期以 bug 修正與依賴升級為主，文件與 CHANGELOG 部分過時。",
+  "risks_zh": [
+    "開源版本身沒有 xlsx／csv 匯入匯出，需第三方外掛 FortuneExcel 或自寫",
+    "沒有圖表、樞紐分析；動態陣列公式的程式被註解停用",
+    "協作只是廣播 op，無 OT／CRDT 衝突解決，同時編輯會互相覆蓋",
+    "資料展開成密集二維陣列，10 萬列以上效能未實測、可能吃記憶體",
+    "onChange 的 data 是巢狀陣列，Firestore 不能直接存，需轉 celldata；圖片以 base64 存容易超過 1MB 文件上限",
+    "中文工作表名稱在公式中需加單引號",
+    "貼上 HTML 用 innerHTML 解析，有理論上的 XSS 風險",
+    "必須搭配 React 18，純 JS 頁面要額外載入 React；6 個語系全打包使 bundle 偏大",
+    "公式解析器上游 handsontable/formula-parser 已棄用；實際可用函數數依 formulajs 版本，未確認"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "想要 MIT、繁中、React 的輕量網頁 Excel 並自己存 Firebase，FortuneSheet 很合適；需要 xlsx、圖表或強協作則要另外搭配。",
+  "keywords": ["fortune-sheet", "FortuneSheet", "Luckysheet", "網頁試算表", "網頁版 Excel", "React 試算表元件", "web spreadsheet", "Canvas", "公式引擎", "formulajs", "formula-parser", "條件格式", "資料驗證", "凍結窗格", "復原重做", "immer", "onOp", "applyOp", "多人協作", "Firestore", "celldata", "繁體中文", "MIT", "庫存表", "成本試算"],
+  "pack_path": "_oss-research/01-web-excel/ruilisi__fortune-sheet.md"
+}

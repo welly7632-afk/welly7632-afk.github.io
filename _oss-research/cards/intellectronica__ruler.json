@@ -1,0 +1,132 @@
+{
+  "repo": "intellectronica/ruler",
+  "category": "04-agent-rules-skills",
+  "commit": "5e551e60952fb1c81c6c5ad6f5fe8b7a412bda87",
+  "scanned_at": "2026-11-04",
+  "stars": 2959,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、抄範例與 workflow。",
+  "license_commercial_zh": "公司商用：可以，散布修改版時保留著作權聲明與 MIT 全文即可；無付費版或閉源功能。",
+  "one_liner_zh": "單一 .ruler 規則同步給 Claude、Codex 等 32 種 AI",
+  "use_cases_zh": [
+    "讓 Claude Code 與 Codex 讀同一份規則：只改 .ruler/，ruler apply 產生 CLAUDE.md 與 AGENTS.md，根除新舊版本衝突",
+    "技能只寫一次：.ruler/skills/ 同步到 .claude/skills/ 與 .agents/skills/",
+    "角色（子代理）只寫一次：.ruler/agents/*.md 轉成 Claude Markdown 與 Codex TOML（含唯讀沙箱）",
+    "用 README 的 CI 範例偵測有人手改 CLAUDE.md／AGENTS.md 造成的漂移",
+    "把 repo 內每週 README 巡檢 prompt（writeme/prompt.md）改寫成每日巡讀 skill",
+    "MCP 伺服器設定在 ruler.toml 定義一次，分發到 .mcp.json、.codex/config.toml、Firebase Studio 的 .idx/mcp.json"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js 20.19+",
+    "yargs",
+    "zod",
+    "@iarna/toml",
+    "js-yaml",
+    "Jest"
+  ],
+  "run_requirements_zh": "npm install -g @intellectronica/ruler 或 npx 執行；只需 Node.js 20.19+，無伺服器、無資料庫、無 GPU；工具本身不需 API Key、0 元，AI 工具訂閱費另計。",
+  "key_features_zh": [
+    "單一 .ruler/ 來源，串接所有 .md 並加 <!-- Source: --> 來源標記",
+    "32 個 AI 工具轉接器（Claude Code、Codex CLI、Cursor、Copilot、Gemini CLI、Firebase Studio…）",
+    "default_agents／--agents 選擇要產生哪些工具的檔案",
+    "巢狀 .ruler/（子資料夾規則，實驗性）",
+    "Skills 同步（.ruler-managed.json 只管自己產生的項目）",
+    "Subagents 角色格式轉換（Claude／Cursor／Codex TOML／Copilot／OpenCode）",
+    "MCP 設定 merge／overwrite 分發",
+    ".gitignore 管理區塊、.bak 備份、ruler revert 還原、--dry-run 預覽",
+    "zod 嚴格驗證 ruler.toml",
+    "防止產物被讀回造成內容倍增"
+  ],
+  "reusable_parts": [
+    {
+      "name": "規則串接＋來源標記",
+      "path": "src/core/RuleProcessor.ts",
+      "difficulty": "低",
+      "note_zh": "28 行，改寫成純 JS 同步腳本即可"
+    },
+    {
+      "name": "規則排序與避免讀回產物",
+      "path": "src/core/FileSystemUtils.ts",
+      "difficulty": "低",
+      "note_zh": "readMarkdownFiles 的 primary 檔優先、路徑排序、Generated 標記偵測"
+    },
+    {
+      "name": "技能同步＋管理清單",
+      "path": "src/core/SkillsProcessor.ts",
+      "difficulty": "中",
+      "note_zh": ".ruler-managed.json 只刪自己管的項目，避免誤刪手寫技能"
+    },
+    {
+      "name": "技能健檢（重名、副本不一致、frontmatter）",
+      "path": "src/core/OpenCodeSkills.ts",
+      "difficulty": "中",
+      "note_zh": "拿掉只限 OpenCode 的條件即可當通用巡讀檢查"
+    },
+    {
+      "name": "角色格式轉換 Claude⇄Codex",
+      "path": "src/core/SubagentsProcessor.ts",
+      "difficulty": "中",
+      "note_zh": "buildClaudeFile／buildCodexFile，readonly 轉 sandbox_mode"
+    },
+    {
+      "name": "CI 漂移檢查 workflow",
+      "path": "README.md",
+      "difficulty": "低",
+      "note_zh": "L1077-L1124 的 YAML：重跑 apply 後 git status 有差異就失敗"
+    },
+    {
+      "name": "排程 AI 巡檢 prompt",
+      "path": ".github/workflows/writeme/prompt.md",
+      "difficulty": "低",
+      "note_zh": "事實地圖→逐段標記→最小修正→不確定不改，改寫成每日巡讀 skill"
+    },
+    {
+      "name": "自動同步 workflow",
+      "path": ".github/workflows/ruler.yml",
+      "difficulty": "低",
+      "note_zh": "push 到 main 自動重產規則並 commit"
+    }
+  ],
+  "ai_integration_zh": "Ruler 本身不呼叫任何 AI，只產生檔案。Claude Code 為一級支援：CLAUDE.md、.mcp.json、.claude/skills/、.claude/agents/；Codex：AGENTS.md、.codex/config.toml、.agents/skills/、.codex/agents/*.toml。唯一 AI 任務 prompt 是給 Copilot 代理的每週 README 巡檢。",
+  "claude_support": "原生",
+  "maintenance_zh": "最近 push 2026-10-28，版本 0.3.46（Beta），CI 跑 Node 20/22/24 的 lint、test、build、npm audit；163 個測試檔（未執行驗證）。",
+  "risks_zh": [
+    "產生的 CLAUDE.md／AGENTS.md 會被覆蓋，手改會消失",
+    "預設把產物加入 .gitignore，新 clone／worktree 沒有規則，建議關掉並 commit 產物",
+    "未設 default_agents 會對 32 種工具全部產檔",
+    "所有工具拿到相同規則，無法只給 Claude 看某段",
+    "全域 ~/.config/ruler 與專案規則二選一，不會疊加",
+    "巢狀、skills、subagents 皆為實驗功能；技能重名檢查只在選 OpenCode 時執行",
+    "不檢查規則內容的重複或矛盾，也沒有任務追蹤與版本號"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當多 AI 協作的地基最合適：用它統一 Claude 與 Codex 的規則、技能與角色，再自己補每日巡讀 skill 與交接規範。",
+  "keywords": [
+    "Ruler",
+    "單一事實來源",
+    "single source of truth",
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".ruler",
+    "ruler.toml",
+    "規則同步",
+    "Claude Code",
+    "Codex CLI",
+    "多 AI 協作",
+    "共用規則",
+    "Skills",
+    "SKILL.md",
+    "子代理",
+    "subagents",
+    "MCP 同步",
+    "規則漂移",
+    "drift detection",
+    "CI 檢查",
+    "排程巡檢",
+    "每日巡讀",
+    "Firebase Studio",
+    "TypeScript"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/intellectronica__ruler.md"
+}
