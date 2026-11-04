@@ -1,0 +1,59 @@
+{
+  "repo": "ONLYOFFICE/DocumentServer",
+  "category": "01-web-excel",
+  "commit": "c4ad98db9f0dd84a9949566de399fc79698acd46",
+  "scanned_at": "2026-11-04",
+  "stars": 7088,
+  "license": "AGPL-3.0（附 Section 7 額外條款：保留署名、修改需標示、介面需顯示法律聲明、不授權商標）",
+  "license_personal_zh": "個人使用：完全免費，可自架在自己主機上用，不改程式碼幾乎沒有義務。",
+  "license_commercial_zh": "公司商用：社群版可給內部小團隊（README 建議 20 人內）免費使用；若修改程式碼並透過網路提供給他人，須公開修改後原始碼、標示修改並在介面顯示 ONLYOFFICE 法律聲明；不得使用其商標或去品牌（白牌僅 Developer 版）。叢集、手機網頁版、Automation API、Document Builder 屬付費版。把 sdkjs 程式碼抽進自己產品會帶入 AGPL 義務。",
+  "one_liner_zh": "自架的線上 Office，網頁上完整編輯並多人協作 .xlsx",
+  "use_cases_zh": [
+    "在自製倉儲網頁中用 iframe 嵌入真正的 Excel 編輯器，檔案存 Firebase Storage",
+    "直接沿用既有的 Excel 報價單、成本試算表、庫存表（483 個函數、樞紐、條件格式、下拉選單）",
+    "與同事或廠商多人即時共同編輯同一份試算表",
+    "用轉檔 API 把 xlsx 自動轉成 PDF／CSV（例如每日庫存報表）",
+    "用內建 AI 外掛接 Claude，在試算表內產生商品文案、廣告／短影音腳本草稿或巨集",
+    "用 JavaScript 巨集／外掛寫自訂公式或把儲存格資料推回 Firestore"
+  ],
+  "stack": ["JavaScript（sdkjs 編輯器核心，Canvas 繪圖）", "Backbone.js + jQuery + RequireJS（web-apps 介面）", "Node.js 20 + Express + socket.io（server）", "C++ x2t 轉檔器（core）", "JWT", "Docker／deb／rpm 部署", "儲存：本機檔案系統／S3／Azure Blob"],
+  "run_requirements_zh": "需要一台自己的伺服器（建議官方 Docker 映像），不能放在 Firebase Hosting；不需 GPU；硬體需求 repo 未載明（推估至少 2 核 4GB RAM）。編輯器本身免費、不需 API Key，但必須自訂 JWT secret（預設值是開發用字串）。AI 功能需自備 Claude／OpenAI 等 API Key，依用量計費；主機費依 VPS 方案。",
+  "key_features_zh": [
+    "Canvas 渲染、虛擬捲動，上限 1,048,576 列 × 16,384 欄",
+    "公式引擎 483 個已實作函數（自行統計），含 XLOOKUP、FILTER、SORT、UNIQUE、TEXTSPLIT、動態陣列",
+    "依賴圖增量重算、跨工作表參照、JavaScript 自訂函數",
+    "條件格式、資料驗證下拉、篩選、排序、凍結窗格、合併儲存格、樞紐分析、圖表、走勢圖",
+    "從 Excel／Google 試算表／網頁以 HTML 剪貼簿貼上",
+    "鎖定式多人即時協作（socket.io）、留言、版本歷史",
+    "原生 xlsx／xls／ods／csv 讀寫（C++ x2t 轉檔）",
+    "純 JavaScript 嵌入 API（DocsAPI.DocEditor）＋存檔回呼 callbackUrl",
+    "外掛與巨集（Office JS 風格 API，apiBuilder.js 約 1,068 個方法定義）",
+    "AI 外掛＋伺服器端 AI 代理，支援 Anthropic、MCP 伺服器",
+    "繁體中文介面（試算表 UI 約 86.6% 字串已翻譯）"
+  ],
+  "reusable_parts": [
+    {"name": "嵌入入口 api.js（不拆，iframe 嵌入）", "path": "web-apps: apps/api/documents/api.js", "difficulty": "低", "note_zh": "倉儲網頁放 div + script，config 指定 documentType: cell、document.url、callbackUrl、JWT token 即可。"},
+    {"name": "存檔回呼狀態碼協定", "path": "server: DocService/sources/DocsCoServer.js（c_oAscServerStatus）", "difficulty": "低", "note_zh": "用 Firebase Cloud Function 實作 callback，狀態 2/6 時下載新檔覆寫 Storage，回 {\"error\":0}；不需碰 AGPL 程式碼。"},
+    {"name": "轉檔 API", "path": "server: DocService/sources/server.js（/converter、/converter/from-file）", "difficulty": "低", "note_zh": "從後端呼叫，做 xlsx→pdf/csv 報表服務。"},
+    {"name": "AI 代理藏 Key 設計", "path": "server: DocService/sources/ai/aiProxyHandler.js", "difficulty": "低", "note_zh": "參考佔位符換 Key＋目標白名單的做法，自己重寫 Claude 代理。"},
+    {"name": "活頁簿 JSON 序列化格式", "path": "sdkjs: cell/fromToJSON.js", "difficulty": "中", "note_zh": "欄位沿用 OOXML（r/s/t/v/f），可作為 Firestore 資料結構設計參考。"},
+    {"name": "公式引擎與依賴圖", "path": "sdkjs: cell/model/FormulaObjects/、cell/model/Workbook.js（DependencyGraph）", "difficulty": "高", "note_zh": "高度依賴 AscCommonExcel 全域物件，建議當 Excel 行為規格參考，不要直接搬。"},
+    {"name": "Office JS 風格 API（巨集／外掛）", "path": "sdkjs: cell/apiBuilder.js", "difficulty": "低", "note_zh": "在編輯器內用 Api.GetActiveSheet().GetRange().SetValue()、Api.AddCustomFunction 做自訂按鈕與公式。"}
+  ],
+  "ai_integration_zh": "內建 AI 外掛（GUID asc.{9DC93CDB-B576-4F0C-B55E-FCC9C48DD007}），可產生巨集、處理試算表內容；10.0 規劃支援 MCP 與網路搜尋。server 的 /ai-proxy 會把瀏覽器送來的 ******** 佔位符換成真 API Key，對 anthropic.com 自動使用 x-api-key 標頭，並允許轉送到設定的 mcpServers。填入 Claude API Key 即可使用；外掛 prompt 在另一個 repo，本次未確認。可用 customization.ai.disabled 關閉。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：最後推送 2026-10-26，CHANGELOG 已到 10.0.0，由 Ascensio System SIA 公司維護；server 有 61 個 Jest 測試檔，但 sdkjs 公開 repo 沒有 tests 目錄；DocumentServer 釘選的 sdkjs／web-apps 子模組 commit 在公開 repo 抓不到。",
+  "risks_zh": [
+    "AGPL：修改後對外提供服務須公開原始碼並在介面顯示法律聲明；不可去品牌",
+    "開源 server 的資料庫／Redis／RabbitMQ 連接器被換成記憶體版，單機、當機可能遺失未存協作變更",
+    "社群版沒有手機網頁版編輯器、叢集、Automation API（外部頁面無法直接讀寫儲存格）",
+    "攻擊面大：10.0.0 一版修補 46 項資安問題，必須持續更新",
+    "預設 JWT secret 為開發用字串，上線前必須更換",
+    "必須另租伺服器，無法跑在 Firebase Hosting；前端載入量大（試算表 SDK 串接 414 個 JS 檔）",
+    "document.key 未隨版本更換會開到舊快取"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要在網頁上「完整相容 Excel」且能多人協作，這是最成熟的開源選擇：租一台 VPS 跑 Docker，再用 api.js 嵌進你的倉儲網頁；若只要輕量表格元件，改看 Univer。",
+  "keywords": ["ONLYOFFICE", "DocumentServer", "網頁版 Excel", "線上試算表", "自架 Office", "多人即時協作", "xlsx", "OOXML", "AGPL-3.0", "社群版", "sdkjs", "公式引擎", "樞紐分析", "資料驗證", "Docs API", "api.js", "callbackUrl", "JWT", "轉檔 API", "外掛", "巨集", "AI 外掛", "Claude", "Docker", "繁體中文"],
+  "pack_path": "_oss-research/01-web-excel/ONLYOFFICE__DocumentServer.md"
+}
