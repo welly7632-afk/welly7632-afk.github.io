@@ -1,0 +1,2 @@
+# Write tool temp files from in-progress agent writes
+*.tmp.*
