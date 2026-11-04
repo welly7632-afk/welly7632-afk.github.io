@@ -123,6 +123,14 @@ def record_field(rec):
 - **結果會存檔**：只有值真的改變的格子才記進 `_changes_map`，最後由 `flush_calc_changes()` 併入 stored actions（[action_obj.py L41-L49](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/action_obj.py#L41-L49)），Node 會寫進 SQLite。所以 `.grist` 檔裡的公式欄也有值，其他程式直接讀 SQLite 就看得到計算結果。
 - **改公式時**：`ModifyColumn` 會把該欄從 schema 拿掉、重產一次模組、再放回去、再重產一次（[docactions.py L210-L244](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/docactions.py#L210-L244)），強迫建立新的欄物件並重算整欄。
 
+**實例走一遍：改一筆銷售數量，引擎做了哪些事**（依程式碼推演，未實測）。假設商品表有兩個公式欄：`Sold = sum(Sales.lookupRecords(Product=$id).Qty)`、`Profit = ($Price - $Cost) * $Sold`。
+
+1. 先前算 `Sold` 時，`lookupRecords` 讓 `[Products.Sold]` 依賴隱藏索引欄 `[Sales.#lookup#Product]`；接著讀 `.Qty`，又讓它經由同一個 `_LookupRelation` 依賴 `[Sales.Qty]`。這個 relation 記得「哪一列商品查過哪個鍵」（[lookup.py L636-L716](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/lookup.py#L636-L716)）。`Profit` 則經由同列關係依賴 `[Products.Sold]`。
+2. 使用者把銷售第 7 列的 Qty 從 3 改成 5 → `BulkUpdateRecord` 寫值、記下 undo，呼叫 `invalidate_records("Sales", [7], col_ids=["Qty"])`。
+3. `invalidate_deps()` 從 `[Sales.Qty]` 出發：`_LookupRelation` 把「銷售第 7 列」換算成「它的鍵（商品 id）」，再換算成「查過這個鍵的商品列」，於是只有那一個商品的 `Sold` 被標髒；再沿同列關係把同一列的 `Profit` 也標髒。其他幾千個商品完全不動。
+4. 整批動作套完後進入 `_update_loop()`。欄名排序上 `Profit` 排在 `Sold` 前面，所以先試算 `Profit`；它讀 `$Sold` 時發現是髒的，丟出 `OrderError`；迴圈把 `Sold` 那一格推到堆疊頂端先算，再回頭算 `Profit`。
+5. 兩格的新值都和舊值不同，變成一個 `BulkUpdateRecord("Products", ...)` 併入 stored actions；Node 寫進 SQLite，並推送給所有開著的分頁。
+
 ### 5. 沙盒：gVisor／Pyodide／其他
 
 所有 flavor 列在 `spawners`（[NSandbox.ts L524-L539](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/NSandbox.ts#L524-L539)）；grist-core 的預設寫死為 `createSandbox("unsandboxed", options)`（[ICreate.ts L196-L198](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/ICreate.ts#L196-L198)），可用 `GRIST_SANDBOX_FLAVOR` 覆蓋（[createSandbox L1357-L1369](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/NSandbox.ts#L1357-L1369)）。
