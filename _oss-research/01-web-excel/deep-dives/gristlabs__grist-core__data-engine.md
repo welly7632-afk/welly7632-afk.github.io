@@ -83,7 +83,7 @@ class Products:
     return sum(Purchases.lookupRecords(Product=rec.id).Qty) - sum(Sales.lookupRecords(Product=rec.id).Qty)
 ```
 
-**(c) 型別**：公式結果會經過 `col.convert(value)` 轉成欄位型別；轉不過去的值不算錯誤，而是存成 AltText（原樣字串）。型別裝飾器在 [usertypes.py L74-L82](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/usertypes.py#L74-L82)。
+**(c) 型別**：公式結果會經過 `col.convert(value)` 轉成欄位型別；轉不過去的值不算錯誤，會原樣保留（例如數字欄裡的 `"N/A"`），其他公式讀到時拿到的是 `AltText` 物件（[column.py L171-L177](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/column.py#L171-L177)）。型別裝飾器在 [usertypes.py L74-L82](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/usertypes.py#L74-L82)。
 
 **(d) 改名自動更新公式**：`parse_grist_names()`（[codebuilder.py L525-L606](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/codebuilder.py#L525-L606)）用 astroid 做型別推論，找出公式裡所有表名、欄名（包括 lookup 的關鍵字參數與 `order_by` 字串）。這是整個引擎唯一用到「靜態分析」的地方；依賴追蹤並不靠它。
 
@@ -101,7 +101,7 @@ def record_field(rec):
   value = col_obj.get_cell_value(rec._row_id)
 ```
 
-  `Engine._use_node()`（[engine.py L523-L543](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L523-L543)）在「目前正在算公式欄」時加一條邊（用 `_recompute_edge_set` 去重複），然後若被讀的欄還有髒列就先把它算好。邊只會在計算過程中「增加」；只有整欄失效（改結構、重新載入）時才清空重建。
+  `Engine._use_node()`（[engine.py L523-L543](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L523-L543)）在「目前正在算公式欄」時加一條邊（用 `_recompute_edge_set` 去重複），然後若被讀的欄還有髒列，就要求先把它算好（在重算迴圈裡是靠 `OrderError` 重新排序，見第 4 節）。邊只會在計算過程中「增加」；只有整欄失效（改結構、重新載入）時才清空重建。
 - **列層級對應（Relation）**（[relation.py L15-L157](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/relation.py#L15-L157)）：
   - `IdentityRelation`：同一列的欄位互相引用。
   - `ReferenceRelation`：經過參照欄，例如 `$Product.Cost`；它維護「被指向的列 → 哪些列指向它」的反向索引，第一次用到才建（[L109-L157](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/relation.py#L109-L157)）。商品成本一改，只有指向這個商品的那幾列會重算。
@@ -117,7 +117,7 @@ def record_field(rec):
 
 - **標髒**：`Graph.invalidate_deps()`（[depend.py L124-L164](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/depend.py#L124-L164)）用迴圈（不是遞迴，註解說遞迴曾經爆過堆疊）沿著每條邊的 relation 算出受影響的列，寫進 `recompute_map`；若是 `ALL_ROWS`（整欄失效）就順便清掉該欄的依賴，待會重算時重建。資料變更的入口例如 `BulkUpdateRecord`（[docactions.py L94-L125](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/docactions.py#L94-L125)）：寫值、記 undo、呼叫 `invalidate_records()`。
 - **計算**：`_bring_all_up_to_date()`（[engine.py L648-L663](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L648-L663)）→ `_update_loop()`（[L571-L639](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L571-L639)）。工作項目依欄名排序，`#lookup` 索引永遠排最前面（[L641-L646](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L641-L646)）。`_recompute_step()`（[L764-L920](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L764-L920)）一次把同一欄的髒列照列號順序算完；巢狀讀到別的髒格時不往下遞迴，而是丟 `OrderError`（[L48-L67](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L48-L67)），外層迴圈把「被需要的格子」推到堆疊頂端先算，再回頭重試。
-- **循環參照**：重排時把「等待中的格子」加進 `_locked_cells`；同一格又被要求時直接丟 `CircularRefError("Circular Reference")`。另有進度檢查，算不出任何新格子就丟 `data engine not making progress`，避免死迴圈。
+- **循環參照**：重排時把「等待中的格子」加進 `_locked_cells`；同一格在等待期間又被要求計算，這一格的值就直接設成 `CircularRefError("Circular Reference")` 錯誤（[L854-L857](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L854-L857)、[L986-L987](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L986-L987)）。另有進度檢查，算不出任何新格子就丟 `data engine not making progress`，避免死迴圈。
 - **算一格**：`_recompute_one_cell()`（[L959-L1031](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L959-L1031)）呼叫 `col.method(record, table.user_table)`，用不帶型別的 `except:` 接住所有例外（MemoryError 除外），把公式執行中產生的副作用倒回，再包成 `RaisedException`。
 - **錯誤的傳遞**：`RaisedException` 編碼成 `["E", "ValueError", "foo"]` 存進格子（[objtypes.py L261-L273](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/objtypes.py#L261-L273)）；別的公式讀到時，`get_cell_value()` 會丟出 `CellError`，訊息像「ValueError in referenced cell Products[3].Cost」（[column.py L144-L169](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/column.py#L144-L169)、[objtypes.py L354-L369](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/objtypes.py#L354-L369)）。
 - **結果會存檔**：只有值真的改變的格子才記進 `_changes_map`，最後由 `flush_calc_changes()` 併入 stored actions（[action_obj.py L41-L49](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/action_obj.py#L41-L49)），Node 會寫進 SQLite。所以 `.grist` 檔裡的公式欄也有值，其他程式直接讀 SQLite 就看得到計算結果。
@@ -125,11 +125,11 @@ def record_field(rec):
 
 **實例走一遍：改一筆銷售數量，引擎做了哪些事**（依程式碼推演，未實測）。假設商品表有兩個公式欄：`Sold = sum(Sales.lookupRecords(Product=$id).Qty)`、`Profit = ($Price - $Cost) * $Sold`。
 
-1. 先前算 `Sold` 時，`lookupRecords` 讓 `[Products.Sold]` 依賴隱藏索引欄 `[Sales.#lookup#Product]`；接著讀 `.Qty`，又讓它經由同一個 `_LookupRelation` 依賴 `[Sales.Qty]`。這個 relation 記得「哪一列商品查過哪個鍵」（[lookup.py L636-L716](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/lookup.py#L636-L716)）。`Profit` 則經由同列關係依賴 `[Products.Sold]`。
+1. 先前算 `Sold` 時，`lookupRecords` 讓 `[Products.Sold]` 依賴隱藏索引欄 `[Sales.#lookup#Product]`；接著讀 `.Qty`，又讓它經由同一個 lookup relation 依賴 `[Sales.Qty]`。這個 relation 記得「哪一列商品查過哪個鍵」（通用版 `_LookupRelation`，[lookup.py L636-L714](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/lookup.py#L636-L714)；像這裡「用參照欄查自己的 `$id`」會用更省記憶體的子類別 `_SelfLookupRelation`，[L756-L787](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/lookup.py#L756-L787)）。`Profit` 則經由同列關係依賴 `[Products.Sold]`。
 2. 使用者把銷售第 7 列的 Qty 從 3 改成 5 → `BulkUpdateRecord` 寫值、記下 undo，呼叫 `invalidate_records("Sales", [7], col_ids=["Qty"])`。
-3. `invalidate_deps()` 從 `[Sales.Qty]` 出發：`_LookupRelation` 把「銷售第 7 列」換算成「它的鍵（商品 id）」，再換算成「查過這個鍵的商品列」，於是只有那一個商品的 `Sold` 被標髒；再沿同列關係把同一列的 `Profit` 也標髒。其他幾千個商品完全不動。
+3. `invalidate_deps()` 從 `[Sales.Qty]` 出發：lookup relation 把「銷售第 7 列」換算成「它的鍵（商品 id）」，再換算成「查過這個鍵的商品列」，於是只有那一個商品的 `Sold` 被標髒；再沿同列關係把同一列的 `Profit` 也標髒。其他幾千個商品完全不動。
 4. 整批動作套完後進入 `_update_loop()`。欄名排序上 `Profit` 排在 `Sold` 前面，所以先試算 `Profit`；它讀 `$Sold` 時發現是髒的，丟出 `OrderError`；迴圈把 `Sold` 那一格推到堆疊頂端先算，再回頭算 `Profit`。
-5. 兩格的新值都和舊值不同，變成一個 `BulkUpdateRecord("Products", ...)` 併入 stored actions；Node 寫進 SQLite，並推送給所有開著的分頁。
+5. 兩格的新值都和舊值不同，於是轉成針對 `Products` 的 `BulkUpdateRecord` 動作併入 stored actions；Node 寫進 SQLite，並推送給所有開著的分頁。
 
 ### 5. 沙盒：gVisor／Pyodide／其他
 
@@ -192,7 +192,7 @@ def record_field(rec):
 | 某商品總銷量 | `=SUMIF(銷售!B:B,A2,銷售!C:C)` | `sum(Sales.lookupRecords(Product=$id).Qty)` |
 | 已出貨訂單數 | `=COUNTIF(訂單!C:C,"已出貨")` | `len(Orders.lookupRecords(Status="已出貨"))` |
 | 依 SKU 查售價 | `=XLOOKUP(A2,商品!A:A,商品!C:C)` | `Products.lookupOne(SKU=$SKU).Price` |
-| 查「下單當天適用」的進價 | 很難寫 | `Costs.lookupRecords(Product=$Product, order_by="Start").find.le($Date).Cost` |
+| 查「下單當天適用」的進價 | 要排序後組 INDEX／MATCH 或 XLOOKUP，較繁瑣 | `Costs.lookupRecords(Product=$Product, order_by="Start").find.le($Date).Cost` |
 | 加權平均成本 | `=SUMPRODUCT(...)/SUM(...)` | `AVERAGE_WEIGHTED((p.UnitCost, p.Qty) for p in Purchases.lookupRecords(Product=$id))`（[stats.py L76-L97](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/functions/stats.py#L76-L97)） |
 | 千分位格式 | `=TEXT(A2,"#,##0")` | `"{:,.0f}".format($Amount)` |
 | 多條件分級 | `=IFS(...)` | 多行 Python `if／elif／else` |
@@ -225,11 +225,11 @@ def record_field(rec):
 |---|---|---|---|---|
 | A. 依賴圖＋列層級重算 | `depend.py`＋`relation.py`＋`lookupset.py`（共 368 行） | 只有 `sortedcontainers` | 低 | 最推薦。請 Claude Code 照這三個檔改寫成 JS，放進你的 Firebase 倉儲 App：每個「計算欄」是一個 Node，Firestore 文件一變就 `invalidate`，只重算受影響的列 |
 | B. 整個引擎嵌進 Python 後端 | `sandbox/grist/` 整包＋`requirements.txt`（19 個釘版套件） | astroid、asttokens、friendly-traceback、python-dateutil、sortedcontainers、phonenumberslite、roman、chardet、openpyxl… | 中高 | 照測試的寫法驅動（見下方範例），可放在 Cloud Run 之類的 Python 服務；要自己組 AddTable／AddColumn 動作，結果用 `fetch_table()` 取回 |
-| C. 引擎直接在瀏覽器跑 | grist-core 的 [bundle_as_wheel.sh](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/bundle_as_wheel.sh#L1-L17) 打包 wheel；grist-static 的 [webworker.js L23-L68](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/pipe/webworker.js#L23-L68) 與 [create.ts L60-L96](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/server/lib/create.ts#L60-L96) | Pyodide＋上述套件的 wheel | 中 | grist-static 在 Web Worker 裡 `loadPyodide()`、載入 `grist-1.0-py3-none-any.whl`，把 `sandbox.run` 換成空函式，主執行緒用 `postMessage({type:'call', name, args})` 呼叫引擎；整個介面只有 `ISandbox`（[ISandbox.ts L25-L32](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/ISandbox.ts#L25-L32)）的 5 個方法。適合 Firebase Hosting 這種純靜態主機；首次載入 Pyodide 的下載量與速度未實測 |
+| C. 引擎直接在瀏覽器跑 | grist-core 的 [bundle_as_wheel.sh](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/bundle_as_wheel.sh#L1-L17) 打包 wheel；grist-static 的 [webworker.js L23-L68](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/pipe/webworker.js#L23-L68) 與 [create.ts L60-L96](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/ext/app/server/lib/create.ts#L60-L96) | Pyodide＋上述套件的 wheel | 中 | grist-static 在 Web Worker 裡 `loadPyodide()`、載入 `grist-1.0-py3-none-any.whl`，把 `sandbox.run` 換成只印一行訊息、不進入讀取迴圈的函式，主執行緒用 `postMessage({type:'call', name, args})` 呼叫引擎；要實作的介面只有 `ISandbox`（[ISandbox.ts L25-L32](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/app/server/lib/ISandbox.ts#L25-L32)）的 5 個必要方法。適合 Firebase Hosting 這種純靜態主機；首次載入 Pyodide 的下載量與速度未實測 |
 | D. 公式轉譯器 | `codebuilder.py`＋`gencode.py`＋`textbuilder.py` | asttokens、astroid、friendly-traceback | 中 | 想讓使用者「用 `$欄位` 寫 Python 公式」時直接搬；`$` 換 `rec.`、自動補 return、lazy IF、語法錯誤定位都現成 |
-| E. 函數庫 | `functions/*.py` | 多數只用標準庫＋dateutil | 低 | 純函式可單檔抄（例如日期類的 DATEDIF、EOMONTH、NETWORKDAYS）；注意 `NOW`、`PEEK`、`REQUEST` 會透過 `docmodel.global_docmodel` 碰引擎，抽出時要改成 stub |
-| F. AI 公式提示產生器 | [formula_prompt.py L155-L166](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/formula_prompt.py#L155-L166)（全檔 270 行） | asttokens | 低 | 把你的 Firestore 結構翻成「class 商品: 名稱: str、成本: float…＋`def 毛利(rec: 商品) -> float:`」再請 Claude 補完；`convert_completion()` 示範如何從回覆的 markdown 抽出程式碼。Grist 本身接 Claude 的設定見 [README L193-L246](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/README.md#L193-L246) |
-| G. 安全的條件運算式 | `predicate_formula.py`（165 行）＋`PredicateFormula.ts`（337 行） | 無特殊相依 | 低 | 讓使用者寫「Python 語法的簡單條件」（例如折扣規則），解析成 JSON 樹後在 JS 端求值，不必執行任意程式碼 |
+| E. 函數庫 | `functions/*.py` | 多數只用標準庫＋dateutil | 低 | 純函式可單檔抄（例如日期類的 DATEDIF、EOMONTH、NETWORKDAYS）；注意 `NOW`、`PEEK`、`REQUEST`，以及日期函數取「文件時區」的 `_get_global_tz()`（[date.py L38-L42](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/functions/date.py#L38-L42)），都會透過 `docmodel.global_docmodel` 碰引擎，抽出時要改成 stub |
+| F. AI 公式提示產生器 | [formula_prompt.py L155-L166](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/formula_prompt.py#L155-L166)（全檔 270 行） | 要傳入 Engine 物件（讀 `engine.docmodel`），另用 asttokens、codebuilder | 借概念低／借程式碼中 | 把你的 Firestore 結構翻成「class 商品: 名稱: str、成本: float…＋`def 毛利(rec: 商品) -> float:`」再請 Claude 補完；`convert_completion()` 示範如何從回覆的 markdown 抽出程式碼。Grist 本身接 Claude 的設定見 [README L193-L246](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/README.md#L193-L246) |
+| G. 安全的條件運算式 | `predicate_formula.py`（165 行）＋`PredicateFormula.ts`（337 行） | Python 端：asttokens＋codebuilder（間接帶進 astroid）；JS 端：lodash 與幾個 Grist 型別 | 低 | 讓使用者寫「Python 語法的簡單條件」（例如折扣規則），解析成 JSON 樹後在 JS 端求值，不必執行任意程式碼 |
 
 **路線 B 的最小範例**（改寫自 [test_engine.py L43-L48](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/test_engine.py#L43-L48) 與 `test_lookup_find.py` 的 AddTable 用法；需在 `sandbox/grist` 為 PYTHONPATH、裝好 requirements 的 Python 3.11 下執行，未實測）：
 
@@ -249,20 +249,22 @@ ua("AddRecord", "Sales", None, dict(Product=1, Qty=3))
 print(eng.fetch_table("Products"))   # 預期 Sold 欄為 3（未實測）
 ```
 
+**路線 C 的現成用法**：grist-static 本身就能把 `.grist` 檔放上靜態網站，用一個 `bootstrapGrist({ initialFile: '...' })` 呼叫開啟，公式在訪客瀏覽器裡重算；但 README 寫明每位訪客拿到的是自己的副本，修改不會被別人看到、也不會儲存（[README L19-L23、L40-L55](https://github.com/gristlabs/grist-static/blob/e4aa8369de0229edba33058c9afe1c56e3a7adca/README.md#L19-L55)）。拿來發佈「可互動試算的報價單／成本試算表」很合適，拿來當正式的進銷存資料庫則不行。
+
 **授權提醒**：grist-core 與 grist-static 都是 Apache-2.0。抄程式碼進你的專案，保留原檔授權標頭並附上 LICENSE／NOTICE 即可；改寫成 JS 屬於衍生作品，同樣建議在檔頭註明出處。
 
 ---
 
 ## 坑與限制
 
-1. **不是儲存格式試算表**：沒有 A1 位址、沒有跨格範圍；匯入 .xlsx 時用 `openpyxl.load_workbook(..., data_only=True)`（[import_xls.py L42-L49](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/imports/import_xls.py#L42-L49)），**Excel 公式不會被匯入，只留下最後算好的值**。
-2. **函數覆蓋面窄**：可用 149 個；同批 Univer 深入資料包自數的可用函數是 511 個。COUNTIF、XLOOKUP、財務函數都沒有，只能改寫成 Python。
+1. **不是以儲存格為單位的試算表**：沒有 A1 位址、沒有跨格範圍；匯入 .xlsx 時用 `openpyxl.load_workbook(..., data_only=True)`（[import_xls.py L42-L49](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/imports/import_xls.py#L42-L49)），**Excel 公式不會被匯入，只留下最後算好的值**。
+2. **函數覆蓋面窄**：可用 149 個；對照同批 `deep-dives/dream-num__univer__formula-engine.md`，Univer 自數「有計算邏輯」的函數是 511 個。COUNTIF、XLOOKUP、財務函數都沒有，只能改寫成 Python。
 3. **全記憶體模型**：所有非 on-demand 表格都整份載入 Python，同一份資料在瀏覽器分頁裡還有一份；每次開檔都會重算全部公式（推論）。程式註解也提到列號太稀疏時很浪費記憶體（[engine.py L94-L97](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L94-L97)）。
 4. **預設沒有沙盒**：grist-core 預設 `unsandboxed`，公式就是任意 Python。分享文件前務必設定 `GRIST_SANDBOX_FLAVOR`。
-5. **無單一公式逾時**：寫出無窮迴圈會卡住整份文件，只能等 Node 端 5 分鐘的上限或重開文件。
+5. **無單一公式逾時**：寫出無窮迴圈會卡住整份文件。Node 端最多替卡住的動作把文件保持開啟 5 分鐘，之後若沒有其他活動，文件會被關閉、那次動作的結果直接丟失（見上面 ActiveDoc.ts L240-L244 的註解）。
 6. **一個行程只能有一個引擎**：`docmodel.global_docmodel` 是模組層級的全域變數（[docmodel.py L182-L194](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/docmodel.py#L182-L194)），`NOW`、`PEEK`、`REQUEST` 都透過它找引擎；想在同一個 Python 行程同時開多份文件，或在多執行緒伺服器裡共用，都會出事。
 7. **時間函數不即時**：`NOW()`／`TODAY()` 大約一小時才更新一次；要固定某個時間點請用觸發公式。
-8. **REQUEST 仍是 beta**：預設關閉；回應依參數雜湊快取，而且公式會跟著時間節點每小時重抓一次（[engine.py L922-L957](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L922-L957)），拿來做比價要注意呼叫次數。
+8. **REQUEST 仍是 beta**：預設關閉；同樣參數的請求以 SHA-256 雜湊鍵識別，第一次求值時先丟 `RequestingError`、交給 Node 非同步發出，拿到回應後再重算公式；而且用到 REQUEST 的公式會被掛上時間依賴，約每小時重新求值一次（[engine.py L922-L957](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/sandbox/grist/engine.py#L922-L957)）。是否每次都真的重新發出 HTTP 請求取決於 Node 端快取，未確認；拿來做比價要注意呼叫次數。
 9. **改名自動更新有盲點**：靠 astroid 推論，像 `getattr(rec, "Col" + x)` 這種動態寫法不會被改到（依原理推論，未實測）。
 10. **改結構的成本**：每次改公式或改欄位都會重產整個模組（`ModifyColumn` 還產兩次），欄位很多的大文件改結構時可能有感延遲（推論，未實測）。
 11. **各 flavor 的 Python 版本不同**：Docker 映像檔用 Python 3.11（[Dockerfile L73-L74](https://github.com/gristlabs/grist-core/blob/484236f6abc960ed7dadade5c2b714465492a063/Dockerfile#L73-L74)），pyodide 0.28.1 內附的 Python 版本我沒查證；同一條公式在不同 flavor 下行為是否完全一致，未確認。
