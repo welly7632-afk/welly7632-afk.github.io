@@ -4,7 +4,7 @@
 
 > 這篇只看一件事：Teable 表格畫面背後那個「用 Canvas 自己畫的試算表格子」，也就是 `packages/sdk/src/components/grid/`。所有連結都釘在 commit `f8be01fadb86790d3d3a878bedd10cf949f9a8f8`（2026-11-03）。數字是我自己用 `find`、`wc -l`、`grep`、`git log` 和一支只讀的 Python 小腳本數的，數法寫在旁邊。標「未確認」的是我沒有親眼在原始碼裡驗證的推論。
 
-## 重點結論
+## 重點結論（5–10 點）
 
 1. **這是 Teable 自己寫的 Canvas 表格，授權是 MIT**：程式在 `packages/sdk/src/components/grid/`，共 91 個檔案（77 個程式檔＋14 個測試檔）。程式碼 13,133 行，測試 1,812 行（`find … | xargs cat | wc -l`）。根目錄授權寫明 `packages/` 底下全部是 MIT（[LICENSE#L13-L17](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/LICENSE#L13-L17)），跟採 AGPL-3.0 的主程式 `apps/` 分開。對你「挑好的拿去用」來說，這一點最要緊。
 2. **它的前身就是 glide-data-grid**：2023-07-26 以前，Teable 的表格直接用 glide-data-grid 5.2.1。PR #99（commit `28a81af`）的訊息寫著「remove konva and draw with native canvas」和「remove glide-data-grid」，之後就換成自製的。現在主表格**一行 glide 都沒 import**，glide 6.0.3 只剩「附件 Excel 預覽」在用。自製版有好幾個模組（圖示快取、圖片載入、超高捲軸）和 glide 的寫法幾乎一樣。這是我憑對 glide 原始碼的既有了解比對的，本次沒有開 glide 原始碼，所以屬於「未確認」。
@@ -17,7 +17,7 @@
 9. **有幾件事要自己補**：複製貼上、填滿、復原/重做、資料存取，grid 都只「發出事件」。真正的處理寫在 AGPL 的 `apps/nextjs-app`，其中複製貼上還是交給後端 API 做。拆出去之後這些要自己寫。
 10. **主要限制**：沒有無障礙支援（canvas 沒有 ARIA）。儲存格只能選一個矩形。觸控裝置點格子會「展開整列」，不能直接在格子裡編輯。填滿把手只能上下拉。欄寬最小值寫死 100px。沒有公式引擎，公式是在後端算的。
 
-## 逐題詳解
+## 逐題詳解（每個問題一節，附 permalink 與必要的短程式碼摘錄）
 
 ### 一、渲染：一張 canvas 怎麼畫出整張表
 
@@ -286,7 +286,7 @@ const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 
 結論：複製原始碼比裝整包划算。
 
-## 程式碼導讀路線
+## 程式碼導讀路線（想自己讀的人：依序看哪些檔案、每個看什麼）
 
 想自己讀的話，照這個順序（路徑都相對於 `packages/sdk/src/components/grid/`）：
 
@@ -308,7 +308,7 @@ const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 16. `managers/sprite-manager/*` 和 `managers/image-manager/ImageManager.ts`：圖示和圖片的快取。
 17. 想知道資料怎麼接進來：`../grid-enhancements/hooks/use-grid-columns.tsx`（欄位怎麼轉成格子）、`../../utils/record-window.ts`（分頁視窗）、`../record-snapshot-grid/RecordSnapshotGrid.tsx`（最簡單的使用範例）。
 
-## 可以借用的部分與拆出方法
+## 可以借用的部分與拆出方法（依賴、難度、怎麼接到別的專案）
 
 | 想借的東西 | 檔案 | 依賴 | 難度 | 怎麼接到你的專案 |
 |---|---|---|---|---|

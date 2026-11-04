@@ -35,7 +35,7 @@
 
 | 層 | 內容（來源） |
 |---|---|
-| 後端 | Node.js 20（`engines` 指定 20.9.0；[server.js#L5-L9](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/backend/src/server.js#L5-L9) 低於 20 直接結束）、Express 4、Mongoose 8、Joi 驗證、jsonwebtoken、bcryptjs、`currency.js`、Pug＋`html-pdf`（PDF）、`@aws-sdk/client-s3`（DigitalOcean Spaces 上傳）、`resend`（寄密碼重設信） |
+| 後端 | Node.js 20（`engines` 指定 20.9.0；[server.js#L7-L11](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/backend/src/server.js#L5-L9) 低於 20 直接結束）、Express 4、Mongoose 8、Joi 驗證、jsonwebtoken、bcryptjs、`currency.js`、Pug＋`html-pdf`（PDF）、`@aws-sdk/client-s3`（DigitalOcean Spaces 上傳）、`resend`（寄密碼重設信） |
 | 前端 | React 18、Vite 5、Ant Design 5＋`@ant-design/pro-layout`、Redux Toolkit、axios、dayjs、react-quill（[frontend/package.json](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/frontend/package.json)） |
 | 資料庫 | MongoDB（本機或 MongoDB Atlas 免費方案即可） |
 | 部署 | 前後端分開：後端 `npm run setup` 建初始資料後 `npm run dev`（port 8888）；前端 `npm run dev`（Vite）。沒有 Dockerfile（檔案清單中搜尋不到）。 |
@@ -152,7 +152,7 @@ frontend/
 - **其他：** `express-rate-limit` 有裝但沒用（`grep rateLimit` 無結果），登入沒有防暴力破解；`search`／`list` 直接把使用者輸入丟進 `new RegExp()`（可能 ReDoS）；[filter.js#L9-L14](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/backend/src/controllers/middlewaresControllers/createCRUDController/filter.js#L9-L14) 沒有跟 paginatedList 一樣的注入防護；收款與發票更新沒有交易；`summary.js` 用 `countAllDocs.length` 判斷數字，永遠走「Collection is Empty」分支。
 - **測試：** 0 個測試檔。
 - **遙測：** 沒有分析／追蹤碼（`index.html` 只有主程式 script）；但 [redux/store.js](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/frontend/src/redux/store.js) 等處會在瀏覽器 console 印廣告訊息，頂部有升級按鈕。
-- **翻譯函式其實不翻譯：** [useLanguage.jsx#L1-L49](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/frontend/src/locale/useLanguage.jsx#L1-L49) 查表那行被註解掉，只把 key 轉成首字大寫，還會把每個 key 寫進 `localStorage('lang')`。
+- **翻譯函式其實不翻譯：** [useLanguage.jsx#L1-L57](https://github.com/idurar/idurar-erp-crm/blob/e935dec13cf8b6082a7e7fc4736669e5151a80a3/frontend/src/locale/useLanguage.jsx#L1-L49) 查表那行被註解掉，只把 key 轉成首字大寫，還會把每個 key 寫進 `localStorage('lang')`。
 
 ## 10. 跟其他專案組合的建議
 

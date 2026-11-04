@@ -33,7 +33,7 @@
 **重點細節（我實際讀過的條文與程式碼）：**
 
 - 官方文件 [community-vs-enterprise/index.mdoc](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/documentation/ag-grid-docs/src/content/docs/community-vs-enterprise/index.mdoc) 原文：Community「Free for everyone, including production use」；Enterprise「Requires a licence to use in production. Free to test locally」。授權為「per-developer, per-deployment」、永久授權含一年更新與支援。實際價格這份 repo 裡沒有寫（指向官網 pricing 頁）→ **價格未確認**。
-- EULA 第 13 條「Trial Licence」：試用授權只能做「internal evaluation and review」，期限 30 天試用＋30 天議約，且軟體可能加浮水印（[LICENSE.html#L255-L275](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/LICENSE.html#L255-L275)）。
+- EULA 第 13 條「Trial Licence」：試用授權只能做「internal evaluation and review」，期限 30 天試用＋30 天議約，且軟體可能加浮水印（[LICENSE.html#L257-L272](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/LICENSE.html#L257-L272)）。
 - **沒有授權金鑰時企業版會怎樣**（[licenseManager.ts#L182-L215](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/license/shared/licenseManager.ts#L182-L215)、[#L403-L418](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/license/shared/licenseManager.ts#L403-L418)、[watermark.ts](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/license/watermark.ts)）：所有企業功能**照樣能用**；主控台印出「License Key Not Found / All features are unlocked for trial」；在非 `localhost`／`127.0.0.1` 的網址會顯示「For Trial Use Only」浮水印（約 5 秒後淡出隱藏）。也就是說**技術上不會鎖功能，但授權上不能拿來正式用**。
 - 金鑰驗證是純前端 MD5 比對，**不會連網回報**（我在 community／enterprise／ag-stack 的 src 裡 grep `fetch(`、`XMLHttpRequest`、`sendBeacon`、`WebSocket`，非測試檔皆 0 筆）。
 
@@ -68,7 +68,7 @@ ag-grid/  (default branch: latest)
 ├── packages/
 │   ├── ag-grid-community/src/          ← MIT 核心（641 個 .ts 非測試檔，約 11.9 萬行）
 │   │   ├── grid.ts                     ← createGrid() 進入點
-│   │   ├── allCommunityModule.ts       ← 社群版全部模組清單（42 個依賴模組）
+│   │   ├── allCommunityModule.ts       ← 社群版全部模組清單（44 個依賴模組）
 │   │   ├── rendering/rowRenderer.ts    ← 列虛擬化：算出要畫第幾列到第幾列
 │   │   ├── rendering/rowContainerHeightService.ts ← 超過瀏覽器 div 最大高度時的「拉伸」技巧
 │   │   ├── columns/columnViewportService.ts       ← 欄虛擬化
@@ -100,7 +100,7 @@ ag-grid/  (default branch: latest)
 │   │   └── allEnterpriseModule.ts      ← 企業版全部模組清單
 │   ├── ag-stack/                       ← MIT，內部共用 DOM／工具函式
 │   ├── ag-grid-react / -angular / -vue3 ← 框架包裝
-├── community-modules/locale/src/       ← 48 種語系（含 zh-TW.ts 繁體中文）
+├── community-modules/locale/src/       ← 47 個語系檔（含 zh-TW.ts 繁體中文）
 ├── community-modules/styles/           ← CSS 主題
 ├── documentation/ag-grid-docs/         ← 官網文件原始檔（mdoc）＋大量範例
 └── testing/                            ← 行為測試（behavioural 679 個 .test.ts）、e2e、模組大小量測
@@ -195,7 +195,7 @@ ag-grid/  (default branch: latest)
 - **測試：** community src 內 38 個 `.test.ts`、enterprise src 內 52 個；另 `testing/behavioural/` 有 679 個 `.test.ts`（用 file list 以 `grep -c` 數的），還有 Playwright e2e、模組大小比較、無障礙測試、CSP 測試目錄。CI workflow 25 個檔案。
 - **遙測／隱私：** src 未發現網路請求；授權檢查純本地。✓
 - **資安（已知的坑）：**
-  - cellRenderer 回傳「字串」時會被當 HTML 用 `innerHTML` 插入（[agComponentUtils.ts#L25-L35](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/components/framework/agComponentUtils.ts#L25-L35) → [ag-stack dom.ts#L242-L248](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-stack/src/utils/dom.ts#L242-L248)）。如果商品名稱、客戶備註是外部輸入，**不要**在 cellRenderer 用字串拼 HTML，要回傳 DOM 元素或用 `textContent`，否則有 XSS 風險。
+  - cellRenderer 回傳「字串」時會被當 HTML 用 `innerHTML` 插入（[agComponentUtils.ts#L28-L33](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/components/framework/agComponentUtils.ts#L28-L33) → [ag-stack dom.ts#L242-L248](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-stack/src/utils/dom.ts#L242-L248)）。如果商品名稱、客戶備註是外部輸入，**不要**在 cellRenderer 用字串拼 HTML，要回傳 DOM 元素或用 `textContent`，否則有 XSS 風險。
   - 剪貼簿 HTML 讀取用 `unsanitized: ['text/html']`，只用來對齊表格形狀，不會插入 DOM（依我讀到的 L378-L420 邏輯）。
 - **其他坑：**
   - **社群版沒有：** 範圍選取、拖拉填滿、Ctrl+C/V、Excel 匯出、公式、樞紐、分組、右鍵選單。很多人裝了社群版以為「像 Excel」，結果發現這些都要付費。
@@ -243,7 +243,7 @@ ag-grid/  (default branch: latest)
 | **欄寬列高** | **有（社群版）** | `ColumnResize`、`ColumnAutoSize`、`RowAutoHeight` 模組（[allCommunityModule.ts](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/allCommunityModule.ts)）。使用者拖拉列高未確認（通常由程式設定）。 |
 | **篩選** | **有（社群版）**；進階篩選付費 | 文字／數字／日期／BigInt／快速篩選／外部篩選為社群；Excel 式勾選清單的 Set Filter、Multi Filter、Advanced Filter 為企業。 |
 | **排序** | **有（社群版）** | [sort/](https://github.com/ag-grid/ag-grid/tree/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/sort)，多欄排序。 |
-| **資料驗證（下拉選單）** | **有（社群版基本）** | `agSelectCellEditor`（[selectCellEditor.ts](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/edit/cellEditors/selectCellEditor.ts)）；可搜尋的 Rich Select 為付費。數值驗證用 `valueParser`／`valueSetter` 回傳 false 擋掉。 |
+| **資料驗證（下拉選單）** | **有（社群版基本）** | `agSelectCellEditor`（[selectCellEditor.ts](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-community/src/edit/cellEditors/selectCellEditor.ts)）；可搜尋的 Rich Select 為付費。數值驗證可用 `valueParser` 轉型、自訂 `valueSetter`（回傳 false 表示不寫入）自行把關。 |
 | **圖表** | **付費版才有** | `IntegratedCharts`、`Sparklines`（[charts/](https://github.com/ag-grid/ag-grid/tree/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/charts)），需另裝 AG Charts。 |
 | **樞紐分析** | **付費版才有** | [pivot/](https://github.com/ag-grid/ag-grid/tree/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/pivot)＋rowGrouping、aggregation。 |
 | **圖片／附件** | 顯示：**有（社群版，自訂 cellRenderer）**；Excel 匯出圖片：付費 | 自己寫 cellRenderer 回傳 `<img>` 元素即可顯示商品圖；附件上傳無內建。Excel 匯出圖片見 [excelSerializingSession.ts#L130-L150](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/excelExport/excelSerializingSession.ts#L130-L150)。儲存格註解（Notes）付費。 |
@@ -251,7 +251,7 @@ ag-grid/  (default branch: latest)
 | **匯出 .xlsx** | **付費版才有** | 自寫 OOXML＋zip，不依賴第三方（[excelExport/](https://github.com/ag-grid/ag-grid/tree/dd8bb2912dbafa34f130167bb5154eb50de71298/packages/ag-grid-enterprise/src/excelExport)）。保真度：樣式、數字格式、合併、凍結、圖片、超連結、註解、表格、多 sheet、公式（寫公式本身）、頁面設定、資料保護都有對應程式或文件頁。開源版**沒有**。 |
 | **匯入 .xlsx／.csv** | **沒有內建** | 官方文件示範用第三方 `xlsx`（SheetJS）解析再塞 `rowData`（[excel-import/index.mdoc](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/documentation/ag-grid-docs/src/content/docs/excel-import/index.mdoc)）。src 內沒有 unzip／讀檔程式（grep `readAsArrayBuffer`、`unzip`、`DecompressionStream` 只在 PDF 圖片解壓與測試出現）。 |
 | **多人即時協作** | **沒有** | src grep `crdt|yjs|collaborat|websocket` 0 筆。要協作就自己用 Firestore `onSnapshot`＋`applyTransaction` 做「最後寫入者贏」的同步；沒有 OT／CRDT、沒有儲存格鎖定。 |
-| **資料模型** | 陣列物件 `rowData` ＋欄定義 `columnDefs` | 一列＝一個 JS 物件，一欄＝物件的一個 field。範例：`{ sku:'A001', name:'保溫杯', cost:120, qty:35, note:'=REF(COLUMN("cost"),ROW("A001"))*2' }`（最後一欄是企業版公式長格式的示意，確切寫法以 [formula-reference 文件](https://github.com/ag-grid/ag-grid/tree/dd8bb2912dbafa34f130167bb5154eb50de71298/documentation/ag-grid-docs/src/content/docs/formula-reference) 為準，此處字串格式**未逐字驗證**）。 |
+| **資料模型** | 陣列物件 `rowData` ＋欄定義 `columnDefs` | 一列＝一個 JS 物件，一欄＝物件的一個 field。範例：`{ id: 1, sku:'A001', name:'保溫杯', price:120, quantity:35 }`。企業版公式直接存在欄位值裡，官方範例的長格式（以欄 id＋列 id 參照，不怕排序後位移）是 `subtotal: '=REF(COLUMN("price"),ROW(1))*REF(COLUMN("quantity"),ROW(1))'`（[formulas/_examples/formulas/main.ts#L53-L59](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/documentation/ag-grid-docs/src/content/docs/formulas/_examples/formulas/main.ts#L53-L59)，`ROW(1)` 的 1 是 `getRowId` 回傳的列 id）。 |
 | **存進 Firestore** | 容易（自己接） | 每列一個 document，`getRowId: p => p.data.id` 對應 doc id；`onCellValueChanged: e => updateDoc(doc(db,'items',e.data.id), {[e.colDef.field]: e.newValue})`；監聽 `onSnapshot` 用 `api.applyTransaction({update:[...]})`。表格本身的狀態（欄寬、排序）用 `api.getState()` 另存。 |
 | **手機／觸控** | **基本有** | 文件 [touch/index.mdoc](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/documentation/ag-grid-docs/src/content/docs/touch/index.mdoc)：點選＝滑鼠點擊、拖曳欄標題、拖拉欄寬、長按開選單；雙擊編輯需關閉縮放。沒有手機專用版面。 |
 | **繁體中文介面** | **有（MIT）** | [community-modules/locale/src/zh-TW.ts](https://github.com/ag-grid/ag-grid/blob/dd8bb2912dbafa34f130167bb5154eb50de71298/community-modules/locale/src/zh-TW.ts)，847 個 key，與 en-US 數量相同（`grep -c` 計數）；匯出名稱 `AG_GRID_LOCALE_TW`。用 `localeText: AG_GRID_LOCALE_TW`。部分翻譯偏中國用語（例如「無顯示行」），可自行覆寫。 |
