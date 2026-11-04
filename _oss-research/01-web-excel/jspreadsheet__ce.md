@@ -221,7 +221,7 @@ ce/
 ### 圖表、樞紐分析、圖片
 - **圖表**：沒有（v4 文件有一個搭配 Highcharts 的案例 `docs/jspreadsheet/v4/cases/highcharts.md`，需自己接）。
 - **樞紐分析**：沒有。
-- **圖片**：有 `type: 'image'` 欄位，但只接受 `data:image` 開頭的 base64（[P/src/utils/internal.js#L478-L483](https://github.com/jspreadsheet/ce/blob/d9c04e8a1acec6b87b0580b79868cd4d2f73599e/src/utils/internal.js#L478-L483)）。**存 Firestore 時別存 base64**（文件 1 MiB 上限），改上傳 Firebase Storage、表格只存網址並用 html 欄或自訂型別顯示。
+- **圖片**：有 `type: 'image'` 欄位，但只接受 `data:image` 開頭的 base64（[P/src/utils/internal.js#L474-L479](https://github.com/jspreadsheet/ce/blob/d9c04e8a1acec6b87b0580b79868cd4d2f73599e/src/utils/internal.js#L478-L483)）。**存 Firestore 時別存 base64**（文件 1 MiB 上限），改上傳 Firebase Storage、表格只存網址並用 html 欄或自訂型別顯示。
 - **附件**：沒有。**註解（comments）**：有（存在 `<td title>`）。
 
 ### 匯入匯出
@@ -252,7 +252,7 @@ ce/
 
 ### 手機／觸控、繁體中文
 - **觸控**：有基本支援（`touchstart` 長按約 0.5 秒開編輯器，[P/src/utils/events.js#L1193-L1243](https://github.com/jspreadsheet/ce/blob/d9c04e8a1acec6b87b0580b79868cd4d2f73599e/src/utils/events.js#L1193-L1243)）；但沒有專門的手機版介面，小螢幕建議只放少數欄或改 `tableOverflow` 讓它橫向捲動。
-- **繁體中文介面：沒有現成的**。`resources/lang/` 有 9 個語言檔含 `zh_CN.json`，但它們用的是舊版 camelCase 鍵（如 `"noRecordsFound"`），而 v5 程式碼呼叫的是 `jSuites.translate('No records found')` 這種英文原句為鍵；我 grep `jSuites.translate('…')` 共找到 28 個不重複字串。**正確作法**：自己寫一份繁中字典呼叫 `jspreadsheet.setDictionary({...})`（[P/src/index.js#L52-L54](https://github.com/jspreadsheet/ce/blob/d9c04e8a1acec6b87b0580b79868cd4d2f73599e/src/index.js#L52-L54)，文件範例 `docs/jspreadsheet/docs/examples/translations.md`）。可直接用：
+- **繁體中文介面：沒有現成的**。`resources/lang/` 有 9 個語言檔含 `zh_CN.json`，但它們用的是舊版 camelCase 鍵（如 `"noRecordsFound"`），而 v5 程式碼呼叫的是 `jSuites.translate('No records found')` 這種英文原句為鍵；我 grep `jSuites.translate('…')` 共找到 28 個不重複字串。**正確作法**：自己寫一份繁中字典呼叫 `jspreadsheet.setDictionary({...})`（[P/src/index.js#L53-L55](https://github.com/jspreadsheet/ce/blob/d9c04e8a1acec6b87b0580b79868cd4d2f73599e/src/index.js#L52-L54)，文件範例 `docs/jspreadsheet/docs/examples/translations.md`）。可直接用：
 
 ```js
 jspreadsheet.setDictionary({

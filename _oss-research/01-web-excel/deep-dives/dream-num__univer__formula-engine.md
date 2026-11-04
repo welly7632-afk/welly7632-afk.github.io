@@ -10,7 +10,7 @@
 1. **整條管線是手寫的，不靠解析器產生器。** 公式字串 → `LexerTreeBuilder` 逐字元狀態機切成巢狀 `LexerNode` → 用調度場演算法（shunting-yard）把每一層改成後序（逆波蘭）→ `AstTreeBuilder` 用 10 個節點工廠組成 AST → `Interpreter` 後序走訪求值。只有 `IF`、`IFERROR` 會短路（只算走到的那一邊）。
 2. **依賴管理用「空間索引」，不是傳統的格子連格子圖。** 每條公式把「我讀了哪些矩形範圍」登記進 R-tree（`rbush`，單格另用 `kdbush`）；有格子被改，就拿改動範圍去 R-tree 查交集，找出要重算的公式，再用 DFS 排順序、用 Kosaraju 演算法找循環群組。
 3. **支援 Excel 式反覆運算（循環參照）**：每本活頁簿可設 `iterativeCalculation`、`maxIterations`（預設 100，上限 32767）、`maxChange`（預設 0.001），跟 Excel 預設一致。依同批 HyperFormula 資料包，HyperFormula 不支援、只會給 `#CYCLE!`。
-4. **函數數量（我自己數）：538 個註冊項目 = 532 個使用者能在公式裡打的名稱 + 6 個內部運算子。** 其中 21 個是佔位類別、一律回 `#N/A`，**真正有計算邏輯的是 511 個**；有 UI 說明文字的是 528 個。
+4. **函數數量（我自己數）：538 個註冊項目 = 532 個使用者能在公式裡打的名稱 + 6 個引擎內部用的項目（加減乘除、比較運算與多區域聯集）。** 其中 21 個是佔位類別、一律回 `#N/A`，**真正有計算邏輯的是 511 個**；有 UI 說明文字的是 528 個。
 5. **動態陣列做得相當完整**：FILTER、SORT、SORTBY、UNIQUE、SEQUENCE、VSTACK、HSTACK、TAKE、DROP、XLOOKUP，LAMBDA／LET／MAP／REDUCE／SCAN／BYROW／BYCOL／MAKEARRAY，甚至 GROUPBY、PERCENTOF；溢出（spill）被擋住會出 `#SPILL!`。**但 `A1#` 溢出範圍參照只會解析、不會求值（回 `#VALUE!`，程式註解寫 todo）**。
 6. **跨工作表參照齊全**：`Sheet2!A1`、`'庫存 表'!A1:B9`、3D 參照 `Sheet1:Sheet3!A1`（HyperFormula 沒有）、外部活頁簿 `[Book1.xlsx]Sheet1!A1`（真正讀外部檔要自己寫載入器）。改工作表名稱會自動改寫公式，刪工作表變 `#REF!`。
 7. **自訂函數兩條路**：(a) `univerAPI.getFormula().registerFunction('DISCOUNT', (價格, 折數) => …)`，參數是 JS 原生值、可回傳二維陣列（會溢出），另有 `registerAsyncFunction` 可以在公式裡 `await fetch()`；(b) 繼承 `BaseFunction` 寫類別，用 `function` 設定註冊，能拿到參照物件、地區設定等進階資訊。同名會直接覆蓋內建函數。
@@ -59,7 +59,7 @@ symbolStack.push(node as string);
   因為同級用 `>=` 彈出，`^` 是左結合（`2^3^2` 應為 64，與 Excel 一致；依程式推論，未實測）。
 - **建 AST**：[parser.ts#L187-L363](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/analysis/parser.ts#L187-L363)。拿後序序列用一個 `calculateStack` 疊：遇到運算子就彈出兩個子節點掛上去。`LET` 會先被改寫成 `LAMBDA`（[L144-L184](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/analysis/parser.ts#L144-L184)，註解寫明「兩者行為相同，只保留一種計算」）。節點工廠清單在 [L423-L436](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/analysis/parser.ts#L423-L436)，依 zIndex（[node-type.ts#L17-L44](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/ast-node/node-type.ts#L17-L44)）由小到大逐一嘗試：Lambda → Lambda 參數 → Union（`:`）→ Prefix（`-`、`@`）→ Suffix（`%`、`#`）→ Function → Reference → Operator → Value → Root；全都不認得就變 `#NAME?`。
 - **AST 快取**：[generate-ast-node.ts#L31-L94](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/utils/generate-ast-node.ts#L31-L94)，key＝`活頁簿:工作表:位移X:位移Y:公式字串`，5,000 筆 LRU；定義名稱或表格變動時強制重建。
-- **錯誤值**：共 12 種，除了 Excel 常見的 `#DIV/0!`、`#N/A`、`#REF!`、`#VALUE!`、`#NAME?`、`#NUM!`、`#NULL!`、`#SPILL!`、`#CALC!`，還有自家的 `#CYCLE!`、`#ERROR!` 與非同步函數等待中顯示的 `#GETTING_DATA`（[error-type.ts#L17-L47](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/basics/error-type.ts#L17-L47)）。
+- **錯誤值**：共 12 種，除了 Excel 常見的 `#DIV/0!`、`#N/A`、`#REF!`、`#VALUE!`、`#NAME?`、`#NUM!`、`#NULL!`、`#SPILL!`、`#CALC!`，還有自家的 `#CYCLE!`、`#ERROR!` 與 `#GETTING_DATA`（列舉註解寫「connected to remote」，但我在引擎程式碼裡沒找到產生它的地方，只有 UI 的提示對照表用到）（[error-type.ts#L17-L47](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/basics/error-type.ts#L17-L47)）。
 - **求值**：[interpreter.ts#L132-L212](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/interpreter/interpreter.ts#L132-L212) 先遞迴算子節點、再算自己，每個節點前檢查 `isStopExecution()`（所以能中途停止）。IF／IFERROR 短路在 [L234-L252](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/interpreter/interpreter.ts#L234-L252)。只要樹裡有非同步函數，就改走 `executeAsync` 整棵 await。
 - **現成的公式工具 API**（engine-formula facade）：`moveFormulaRefOffset('=SUM(A1,B2)',1,1)` 複製公式時位移參照（[f-formula.ts#L110-L112](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/facade/f-formula.ts#L110-L112)）、`sequenceNodesBuilder()` 切 token 可做語法上色（[L126-L128](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/facade/f-formula.ts#L126-L128)）、`getFormulaExpressTree()` 拆出子運算式樹（[L739-L741](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/facade/f-formula.ts#L739-L741)）。後者配上 `executeFormulas()`（[L333-L336](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/facade/f-formula.ts#L333-L336)，可一次算多個子運算式）很適合做「讓 Claude 解說這條公式每一段算出什麼」。
 
@@ -104,7 +104,7 @@ symbolStack.push(node as string);
 | logical 邏輯 | 21 | LAMBDA、LET、MAP、REDUCE、SCAN、BYROW、BYCOL、MAKEARRAY、GROUPBY、PERCENTOF |
 | database 資料庫 | 12 | DSUM、DGET 等 D 系列 |
 | cube | 7 | 全部佔位 |
-| meta（內部） | 6 | PLUS、MINUS、MULTIPLY、DIVIDED、COMPARE、CUBE，是運算子的實作，不給使用者打 |
+| meta（內部） | 6 | PLUS、MINUS、MULTIPLY、DIVIDED、COMPARE 是運算子的實作；CUBE 用來表示 `INDEX((A6:B6,C6:D7),1,1,2)` 這種括號內多區域聯集（[lexer-tree-builder.ts#L1817-L1822](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/analysis/lexer-tree-builder.ts#L1817-L1822)）；都不是給使用者直接打的 |
 | web | 3 | ENCODEURL、FILTERXML；WEBSERVICE 佔位 |
 | array | 2 | ARRAY_CONSTRAIN、FLATTEN（Google 試算表函數） |
 | univer | 0 | 空的保留分類 |
@@ -117,7 +117,7 @@ symbolStack.push(node as string);
 
 ### 4. 陣列與動態陣列公式
 
-- **廣播規則**：[array-value-object.ts#L1781-L1915](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/value-object/array-value-object.ts#L1781-L1915)。兩個陣列相加減時，結果取最大列數 × 最大欄數；1×1 擴成整片、單列往下複製、單欄往右複製，對不上的位置給 `#N/A`，與 Excel 一致。
+- **廣播規則**：[array-value-object.ts#L1781-L1915](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/value-object/array-value-object.ts#L1781-L1915)。兩個陣列做運算（加減乘除、比較、`&` 串接、次方等）時，結果取最大列數 × 最大欄數；1×1 擴成整片、單列往下複製、單欄往右複製，對不上的位置給 `#N/A`，與 Excel 一致。
 - **溢出判斷**：[runtime.service.ts#L702-L846](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/services/runtime.service.ts#L702-L846)。結果是多格陣列或範圍時，記錄 `arrayFormulaRange`（左上角＝公式格），再檢查範圍內是否已有資料、是否超出工作表邊界，任一成立就整個變 `#SPILL!`；1×1 結果直接當單值。
 - **溢出值不寫進儲存格本身**：溢出格是讀取時由 `CELL_CONTENT` 攔截器「疊上去」的（[array-formula-cell-interceptor.controller.ts#L59-L101](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets-formula/src/controllers/array-formula-cell-interceptor.controller.ts#L59-L101)），資料存在 `FormulaDataModel` 的 `arrayFormulaCellData`。所以自己直接讀活頁簿快照的 `cellData`，很可能看不到溢出值（推論，未實測），要讀值請用 facade 的 `getValues()`。
 - **官方整合測試示範**：`=SORT(A1:A5)` 放在 D1，測試斷言 `D1:D5` 得到排序後五個值（[formua-correctness.spec.ts#L10-L56](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/tests/formula-integration/src/__tests__/formua-correctness.spec.ts#L10-L56)，檔名原文就拼成 formua）。
@@ -196,8 +196,11 @@ formula.registerFunction('DISCOUNT', (price, pct) => price * (1 - pct / 100), '�
 | 函數數 | 自數 532（有實作 511） | 資料包數 355（不含別名） | 未確認 |
 | 動態陣列 | 有（缺 `A1#`） | 有，但輸出大小須在解析時確定 | 未確認 |
 | 3D 參照 | 有 | 沒有 | 未確認 |
+| 多活頁簿互相參照 | 有（`[Book]Sheet!A1`） | 不支援（資料包引用官方 known-limitations） | 未確認 |
+| 表格結構化參照 `Table1[欄]` | 有（[reference-node.ts#L363-L379](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/ast-node/reference-node.ts#L363-L379)） | 不支援 | 未確認 |
+| SUBTOTAL 忽略隱藏列 | 有（`needsFilteredOutRows`，[base-function.ts#L97-L100](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/functions/base-function.ts#L97-L100)） | 不會忽略 | 未確認 |
 | 非同步函數 | 有 | 沒有 | 未確認 |
-| Web Worker | 內建 RPC 模式 | 要自己包 | WASM 可放 Worker（未確認） |
+| Web Worker | 內建 RPC 模式 | 資料包未提到內建模式，應需自行包裝（未確認） | WASM 可放 Worker（未確認） |
 | .xlsx 匯入匯出 | 開源 repo 沒有（我在檔案清單搜 exchange、xlsx 無結果） | 沒有 | 有（未確認） |
 
 **白話怎麼選**
@@ -243,12 +246,65 @@ formula.registerFunction('DISCOUNT', (price, pct) => price * (1 - pct / 100), '�
 | 自訂查價函數 | facade `registerAsyncFunction`；Worker 模式改寫成 `AsyncCustomFunction` 子類別放 Worker 端 `function` 設定 | 引擎本身 | 低（主執行緒）／中（Worker） | `=PRICE(料號)` 讀 Firestore；Worker 端寫法依程式推論可行，未實測 |
 | 公式解說給 Claude | `getFormulaExpressTree` ＋ `executeFormulas` ＋ `getCellDependencyTree` | 引擎本身 | 低 | 把公式拆成子運算式、各自算出值、加上前導／從屬格，一起丟給 Claude 產生白話解說或除錯建議 |
 
+**草稿 A：不開畫面、只用引擎算一張成本表**（照官方測試檔 [univer.ts#L14-L42](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/tests/formula-integration/src/__testing__/univer.ts#L14-L42) 與 [formua-correctness.spec.ts#L10-L56](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/tests/formula-integration/src/__tests__/formua-correctness.spec.ts#L10-L56) 改寫；我沒有執行過，**未實測**）
+
+```ts
+import { LocaleType, Univer } from '@univerjs/core';
+import { FUniver } from '@univerjs/core/facade';
+import { UniverFormulaEnginePlugin } from '@univerjs/engine-formula';
+import { UniverSheetsPlugin } from '@univerjs/sheets';
+import { UniverSheetsFormulaPlugin } from '@univerjs/sheets-formula';
+import zhCN from '@univerjs/sheets/locale/zh-CN';      // 測試檔用簡中語系；繁中語系檔各套件另有提供
+import '@univerjs/engine-formula/facade';
+import '@univerjs/sheets/facade';
+import '@univerjs/sheets-formula/facade';
+
+const univer = new Univer({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: zhCN } });
+univer.registerPlugin(UniverFormulaEnginePlugin);
+univer.registerPlugin(UniverSheetsPlugin);
+univer.registerPlugin(UniverSheetsFormulaPlugin);
+const api = FUniver.newAPI(univer);
+
+const wb = api.createWorkbook({
+    id: 'cost', name: '成本試算', sheetOrder: ['s1'],
+    sheets: { s1: { id: 's1', name: '成本', rowCount: 100, columnCount: 10, cellData: {
+        0: { 0: { v: 120 }, 1: { v: 0.05 }, 2: { f: '=ROUND(A1*(1+B1),0)' } },   // 進價、加成、售價
+    } } },
+});
+await api.getFormula().onCalculationResultApplied();
+console.log(wb.getActiveSheet().getRange('C1').getValues());   // 預期 [[126]]
+univer.dispose();
+```
+
+**草稿 B：Worker 模式下的非同步查價函數**（依 [preset-sheets-core worker.ts#L31-L43](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/presets/packages/preset-sheets-core/src/worker.ts#L31-L43)、[custom-function.ts#L25-L29](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/functions/custom-function.ts#L25-L29) 與 `createUniver`（[presets/src/preset.ts#L48](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/presets/src/preset.ts#L48)）推出來的寫法，**未實測**）
+
+```ts
+// formula.worker.ts —— 這個檔案跑在 Web Worker 裡
+import { createUniver } from '@univerjs/presets';
+import { UniverSheetsCoreWorkerPreset } from '@univerjs/preset-sheets-core/worker';
+import { AsyncCustomFunction } from '@univerjs/engine-formula';
+
+class PriceFunction extends AsyncCustomFunction {
+    override async calculateCustom(sku: unknown) {
+        // 換成你自己的 API（例如 Firebase Cloud Functions 的 HTTPS 端點）
+        const res = await fetch(`https://example.com/api/price?sku=${encodeURIComponent(String(sku))}`);
+        return Number((await res.json()).price);
+    }
+}
+
+createUniver({
+    presets: [UniverSheetsCoreWorkerPreset({ formula: { function: [[PriceFunction, 'PRICE']] } })],
+});
+// 主執行緒：UniverSheetsCorePreset({ workerURL: new Worker(new URL('./formula.worker.ts', import.meta.url), { type: 'module' }) })
+// 函數提示文字放主執行緒 preset 的 formula.description；價格更新後呼叫 univerAPI.getFormula().executeCalculation()
+```
+
 ---
 
 ## 坑與限制
 
 1. **Worker 模式自訂函數不同步**：主執行緒 `registerFunction` 不會送進 Worker，會丟錯；函數要寫在 Worker 端的 `function` 設定（見第 7 節）。
-2. **`A1#` 溢出參照未完成**：解析會過，但求值回 `#VALUE!`；`ANCHORARRAY` 只是回傳原參照。從 Excel 帶來的 `=SUM(D2#)` 會算錯。
+2. **`A1#` 溢出參照未完成**：解析會過，但求值回 `#VALUE!`；`ANCHORARRAY` 只是回傳原參照。從 Excel 帶來的 `=SUM(D2#)` 會得到 `#VALUE!`，要改寫成明確範圍。
 3. **21 個佔位函數一律 `#N/A`**：CUBE 系列、FORECAST.ETS 系列、WEBSERVICE、RTD、INFO 等。Excel 檔裡用到這些時結果會不同。
 4. **揮發性範圍很窄**：只有 RAND、RANDBETWEEN、NOW、TODAY 每次重算；RANDARRAY 與所有自訂函數都不在清單（依程式推論，未實測），外部資料變了要自己 `executeCalculation()`。
 5. **數值是 IEEE 754 雙精度浮點數**：[math-kit.ts#L17-L21](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/engine-formula/src/engine/utils/math-kit.ts#L17-L21) 註解寫明只在顯示時處理 15 位精度，`0.1+0.2` 內部仍是 0.30000000000000004；`decimal.js` 只用在複數。金額請在公式裡自己 `ROUND`。

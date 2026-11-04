@@ -1,0 +1,60 @@
+{
+  "repo": "jspreadsheet/ce",
+  "category": "01-web-excel",
+  "commit": "d9c04e8a1acec6b87b0580b79868cd4d2f73599e",
+  "scanned_at": "2026-11-04",
+  "stars": 7242,
+  "license": "MIT（公式引擎 @jspreadsheet/formula Basic 版亦標示 MIT，但原始碼不在 GitHub 公開）",
+  "license_personal_zh": "個人使用：完全免費，可任意修改、複製程式碼到自己的專案。",
+  "license_commercial_zh": "公司商用：MIT 允許商用與閉源，只需保留版權與授權聲明；跨工作表計算、資料驗證、進階篩選、儲存格層級格式等屬於另一個付費產品 Jspreadsheet Pro。",
+  "one_liner_zh": "純 JS、免框架、MIT 的輕量網頁試算表元件，最易嵌入倉儲系統",
+  "use_cases_zh": [
+    "嵌進 Firebase 倉儲網頁，當商品／庫存的批次編輯表，逐格寫回 Firestore",
+    "成本、毛利、報價試算表（=B2*C2*(1-D2)、SUM、ROUND）",
+    "從 Excel／Google 試算表直接貼上廠商報價或電商後台匯出資料",
+    "一鍵匯出含 BOM 的 CSV，Excel 開中文不亂碼",
+    "比價結果或廣告成效的可排序、可篩選表格",
+    "搭配 Cloud Function＋Claude 做「商品→腳本→影片狀態」素材排程表"
+  ],
+  "stack": ["JavaScript（ES 模組，webpack 打包 UMD）", "DOM <table> 渲染", "jsuites", "@jspreadsheet/formula", "mocha + jsdom 測試", "可選 Vue 包裝"],
+  "run_requirements_zh": "純前端靜態檔，CDN 引入 jsuites、@jspreadsheet/formula、jspreadsheet-ce 即可，放 Firebase Hosting；不需伺服器、GPU、API Key，零費用。本體 dist/index.js 約 145 KB（gzip 約 34 KB），另加 jsuites 與 formula。",
+  "key_features_zh": [
+    "像 Excel 的儲存格編輯、鍵盤導覽、Ctrl+C/V/Z/Y",
+    "公式與簡易相依重算、循環參照保護、自訂函數 formula.setFormula",
+    "從 Excel／Google 試算表貼上（Tab 分隔純文字）",
+    "填滿控點（數字遞增、日期加天、公式平移）",
+    "復原／重做、合併儲存格、凍結欄、欄寬列高拖拉",
+    "單欄多選篩選、排序、全表搜尋、分頁、懶載入（每次 100 列）",
+    "欄位型別：text、numeric、dropdown、autocomplete、checkbox、radio、calendar、image、color、html、hidden、自訂編輯器",
+    "CSV 匯出（含 BOM）與 CSV／JSON 網址載入",
+    "85 個公開方法、43 個事件、外掛介面（init/onevent/persistence/contextMenu/toolbar）",
+    "多工作表分頁籤、Web Component、Vue 包裝"
+  ],
+  "reusable_parts": [
+    {"name": "整個元件", "path": "src/index.js", "difficulty": "低", "note_zh": "CDN 引入後 jspreadsheet(div,{worksheets:[…]})，用 onafterchanges／onundo／onredo 同步 Firestore。"},
+    {"name": "CSV/TSV 解析器 parseCSV", "path": "src/utils/helpers.js", "difficulty": "低", "note_zh": "純函式，可直接複製來解析貼上內容或匯入 CSV。"},
+    {"name": "欄名與座標轉換", "path": "src/utils/helpers.js", "difficulty": "低", "note_zh": "A1 ↔ [x,y] 轉換，任何自寫表格都用得到；也暴露在 jspreadsheet.helpers。"},
+    {"name": "公式參照展開與相依鏈", "path": "src/utils/internal.js", "difficulty": "中", "note_zh": "executeFormula 與 updateFormulaChain；可把第 254 行的 formula() 呼叫換成 HyperFormula。"},
+    {"name": "公式參照平移 updateFormula", "path": "src/utils/internal.js", "difficulty": "低", "note_zh": "插列或填滿時改寫 =A1+B1 → =A2+B2。"},
+    {"name": "填滿控點邏輯 copyData", "path": "src/utils/selection.js", "difficulty": "中", "note_zh": "移植數字遞增、日期加天、公式平移規則。"},
+    {"name": "CSV 下載（BOM＋Blob）", "path": "src/utils/download.js", "difficulty": "低", "note_zh": "倉儲系統任何匯出按鈕都可用，避免 Excel 中文亂碼。"},
+    {"name": "事件與外掛派送器", "path": "src/utils/dispatch.js", "difficulty": "低", "note_zh": "全域 onevent＋個別事件＋外掛的小型事件系統範本。"}
+  ],
+  "ai_integration_zh": "本身沒有任何 AI 功能、prompt 或 MCP。可接 Claude：透過自訂公式、右鍵選單外掛或事件，把選取資料送到 Firebase Cloud Function（API Key 放後端）呼叫 Claude，再用 setValueFromCoords 寫回；程式碼小（約 1.1 萬行）也很適合交給 Claude Code 客製。",
+  "claude_support": "可接",
+  "maintenance_zh": "持續維護，最後 commit 2026-10-14；2017 年創立（前身 jExcel），v5 重構為試算表／工作表分離。15 個測試檔、79 個 it()，公式只測 SUM。",
+  "risks_zh": [
+    "公式引擎 @jspreadsheet/formula 原始碼不公開，函數數量（README 聲稱 403）與正確性無法驗證；Basic 版不處理浮點誤差",
+    "沒有 .xlsx 匯入匯出、沒有跨工作表公式、沒有多人即時協作、沒有圖表與樞紐分析",
+    "DOM 渲染且所有列先建好 DOM，十萬列以上不適合",
+    "html 欄或 parseHTML:true 時只過濾 <script>，有 XSS 風險",
+    "復原／重做不觸發 onafterchanges，同步資料庫要另外監聽 onundo／onredo",
+    "getWorksheetInstanceByName 邏輯寫反無法使用；Ctrl+S 是下載 CSV",
+    "沒載入公式套件時公式全顯示 #ERROR；內建 zh_CN 語言檔格式已過時，需自寫繁中字典",
+    "Firestore 不允許巢狀陣列，二維資料需轉成一列一文件或 JSON 字串"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合今天就嵌進你的 Firebase 倉儲系統當批次編輯／成本試算介面；公式或 xlsx 需求變大時再接 HyperFormula、SheetJS。",
+  "keywords": ["jspreadsheet", "jspreadsheet-ce", "jExcel", "網頁版 Excel", "網頁試算表", "可編輯表格", "data grid", "spreadsheet", "純 JavaScript", "vanilla JS", "MIT", "公式", "formula", "複製貼上", "填滿控點", "篩選", "排序", "下拉選單", "CSV 匯出", "Firebase", "Firestore", "倉儲管理", "成本試算", "onafterchanges", "Web Component"],
+  "pack_path": "_oss-research/01-web-excel/jspreadsheet__ce.md"
+}
