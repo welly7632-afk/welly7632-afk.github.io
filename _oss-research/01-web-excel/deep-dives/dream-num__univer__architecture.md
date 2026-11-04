@@ -14,7 +14,7 @@
 5. **Facade API（`univerAPI`）是用 mixin 拼出來的。** 每個套件的 `/facade` 子路徑被 import 時，會呼叫 `FUniver.extend(...)` 把方法掛上去。忘了 import，就會遇到「`createWorkbook` 不是函式」。Facade 方法底層仍是執行指令，所以照樣可以復原，也照樣會觸發事件。
 6. **可以用純 JavaScript 嵌入。** 你不用寫任何 React，但 React、ReactDOM、rxjs 仍是執行期必裝的 peer dependency。最穩的做法是「Vite + 原生 JS」打包後放上 Firebase Hosting。不經打包的 UMD `<script>` 版本也有（全域名如 `UniverCore`），但有幾處細節本次無法驗證。
 7. **最小組合。** 依 `@DependentOn` 推得的技術下限是 9 個 npm 套件、7 個外掛（未實測）。README 建議的實用最小組合是 13 個套件、11 個外掛（含公式計算與數字格式）。實際 bundle 大小本次無法建置驗證（未確認）。原始碼（不含測試、語系、斷字表）約 47 萬行、17.4 MB，屬於「數 MB 級」的大型前端依賴，不是輕量元件（推估）。
-8. **Firestore 要自己接。** 本 repo 完全沒有 Firebase 程式碼（`grep -rli "firebase\|firestore"` 0 筆）。建議做法：監聽 Mutation，去抖動後呼叫 `save()`，把整本存成一個 JSON 字串欄位；其他裝置用 `onSnapshot` 整本重新載入。repo 裡 `network` 的 WebSocket 範例和 `rpc` 的 Worker 同步控制器，就是「逐筆 Mutation 同步」的現成樣板。真正的多人同時編輯（衝突解決）屬於 Univer Pro。
+8. **Firestore 要自己接。** 本 repo 完全沒有 Firebase 程式碼（`grep -rli "firebase\|firestore"` 0 筆）。建議做法：監聽 Mutation，停手 1～2 秒再呼叫 `save()`（debounce），把整本存成一個 JSON 字串欄位；其他裝置用 `onSnapshot` 整本重新載入。repo 裡 `network` 的 WebSocket 範例和 `rpc` 的 Worker 同步控制器，就是「逐筆 Mutation 同步」的現成樣板。真正的多人同時編輯（衝突解決）屬於 Univer Pro。
 9. **授權。** 本 repo 是 Apache-2.0，個人或商業用途都可以。README 列出的即時協作、xlsx 匯入匯出、列印、圖表、樞紐分析等功能屬於 Univer Pro 商業授權，不在這個 repo（[README.md#L292](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/README.md#L292)）。
 
 ---
@@ -42,7 +42,7 @@
 
 **1-1 入口：`new Univer()` 先建根注入器**
 
-[univer.ts#L272-L304](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/core/src/univer.ts#L272-L304) 的 `createUniverInjector()` 會把 19 個核心服務放進根 `Injector`（我逐行數的：7 個具體類別，加 12 個「介面 token → 實作」）。例如：
+[univer.ts#L272-L304](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/core/src/univer.ts#L272-L304) 的 `createUniverInjector()` 會把 19 個核心服務放進根 `Injector`（我逐行數的：8 個直接登記的類別，加 11 個「介面 token → 實作」）。例如：
 
 - `ICommandService`（指令）
 - `IUndoRedoService`（復原）
@@ -121,7 +121,7 @@ redi 本身是外部套件 `@wendellhu/redi`，被 core 釘在 1.1.3（`packages
 
 **1-8 繪製層有自己的子注入器**
 
-每個活頁簿的繪製單元都會 `createChild()`。外掛用 `registerRenderModule(UNIVER_SHEET, …)` 登記「每本表各一份」的繪製控制器（[sheets-ui/src/plugin.ts#L266-L277](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets-ui/src/plugin.ts#L266-L277)）。`docs/FIX_MEMORY_LEAK.md` 也建議：跟「目前這本表」有關的訂閱要寫成繪製模組，不要放在根單例，否則容易記憶體洩漏。
+每個活頁簿的繪製單元都會 `createChild()`。外掛用 `registerRenderModule(UNIVER_SHEET, …)` 登記「每本表各一份」的繪製控制器（[sheets-ui/src/plugin.ts#L266-L276](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets-ui/src/plugin.ts#L266-L276)）。`docs/FIX_MEMORY_LEAK.md` 也建議：跟「目前這本表」有關的訂閱要寫成繪製模組，不要放在根單例，否則容易記憶體洩漏。
 
 ### 二、Command／Mutation／Operation 指令系統
 
@@ -412,7 +412,7 @@ univerAPI.createWorkbook({ id: 'inventory-main' });
 
 **5-4 方案 C：不打包，直接用 `<script>`（UMD）**
 
-- 每個套件都會產出 `lib/umd/index.js`、`lib/umd/facade.js` 和 `lib/umd/locale/zh-TW.js`（[constants.ts#L3-L7](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/constants.ts#L3-L7)、[umd.ts#L101-L133](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/configs/umd.ts#L101-L133)）。
+- 每個套件都會產出 `lib/umd/index.js`；有 facade 的會多一個 `lib/umd/facade.js`，有語系的會多 `lib/umd/locale/zh-TW.js`。repo 裡沒有任何套件在建置時加 `--skipUMD`（[constants.ts#L3-L7](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/constants.ts#L3-L7)、[umd.ts#L101-L133](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/configs/umd.ts#L101-L133)）。
 - 全域名的規則（[umd.ts#L25-L34](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/configs/umd.ts#L25-L34)、[L83-L96](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/configs/umd.ts#L83-L96)）：`@univerjs/sheets-ui` 對應 `UniverSheetsUi`，它的 facade 是 `UniverSheetsUiFacade`，語系是 `UniverSheetsUiZhTW`。用法類似 `const { Univer } = UniverCore;`。
 - 要先載入的外部全域有 `React`、`ReactDOM`、`rxjs`，以及**全域名就叫 `'@wendellhu/redi'`** 的 redi（[peer-deps.ts#L1-L47](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/tsdown/data/peer-deps.ts#L1-L47)）。
 - preset 套件在這個版本只建 ESM／CJS（[preset-build/index.ts#L107](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/common/shared/preset-build/index.ts#L107)），所以 UMD 只能走 Plugin 模式。

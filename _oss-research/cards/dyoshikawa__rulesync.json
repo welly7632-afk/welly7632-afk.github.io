@@ -1,0 +1,141 @@
+{
+  "repo": "dyoshikawa/rulesync",
+  "category": "04-agent-rules-skills",
+  "commit": "d088ccc8f436255115e0e7fb95f9ce0778375a4a",
+  "scanned_at": "2026-11-04",
+  "stars": 1583,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、取用程式碼片段；repo 內 .rulesync/skills/skill-creator 另附 Apache-2.0 授權，照抄該技能時需保留其授權。",
+  "license_commercial_zh": "公司商用：可以，含內部工具與產品；需保留著作權與 MIT 授權聲明。沒有付費版或閉源功能，也沒有雲端服務。",
+  "one_liner_zh": "一份規則來源，自動產生 Claude、Codex 等 70 種 AI 工具設定",
+  "use_cases_zh": [
+    "用同一份 .rulesync/rules 同時產生 CLAUDE.md＋.claude/rules 與 Codex 的 AGENTS.md，消除兩邊規則新舊不一致",
+    "用 rulesync import 把現有凌亂的 CLAUDE.md、.claude/agents、skills 收回成單一來源",
+    "同一份角色檔產生 Claude 的 .claude/agents/*.md 與 Codex 的 .codex/agents/*.toml",
+    "把 rulesync doctor --strict 與 generate --check 放進每日 GitHub Actions 排程，當作巡讀的機械檢查",
+    "照抄 repo 內 agent-team（實作／審查迴圈）、opencode-gpt-review（GPT 審、Claude 查證）等技能當基礎架構",
+    "改寫它每週的 repomix＋LLM＋寄信 security-scan 流程，變成每日的重複／衝突／遺漏巡讀",
+    "設定 language: zh-TW，讓 Claude 與 Codex 都固定用繁體中文回答"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js 22+",
+    "commander",
+    "zod",
+    "gray-matter",
+    "smol-toml",
+    "js-yaml",
+    "jsonc-parser",
+    "@modelcontextprotocol/sdk",
+    "Vitest",
+    "VitePress"
+  ],
+  "run_requirements_zh": "npm i -g rulesync 或 npx rulesync（需 Node.js >=22.22），或下載官方單一執行檔／Homebrew。純本機 CLI，不需 GPU、資料庫或伺服器；CLI 本身不呼叫 LLM，不需 API Key、零費用。抓私有 GitHub 來源時才需 GITHUB_TOKEN。若照抄它的 LLM 巡檢 CI，則需 OpenRouter（或 Anthropic）API Key 與寄信服務，費用依模型而定（未確認）。",
+  "key_features_zh": [
+    "單一來源 .rulesync/（rules、subagents、skills、commands、mcp、hooks、permissions、checks）產生約 70 個目標工具設定",
+    "Claude Code 與 Codex CLI 原生支援，含專案與全域（--global）模式",
+    "Codex 非 root 規則自動摺疊進 AGENTS.md，可用 subprojectPath 產生子資料夾 AGENTS.md",
+    "generate --check 漂移偵測、--dry-run、--watch、--delete 孤兒檔清理、--retire-targets",
+    "doctor 唯讀診斷：拼錯 key、衝突目標、Codex AGENTS.md 超過 32 KiB 會被默默截斷的警告",
+    "import／convert 反向匯入與工具間互轉",
+    "sources＋rulesync.lock 鎖定外部規則與技能版本，install --frozen／--outdated",
+    "內建 MCP 伺服器（單一 rulesyncTool）與程式化 API（generate、importFromTool、convertFromTool）",
+    "language 設定讓各 AI 統一用指定語言回答"
+  ],
+  "reusable_parts": [
+    {
+      "name": "rulesync CLI 本體（直接使用）",
+      "path": "README.md",
+      "difficulty": "低",
+      "note_zh": "不用拆，在專案根目錄 init，targets 設 claudecode、codexcli（codexcli 放最後）。"
+    },
+    {
+      "name": "Implementer＋Reviewer 迴圈技能",
+      "path": ".rulesync/skills/agent-team/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "把 pnpm cicheck 換成自己的檢查指令；出場條件 high+critical=0 且 mid<=3，最多 10 輪。"
+    },
+    {
+      "name": "GPT 審查＋Claude 查證技能",
+      "path": ".rulesync/skills/opencode-gpt-review/SKILL.md",
+      "difficulty": "中",
+      "note_zh": "把 opencode run 換成 codex exec，Claude 逐條查證並分成 Valid／Rejected。"
+    },
+    {
+      "name": "審查角色範本",
+      "path": ".rulesync/subagents/code-reviewer.md",
+      "difficulty": "低",
+      "note_zh": "與 security-reviewer.md 一起改寫成庫存邏輯、Firebase 安全審查員。"
+    },
+    {
+      "name": "LLM 全專案巡檢流程",
+      "path": "scripts/security-scan-xml.ts",
+      "difficulty": "中",
+      "note_zh": "搭配 scripts/generate-repomix-xml.ts 與 .github/workflows/security-scan.yml；把 prompt 改成重複／衝突／遺漏，JSON schema 輸出，有 high 以上才通知。"
+    },
+    {
+      "name": "過期筆記 issue 自動關閉",
+      "path": ".github/workflows/auto-close-maintainer-scrap-issues.yml",
+      "difficulty": "低",
+      "note_zh": "每日 cron，帶標籤且 30 天未更新就關閉，防止待辦堆積。"
+    },
+    {
+      "name": "Codex AGENTS.md 大小預算檢查",
+      "path": "src/features/rules/instruction-budget.ts",
+      "difficulty": "低",
+      "note_zh": "純函式 173 行，可獨立做 AGENTS.md 超過 32 KiB 警示。"
+    },
+    {
+      "name": "設定檔診斷（Levenshtein 建議）",
+      "path": "src/lib/doctor.ts",
+      "difficulty": "低",
+      "note_zh": "L78-L132 的 levenshteinDistance／suggestNearest 可搬去做自家設定檢查。"
+    },
+    {
+      "name": "結構化內容等價比對",
+      "path": "src/utils/content-equivalence.ts",
+      "difficulty": "低",
+      "note_zh": "JSON／YAML／TOML 解析後比對，避免只差空白就判定有變更。"
+    }
+  ],
+  "ai_integration_zh": "CLI 本身不呼叫模型，而是產生給 AI 讀的設定：Claude Code（CLAUDE.md、.claude/rules、agents、skills、hooks、settings、.mcp.json，另有 plugin 打包）與 Codex CLI（AGENTS.md、.codex/agents/*.toml、.agents/skills＋openai.yaml、.codex/config.toml）皆原生支援。附 MCP 伺服器讓 AI 自己讀寫 .rulesync 並執行 generate、doctor。repo 自己的 CI 用 OpenRouter 做每週 LLM 安全巡檢（模型與 prompt 放在 secrets）。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：v43.6.0，掃描當日仍有 push，持續追蹤各工具上游變動；單一 Owner 主導（GOVERNANCE.md）；636 個測試檔＋28 個 e2e 檔，CI 檢查格式、lint、型別、測試、文件同步、拼字、secretlint。",
+  "risks_zh": [
+    "多個目標寫同一個 AGENTS.md 時後寫者贏，codexcli 若不放最後，摺疊進去的規則會被覆蓋",
+    "Codex AGENTS.md 鏈超過 32 KiB 會被默默截斷（rulesync 會警告，但仍要自己精簡）",
+    "--delete 會刪除手改過的產出檔，必須只改 .rulesync/",
+    "init 預設 Codex base_permission_profile 為 :danger-full-access，建議改成 :workspace",
+    "版本更新頻繁、major 版號高，建議鎖定版本",
+    "只偵測檔名或名稱層級的重複，不偵測規則內容語意重複或互相矛盾",
+    "在不信任的 repo 執行其 MCP 伺服器，可能經由 symlink 讀寫專案外檔案"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "強烈建議當作 Claude＋Codex 共用規則的同步層，再自行加一層 LLM 每日巡讀，處理語意重複與衝突。",
+  "keywords": [
+    "rulesync",
+    "規則同步",
+    "單一事實來源",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "Codex CLI",
+    "Claude Code",
+    "subagents",
+    "角色",
+    "skills",
+    "SKILL.md",
+    "MCP",
+    "hooks",
+    "generate --check",
+    "漂移偵測",
+    "doctor",
+    "rulesync.lock",
+    "每日巡讀",
+    "repomix",
+    "交叉審查",
+    "agent-team",
+    "GitHub Actions cron",
+    "多 AI 協作"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/dyoshikawa__rulesync.md"
+}

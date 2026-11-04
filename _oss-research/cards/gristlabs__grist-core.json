@@ -1,0 +1,157 @@
+{
+  "repo": "gristlabs/grist-core",
+  "category": "01-web-excel",
+  "commit": "484236f6abc960ed7dadade5c2b714465492a063",
+  "scanned_at": "2026-11-04",
+  "stars": 12046,
+  "license": "Apache-2.0（預設 Docker 映像 gristlabs/grist 與原始碼預設安裝會附帶非開源的完整版擴充；純開源請用 gristlabs/grist-oss）",
+  "license_personal_zh": "個人使用：完全免費、可自架、可修改，無人數限制；建議用 gristlabs/grist-oss 映像確保全為開源程式碼。",
+  "license_commercial_zh": "公司商用：Apache-2.0 允許商用與閉源修改，需保留 LICENSE/NOTICE 並註明修改；MCP 伺服器、新版 AI Assistant、Automations、SSO、通知信等屬完整版，完整版對年資金低於 100 萬美元的組織免費但需啟用金鑰。",
+  "one_liner_zh": "Python 公式、SQLite 存檔的自架關聯式網頁試算表伺服器",
+  "use_cases_zh": [
+    "自架當進銷存／成本試算／比價後台：商品、供應商報價、庫存、廣告花費多表串接，用 Python 公式算毛利與最低價",
+    "當 Firebase 倉庫 App 的資料來源：透過 REST API 讀寫，或用 webhook 經 Cloud Functions 同步到 Firestore",
+    "用自訂 widget（純 HTML/JS）做出貨單列印、比價卡片等專用畫面",
+    "借鏡程式碼：從 Excel/Google 試算表貼上的 HTML 解析、可變列高虛擬捲動、增量重算依賴圖、exceljs 串流匯出 xlsx",
+    "把 AI 公式助理透過 OpenRouter 換成 Claude，用中文描述就產生公式",
+    "當短影音腳本／分鏡素材庫：一列一個鏡頭，附件欄存成品，webhook 觸發生成流程"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js 22",
+    "Express",
+    "grainjs",
+    "knockout",
+    "jQuery",
+    "Python 3（公式引擎）",
+    "SQLite（每份文件一檔）",
+    "TypeORM（SQLite/PostgreSQL 首頁資料庫）",
+    "Redis（選用）",
+    "S3/MinIO（選用）",
+    "plotly.js",
+    "exceljs",
+    "openpyxl",
+    "engine.io/WebSocket",
+    "Docker",
+    "gVisor/Pyodide 沙盒"
+  ],
+  "run_requirements_zh": "docker run -p 8484:8484 -v $PWD/persist:/persist -it gristlabs/grist-oss 即可，開 http://localhost:8484；不需 GPU，每份開啟的文件會在伺服器起 Python 程序並整份載入記憶體，個人用小主機（約 1–2 GB RAM，推估未實測）即可。核心功能不需任何 API Key，費用只有主機費；AI 公式助理需 ASSISTANT_API_KEY（OpenAI/OpenRouter 等，按 token 計費）。",
+  "key_features_zh": [
+    "欄位有名稱與型別、整欄 Python 公式（可用標準函式庫），已實作 148 個試算表函數（另 82 個僅宣告未實作，如 SUMIF/INDEX/MATCH）",
+    "依賴圖增量重算（depend.py/engine.py）",
+    "DOM 渲染＋可變列高虛擬捲動、凍結左側欄",
+    "可直接從 Excel/Google 試算表貼上（解析 text/html 表格，退回 TSV）",
+    "Reference 欄跨表參照、lookupRecords、摘要表（樞紐）",
+    "條件格式、Choice 下拉、下拉條件、篩選、多欄排序、數字/貨幣格式",
+    "Plotly 圖表、卡片、行事曆、表單、附件",
+    ".xlsx/.csv/JSON 匯入（openpyxl，只讀值）與 .xlsx/.csv 匯出（exceljs，含樣式不含公式）",
+    "伺服器集中序列化的即時多人協作、留言、建議修改、完整動作歷史與復原",
+    "REST API、webhooks、自訂 widget API、列/欄/表層級權限規則",
+    "繁體中文介面（client 字串約 45% 已翻譯）"
+  ],
+  "reusable_parts": [
+    {
+      "name": "貼上解析（Excel/Google 試算表 HTML → 二維陣列）",
+      "path": "app/client/lib/tableUtil.ts",
+      "difficulty": "低",
+      "note_zh": "parsePasteHtml 只用 DOMParser，搭配 Clipboard.ts 的 getPasteData（先 HTML 後 TSV），可改寫成 30 行純 JS 放進倉庫 App。"
+    },
+    {
+      "name": "可變列高虛擬捲動",
+      "path": "app/client/lib/koDomScrolly.js",
+      "difficulty": "中",
+      "note_zh": "BinaryIndexedTree.js 可直接搬；scrolly 需把 knockout observable 換成純 JS 狀態。"
+    },
+    {
+      "name": "BinaryIndexedTree（列高/欄寬前綴和）",
+      "path": "app/common/BinaryIndexedTree.js",
+      "difficulty": "低",
+      "note_zh": "幾乎無依賴，用於由捲動位置快速找列號。"
+    },
+    {
+      "name": "DocAction 變更格式",
+      "path": "app/common/DocActions.ts",
+      "difficulty": "低",
+      "note_zh": "[\"BulkUpdateRecord\", table, rowIds, {col:[...]}] 可當自己工具的變更紀錄、復原堆疊與 Firestore 同步單位。"
+    },
+    {
+      "name": "向下填滿 Ctrl+D",
+      "path": "app/client/lib/tableUtil.ts",
+      "difficulty": "低",
+      "note_zh": "fillSelectionDown 取第一列值產生批次更新。"
+    },
+    {
+      "name": "xlsx 串流匯出含樣式",
+      "path": "app/server/lib/workerExporter.ts",
+      "difficulty": "中",
+      "note_zh": "exceljs 串流＋ExcelFormatter.ts 型別轉 numFmt，可移植到 Cloud Functions 做報表匯出。"
+    },
+    {
+      "name": "數字/貨幣格式",
+      "path": "app/common/NumberFormat.ts",
+      "difficulty": "低",
+      "note_zh": "以 Intl.NumberFormat 實作，可直接用 TWD。"
+    },
+    {
+      "name": "Python 試算表函數庫",
+      "path": "sandbox/grist/functions/",
+      "difficulty": "中",
+      "note_zh": "個別函數（日期、文字、數學）可抄進 Python 後端或請 Claude 轉 JS。"
+    },
+    {
+      "name": "Python 公式引擎（依賴圖＋重算）",
+      "path": "sandbox/grist/engine.py",
+      "difficulty": "高",
+      "note_zh": "與 schema 綁很深，建議學設計或整套 Grist 跑起來用 API 接，不建議硬拆。"
+    },
+    {
+      "name": "自訂 widget 橋接 API",
+      "path": "app/plugin/grist-plugin-api.ts",
+      "difficulty": "低",
+      "note_zh": "在 Grist 內嵌自己的 HTML 頁，用 grist.onRecords / getTable().update 讀寫資料。"
+    }
+  ],
+  "ai_integration_zh": "開源版內建舊版 AI 公式助理（OpenAIAssistantV1.ts，OpenAI Chat Completions 格式，預設 gpt-4o-2024-08-06；prompt 在 OpenAIAssistantV1.ts 與 sandbox/grist/formula_prompt.py），可用 ASSISTANT_CHAT_COMPLETION_ENDPOINT 指向 OpenRouter 並設 ASSISTANT_MODEL=anthropic/claude-… 改用 Claude。內建 MCP 伺服器與能建表改資料的新版 Assistant 只在完整版；開源版可自寫 MCP 透過 REST API 接 Claude。無影片/腳本生成功能。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：最新 commit 2026-11-04、版本 1.7.22，Grist Labs 公司與法國政府單位長期投入；614 個 TS/JS 測試檔＋83 個 Python 測試檔、10 個 CI workflow。",
+  "risks_zh": [
+    "預設 Docker 映像 gristlabs/grist 與原始碼預設安裝會帶入非開源完整版擴充，要純開源需用 grist-oss 或 set-community-edition",
+    "公式是任意 Python，對外開放時必須確認沙盒（gVisor/Pyodide）生效；REQUEST() 函數預設關閉，開啟有 SSRF 風險",
+    "不是 Excel：無 A1 位址、無合併儲存格、無拖拉填滿序列、只能凍結欄不能凍結列；SUMIF/INDEX/MATCH 等未實作，VLOOKUP 語法不同",
+    "xlsx 匯入只讀值（公式與格式遺失），匯出不含公式",
+    "整份文件載入伺服器與瀏覽器記憶體，超大表效能未驗證",
+    "不能當 npm 元件嵌入；只能 iframe 或 REST API，且 API key 不可放前端",
+    "前端用 knockout＋grainjs 舊技術，拆前端元件需改寫",
+    "繁中翻譯約 45%，部分介面顯示英文"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合直接自架當進銷存／成本比價後台並用 API 接你的 Firebase App；若要可嵌入的 Excel 元件，改選 Univer/HyperFormula，只借它的貼上解析與匯出程式碼。",
+  "keywords": [
+    "Grist",
+    "grist-core",
+    "網頁試算表",
+    "關聯式試算表",
+    "relational spreadsheet",
+    "Airtable 替代",
+    "自架",
+    "self-hosted",
+    "Python 公式",
+    "依賴圖",
+    "增量重算",
+    "SQLite",
+    "虛擬捲動",
+    "Excel 貼上",
+    "摘要表",
+    "樞紐分析",
+    "條件格式",
+    "xlsx 匯出",
+    "REST API",
+    "webhooks",
+    "自訂 widget",
+    "AI 公式助理",
+    "OpenRouter",
+    "Claude",
+    "進銷存"
+  ],
+  "pack_path": "_oss-research/01-web-excel/gristlabs__grist-core.md"
+}

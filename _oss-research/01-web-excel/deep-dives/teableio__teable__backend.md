@@ -23,7 +23,27 @@
 
 ## 逐題詳解
 
-固定連結前綴：`https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/`（以下簡稱 B）。
+### 〇、先看全貌：你在格子裡改一個「售價」，背後發生什麼（v2 新 Base）
+
+1. 瀏覽器（`packages/sdk`）先把畫面上的值改掉（樂觀更新），再送出 `PATCH /api/table/:tableId/record/:recordId`。
+2. NestJS 控制器經 `V2FeatureGuard` 判斷要走 v2，交給 `RecordOpenApiV2Service` → v2 的 `commandBus` → `UpdateRecordApplicationService`。
+3. 在同一筆資料庫交易內：寫入實體欄位、`__version = __version + 1`（[BatchUpdateSqlBuilder.ts#L94-L108](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/query-builder/update/BatchUpdateSqlBuilder.ts#L94-L108)）；同一張表裡依賴「售價」的公式欄位（例如「毛利＝`{售價} - {成本}`」）由 `SameTableBatchQueryBuilder` 組成 CTE 形式的 `UPDATE` 一起算好。
+4. 別的表若用 Lookup／Rollup 引用這筆資料（例如訂單表的「小計」），就寫一筆工作到 `computed_update_outbox`；交易提交後由 BullMQ（靠 Redis）喚醒背景 worker 補算。
+5. 提交後，領域事件 `RecordUpdated` 被 projection 轉成 json0 op，經 ShareDB pub/sub 推給所有開著這張表的人，他們的畫面直接套用這個 op。
+6. 如果某人的檢視條件（篩選、排序）可能受影響，ShareDB 會重新 poll——實際上是帶著那個人的 cookie 回呼 `/api/table/.../record/socket/doc-ids`。
+7. 原本那位使用者收到 HTTP 回應後，SDK 再用回傳值同步計算欄位；跨表的結果稍後經 ShareDB 補到。
+
+**名詞小抄**（給非工程背景的讀者）
+
+- **ShareDB**：Node.js 的即時文件同步伺服器，原本是為 OT 設計；Teable 主要用它的「訂閱＋推送」能力。
+- **OT（Operational Transformation）**：多人同時編輯時，把彼此的操作「轉換」後合併的演算法（Google 文件那一類）。
+- **json0**：ShareDB 預設的 JSON 操作格式，例如 `{ p: ['fields', 欄位ID], od: 舊值, oi: 新值 }`。
+- **CTE**：SQL 的 `WITH … AS (…)` 暫存子查詢，可以一層一層串起來。
+- **outbox**：先把「待辦工作」寫進資料庫表，再由背景程式處理，伺服器重開也不會漏做。
+- **BullMQ**：以 Redis 為基礎的工作佇列。
+- **CLS**：每個 HTTP 請求自己的「上下文袋子」，用來傳遞交易物件、使用者 ID。
+- **PGlite**：編譯成 WebAssembly 的 PostgreSQL，可以嵌在瀏覽器或 Node 程式裡執行。
+- **AGPL-3.0**：改作後若透過網路提供服務，必須向使用者公開原始碼的授權。
 
 ### 一、apps/nestjs-backend 架構（NestJS + Prisma + PostgreSQL）
 
@@ -36,7 +56,7 @@
 
 **2. 資料模型：中介資料 vs. 試算表資料**
 
-中介資料的 schema 在 `packages/db-main-prisma/prisma/postgres/schema.prisma`，共 64 個 model（`grep -c '^model '`）、138 個 migration（`ls migrations | wc -l`）。最該先讀的五個：
+中介資料的 schema 在 `packages/db-main-prisma/prisma/postgres/schema.prisma`，共 64 個 model（`grep -c '^model '`）、137 個 migration（`ls -d migrations/*/ | wc -l`，最新一筆是 2026-11-03）。最該先讀的五個：
 
 | Model | 作用 | 連結 |
 |---|---|---|
@@ -92,7 +112,7 @@ v1 共 81 個、v2 共 83 個（多了 `SET_LOCALE`、`SET_TIMEZONE`；我用 py
 
 **3. JS 端的 EvalVisitor 用來做什麼**
 
-`packages/core/src/formula/visitor.ts` 的 `EvalVisitor` 可以在 JS 裡直接算公式（`evaluate()`），但後端主要拿它做**型別推斷**：`FormulaFieldCore.getParsedValueType()` 不傳入資料列，只走一遍語法樹，就能推出結果是數字／文字／日期／布林、是不是多值。[evaluate.ts#L8-L24](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/formula/evaluate.ts#L8-L24)、[formula.field.ts#L69-L77](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/models/field/derivate/formula.field.ts#L69-L77)。每個函式類別都有 `validateParams`／`getReturnType`／`eval` 三個方法，真正的儲存格值則由資料庫算。
+`packages/core/src/formula/visitor.ts` 的 `EvalVisitor` 可以在 JS 裡直接算公式（`evaluate()`），但後端主要拿它做**型別推斷**：`FormulaFieldCore.getParsedValueType()` 不傳入資料列，只走一遍語法樹，就能推出結果是數字／文字／日期／布林、是不是多值。[evaluate.ts#L8-L24](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/formula/evaluate.ts#L8-L24)、[formula.field.ts#L69-L77](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/models/field/derivate/formula.field.ts#L69-L77)。每個函式類別都繼承抽象類別 `FormulaFunc`，必須實作 `validateParams`／`getReturnType`／`eval` 三個方法（[common.ts#L21-L56](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/formula/functions/common.ts#L21-L56)）；真正的儲存格值則由資料庫算。
 
 **4. 轉成 SQL——v1（舊 Base）**
 
@@ -114,7 +134,7 @@ v1 共 81 個、v2 共 83 個（多了 `SET_LOCALE`、`SET_TIMEZONE`；我用 py
 出處：[NumericFunctions.spec.ts.snap#L10797-L10816](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/formula-sql-pg/src/__snapshots__/NumericFunctions.spec.ts.snap#L10797-L10816)。12 個快照檔共 2,268 筆（每檔 `grep -c '^exports\['` 加總），等於一份「每個函式 × 每種欄位型別 → SQL」的規格書，自己重寫時可以直接拿來對答案。
 - 在 v2，公式欄位是**一般實體欄位**（型別依 cellValueType 決定）＋`ReferenceRule` 相依邊，不是生成欄位；v2 只把 createdTime、autoNumber 等系統欄位做成 `generated always as (__created_time) stored`。[FieldSchemaRulesFactory.ts#L135-L149](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/schema/rules/field/FieldSchemaRulesFactory.ts#L135-L149)、[GeneratedColumnRule.ts#L57-L92](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/schema/rules/field/GeneratedColumnRule.ts#L57-L92)
 - 計算順序：`ComputedUpdatePlanner` 依相依邊做拓樸排序並分層，排不進去的欄位再用 DFS 找出循環。[ComputedUpdatePlanner.ts#L790-L800](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/ComputedUpdatePlanner.ts#L790-L800)。同一張表的多層公式由 `SameTableBatchQueryBuilder` 組成「level_0 → level_1 → …」的 CTE 鏈，最後一句 `UPDATE` 寫回。[SameTableBatchQueryBuilder.ts#L78-L140](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/query-builder/computed/SameTableBatchQueryBuilder.ts#L78-L140)
-- 同步或非同步：預設 `HybridWithOutboxStrategy`，`syncPolicy: 'seedTableOnly'`——被修改的那張表內的計算欄位在同一筆交易裡同步算（上限每表 2,000、總計 5,000 筆待算資料），其餘跨表連鎖寫入 `computed_update_outbox`，由 BullMQ 喚醒 worker 處理。文件明講「資料庫 ledger 才是真相，BullMQ 只是喚醒通道」。[HybridWithOutboxStrategy.ts#L119-L129](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/strategies/HybridWithOutboxStrategy.ts#L119-L129)、[computed/ARCHITECTURE.md#L1-L10](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/ARCHITECTURE.md#L1-L10)。設 `V2_COMPUTED_UPDATE_MODE=sync` 可改成全同步。[v2-container.service.ts#L112-L131](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/features/v2/v2-container.service.ts#L112-L131)
+- 同步或非同步：預設 `HybridWithOutboxStrategy`，`syncPolicy: 'seedTableOnly'`——被修改的那張表內的計算欄位在同一筆交易裡同步算（上限每表 2,000、累計 5,000 筆待算資料，超過的層級改走非同步，[HybridWithOutboxStrategy.ts#L985-L1050](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/strategies/HybridWithOutboxStrategy.ts#L985-L1050)），其餘跨表連鎖寫入 `computed_update_outbox`，由 BullMQ 喚醒 worker 處理。文件明講「資料庫 ledger 才是真相，BullMQ 只是喚醒通道」。[HybridWithOutboxStrategy.ts#L119-L129](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/strategies/HybridWithOutboxStrategy.ts#L119-L129)、[computed/ARCHITECTURE.md#L1-L10](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/computed/ARCHITECTURE.md#L1-L10)。設 `V2_COMPUTED_UPDATE_MODE=sync` 可改成全同步。[v2-container.service.ts#L112-L131](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/features/v2/v2-container.service.ts#L112-L131)
 - 讀取有兩條路：Stored（直接讀預先算好的欄位，最快）和 Computed（查詢時用 LATERAL／CTE 現算）。[StoredTableRecordQueryBuilder.ts#L57-L59](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/v2/adapter-table-repository-postgres/src/record/query-builder/stored/StoredTableRecordQueryBuilder.ts#L57-L59)
 
 ### 三、即時協作（ShareDB／OT）
@@ -124,7 +144,7 @@ v1 共 81 個、v2 共 83 個（多了 `SET_LOCALE`、`SET_TIMEZONE`；我用 py
 **1. 資料流（依序）**
 
 1. 連線：`WsGateway` 在同一個 HTTP server 上掛 SockJS（路徑 `/socket`，只開 websocket 與 xhr-streaming），每條連線包成 JSON stream 交給 `shareDb.listen()`。[ws.gateway.ts#L34-L52](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/ws/ws.gateway.ts#L34-L52)、[ws.gateway.ts#L72-L94](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/ws/ws.gateway.ts#L72-L94)、[sockjs-options.ts#L65-L73](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/ws/sockjs-options.ts#L65-L73)
-2. ShareDB 設定：`presence: true`；快取設為 redis 時，把 pub/sub 換成自寫的 `RedisPubSub`（用一段 Lua 一次發到多個 channel）。[share-db.service.ts#L61-L77](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/share-db.service.ts#L61-L77)、[sharedb-redis.pubsub.ts#L141-L147](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/sharedb-redis.pubsub.ts#L141-L147)
+2. ShareDB 設定：`presence: true`；快取設為 redis 時，把 pub/sub 換成自寫的 `RedisPubSub`（用一段 Lua 一次發到多個 channel）。有設 `BACKEND_CACHE_REDIS_URI` 而沒另外指定 provider 時，快取預設就是 redis（[cache.config.ts#L6-L15](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/configs/cache.config.ts#L6-L15)）；若刻意改成 sqlite／memory，ShareDB 會退回 ShareDB 內建的單機 pub/sub，多台伺服器之間就收不到彼此的更新（依 ShareDB 預設行為推論，未實測）。[share-db.service.ts#L61-L77](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/share-db.service.ts#L61-L77)、[sharedb-redis.pubsub.ts#L141-L147](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/sharedb-redis.pubsub.ts#L141-L147)
 3. 使用者改格子：SDK 的 `Record.updateCell()` 先在本機樂觀更新，再呼叫 `updateRecord()`（HTTP PATCH），失敗就回滾。**前端完全不用 `submitOp`**（在 `packages/sdk/src` 與 `apps/nextjs-app/src` grep `submitOp`，0 筆）。[record.ts#L163-L202](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/sdk/src/model/record/record.ts#L163-L202)
 4. 伺服器產生 op（v1）：`BatchService` 讀出每列 `__version`，寫入時設為 `__version + 1`，並把 json0 op（`{ p: ['fields', fieldId], od, oi }`）放進 CLS 的 `tx.rawOpMaps`。[batch.service.ts#L104-L145](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/features/calculation/batch.service.ts#L104-L145)、[batch.service.ts#L475-L537](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/features/calculation/batch.service.ts#L475-L537)、[set-record.ts#L15-L43](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/packages/core/src/op-builder/record/set-record.ts#L15-L43)
 5. 交易提交後廣播：`ShareDbService` 透過 `bindAfterTransaction()`，在提交後取出 `rawOpMaps` → 更新資料表的最後修改時間 → `pubsub.publish([collection, collection.docId], op)` → 轉成內部事件（紀錄歷史、webhook 等）。[share-db.service.ts#L88-L121](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/share-db.service.ts#L88-L121)、[share-db.service.ts#L185-L198](https://github.com/teableio/teable/blob/f8be01fadb86790d3d3a878bedd10cf949f9a8f8/apps/nestjs-backend/src/share-db/share-db.service.ts#L185-L198)
