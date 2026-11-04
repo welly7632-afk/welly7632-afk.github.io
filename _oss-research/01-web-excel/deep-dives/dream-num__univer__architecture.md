@@ -92,7 +92,7 @@ export class UniverSheetsPlugin extends Plugin {
 
 | 階段 | 何時到達 | 依據 |
 |---|---|---|
-| Starting | 建立 Univer 時 | lifecycle.service.ts |
+| Starting | 建立 Univer 時 | [lifecycle.service.ts#L41](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/core/src/services/lifecycle/lifecycle.service.ts#L41) |
 | Ready | 第一個單元（活頁簿／文件）建立 | [univer.ts#L231-L236](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/core/src/univer.ts#L231-L236) |
 | Rendered | Ready 後 300 ms，UI 完成首次繪製 | [ui-shared.controller.ts#L69-L97](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/ui/src/controllers/ui/ui-shared.controller.ts#L69-L97) |
 | Steady | 再過 `STEADY_TIMEOUT = 3000` ms | 同檔 L23 |
@@ -185,7 +185,7 @@ export const SetRangeValuesMutation: IMutation<ISetRangeValuesMutationParams, bo
 
 **2-6 攔截器：別人的指令也能加料**
 
-`SheetInterceptorService.interceptCommand()`（[sheet-interceptor.service.ts#L181](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets/src/services/sheet-interceptor/sheet-interceptor.service.ts#L181)）讓外掛在別人的 Command 執行時，追加自己的 Mutation。例如註解外掛會在刪列時一併搬移註解，而且仍然可以一起復原。
+`SheetInterceptorService.interceptCommand()`（[sheet-interceptor.service.ts#L181](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets/src/services/sheet-interceptor/sheet-interceptor.service.ts#L181)）讓外掛在別人的 Command 執行時，追加自己的 Mutation。例如註解外掛在「刪除工作表」時，會追加「刪註解」的 Mutation，同時附上「還原註解」的反向 Mutation，所以一次復原就能全部回來（[sheets-note-resource.controller.ts#L116-L162](https://github.com/dream-num/univer/blob/c13b042d18c80c8348fbe52da445d68435febbca/packages/sheets-note/src/controllers/sheets-note-resource.controller.ts#L116-L162)）。
 
 **2-7 Web Worker 也靠 Mutation 同步**
 
@@ -279,7 +279,7 @@ console.log(ws.getRange('A1:D2').getValues());
 univerAPI.addEvent(univerAPI.Event.CommandExecuted, (e) => console.log(e.id, e.type));
 // 自訂公式函數（與「查價／成本計算」直接相關），另有 registerAsyncFunction 可做非同步查詢
 univerAPI.getFormula().registerFunction('MARGIN', (cost, price) => (price - cost) / price, '毛利率');
-// 工具列加按鈕
+// 工具列加按鈕（save() 見第七節）
 univerAPI.createMenu({ id: 'my-save', title: '存到雲端', tooltip: '立即存檔', action: () => save() })
   .appendTo('ribbon.start.others');
 ```
@@ -532,10 +532,10 @@ export async function openWorkbook(univerAPI) {
 
 1. `README.md` L143-L264：Plugin／Preset 兩種組裝法的全貌。
 2. `packages/core/src/univer.ts`：根注入器有哪 19 個服務，以及「第一本表才載入外掛」的機制。
-3. `packages/core/src/common/di.ts`：Univer 從 redi 轉出口了哪些 API。
+3. `packages/core/src/common/di.ts`：Univer 從 redi 重新匯出了哪些 API。
 4. `packages/core/src/services/plugin/plugin.service.ts`：註冊、拓樸排序、生命週期補跑。
 5. `packages/core/src/services/lifecycle/lifecycle.ts` ＋ `packages/ui/src/controllers/ui/ui-shared.controller.ts`：四個階段由誰、在何時推進。
-6. `packages/sheets-note/src/`（`plugin.ts` → `controllers/` → `commands/` → `facade/`）：**最小、最完整的外掛範本**，整個外掛不到 15 個檔案。
+6. `packages/sheets-note/src/`（`plugin.ts` → `controllers/` → `commands/` → `facade/`）：**最小、最完整的外掛範本**，非測試檔一共 15 個。
 7. `packages/core/src/services/command/command.service.ts`：指令型別、執行流程、旗標。
 8. `packages/sheets/src/commands/commands/set-range-values.command.ts` ＋ `mutations/set-range-values.mutation.ts`：典型的 Command → Mutation → 復原。
 9. `packages/core/src/services/undoredo/undoredo.service.ts`：復原堆疊。
@@ -557,7 +557,7 @@ export async function openWorkbook(univerAPI) {
 | Command／Mutation／Undo 思想 | `core/src/services/command/`、`undoredo/` | 概念上不需要任何依賴 | 中 | 你的庫存 App 把每次寫入改成 `{id, params}`，同時產生反向那筆。好處是一次拿到復原、操作日誌和 Firestore 同步 |
 | 稀疏矩陣 `ObjectMatrix` | `core/src/shared/object-matrix.ts`（821 行） | 只依賴 `Tools` 與型別 | 低 | 可直接 `import { ObjectMatrix } from '@univerjs/core'`；要獨立抄檔，得一併帶走 `tools.ts` 的相關函式 |
 | 依賴注入 | `@wendellhu/redi`（獨立 npm 套件） | 無 | 中 | 需要 TypeScript 參數裝飾器；純 JS 寫法未確認 |
-| 自訂公式函數查價 | `registerAsyncFunction`（f-formula.ts L232） | 公式外掛 | 低 | 例如寫一個 `=查價("A001")`，在函數裡讀 Firestore 的價格表，直接用在毛利或成本試算 |
+| 自訂公式函數查價 | `registerAsyncFunction`（f-formula.ts L232） | 公式外掛 | 低 | 例如寫一個 `=PRICE_OF("A001")`，在函數裡讀 Firestore 的價格表，直接用在毛利或成本試算（函數名能否用中文未確認，先用英文） |
 | 外掛資料存進 snapshot | `registerPluginResource`（以 sheets-note 為範本） | TS 外掛 | 中 | 把「供應商、批號」這類不屬於儲存格的資料，存成自己的 `SHEET_xxx_PLUGIN` resource |
 | Facade mixin 模式 | `f-univer.ts` L101-L121 | 無 | 低 | 想替自己的工具做「一個入口物件、各模組往上掛方法」時可以參考 |
 | 無介面公式引擎 | `engine-formula` ＋ `ISOMORPHIC.md` | core、rpc、decimal.js | 中高 | 在 Cloud Functions（Node）跑同一套公式，用來批次算成本；細節要另外驗證 |
