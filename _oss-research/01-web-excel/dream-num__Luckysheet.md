@@ -200,7 +200,7 @@ luckysheet.create({
 - **資安風險（重要）**：
   1. **公式用 `new Function` 執行**：公式字串被轉成 JS 程式碼再執行（[formula.js 第 6039 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/global/formula.js#L6030-L6045)）。雖然解析器會改寫字串，但只要有繞過的寫法就可能變成 XSS。若表格內容可能來自他人（例如客戶上傳、多人協作），風險不可忽視。是否有已知繞過手法，本次**未確認**。
   2. **貼上外部 HTML 直接塞進 DOM**：`$("#luckysheet-copy-content").html(txtdata)`（[handler.js 第 6067–6068 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/controllers/handler.js#L6064-L6070)），剪貼簿 HTML 裡若有 `<img onerror=…>` 會被執行。
-  3. **`loadUrl` 回應也用 `new Function` 解析**（[core.js 第 165–169 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/core.js#L163-L180)），伺服器回傳等於可執行程式碼。
+  3. **`loadUrl` 回應也用 `new Function` 解析**（[core.js 第 171 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/core.js#L163-L180)），伺服器回傳等於可執行程式碼。
   4. **示範程式被打包進正式版**：`functionImplementation.js` 第 20 行 import 了 `demoData/getTargetData.js`（約 371 KB 示範資料＋寫死的 Airtable Token），`core.js` 也 import `demoData/chat.js` 並每次 `create()` 都呼叫 `initChat()`（[core.js 第 185 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/core.js#L185)）。esbuild 從 `src/index.js` 打包時會一併包進去，所以 **dist 檔案很可能內含這組 Token 與示範資料**（依原始碼推斷，未建置驗證）。你自己 fork 時建議刪掉這兩個 import。
 - **遙測／隱私**：在 `src` 中 grep `hm.baidu`、`google-analytics`、`gtag`、`analytics`、`sentry` 皆無命中；**未發現遙測**。但圖表外掛會從 unpkg.com 載入第三方程式碼（供應鏈風險、離線不能用）。
 - **已知的坑**：
@@ -210,7 +210,7 @@ luckysheet.create({
   - `COMPOSESPLINES` 有描述檔但沒有實作（描述檔 375 vs 實作 374，`comm` 比對結果）。
   - `changLang()` API 只接受 `zh/en/es`（[api.js 第 6747 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/global/api.js#L6747-L6756)），但初始化時 `lang:'zh_tw'` 可以用（[locale.js](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/locale/locale.js) 有註冊 `zh_tw`）。
   - jQuery 2.2.4 本身已停止支援，有已知 CVE（屬一般知識，未在本 repo 驗證）。
-  - `flatpickr` 只在 `lang === 'zh'` 時切中文（[core.js 第 145 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/core.js#L143-L147)），繁中模式下日期選擇器可能是英文（未實測）。
+  - `flatpickr` 只在 `lang === 'zh'` 時切中文（[core.js 第 143 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/core.js#L143-L147)），繁中模式下日期選擇器可能是英文（未實測）。
 
 ---
 
@@ -292,7 +292,7 @@ luckysheet.create({
 
   - `celldata`：稀疏 `{r,c,v}`（只在初始化用）；載入後內部轉成二維 `data[r][c]`（[sheet.md 第 130–162 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/docs/guide/sheet.md#L130-L162)）。
   - 儲存格屬性縮寫：`v` 原值、`m` 顯示值、`f` 公式、`ct` 格式、`bg` 背景、`fc` 字色、`bl` 粗體、`fs` 字級、`ht/vt` 對齊、`mc` 合併（[cell.md](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/docs/guide/cell.md)）。
-- **存進 Firestore 的做法**：**不要存二維 `data`**——Firestore 不支援「陣列裡面再放陣列」。請用 `luckysheet.transToCellData(sheet.data)`（[api.js 第 6677 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/global/api.js#L6677-L6720)）轉成 `celldata` 再存；工作表大時每張 sheet 一份文件，或把 celldata 切塊（每塊 < 1 MiB），圖片改存 Storage。載回時把 `celldata` 放回 `options.data[i].celldata`、刪掉 `data` 即可。
+- **存進 Firestore 的做法**：**不要存二維 `data`**——Firestore 不支援「陣列裡面再放陣列」。請用 `luckysheet.getAllSheets()`（它會深複製每張工作表並自動補上 `celldata`，[api.js 第 5908–5921 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/global/api.js#L5908-L5921)）或 `luckysheet.transToCellData(sheet.data)`（[api.js 第 6677 行](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/global/api.js#L6677-L6720)）取得 `celldata`，**存之前把 `data` 欄位刪掉**再存；工作表大時每張 sheet 一份文件，或把 celldata 切塊（每塊 < 1 MiB），圖片改存 Storage。載回時把 `celldata` 放回 `options.data[i].celldata`、刪掉 `data` 即可。
 
 ### 手機／觸控、繁中
 - **手機／觸控：有（基本）**。`mobile.js` 232 行，處理觸控捲動與慣性（[mobile.js](https://github.com/dream-num/Luckysheet/blob/5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37/src/controllers/mobile.js#L8-L40)）；雙指縮放、觸控選取的完整度未確認，工具列在手機上很擠。

@@ -1,0 +1,55 @@
+{
+  "repo": "zenstory-ai/drama-skills",
+  "category": "03-video-script",
+  "commit": "c8f90a79032da8dd3deeec2da3abd2b063939fe5",
+  "scanned_at": "2026-11-04",
+  "stars": 3777,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、拆零件。",
+  "license_commercial_zh": "公司商用：可以，含改寫後放進自家或販售的產品，只需保留著作權聲明與 MIT 全文；生成影片另受 Seedance／MiniMax／OpenAI 服務條款與肖像權、改編權約束。",
+  "one_liner_zh": "裝進 Claude Code 的 12 個短劇 skill，從原著寫到分鏡、提示詞與剪輯成片",
+  "use_cases_zh": [
+    "用 Claude Code 寫 30–90 秒劇情型廣告或多集短劇的劇本與分鏡",
+    "只產生 Seedance／海螺（MiniMax H3）可直接貼上的影片提示詞，再到網頁版自己生成",
+    "用剪輯工具把商品圖＋運鏡＋配音＋逐字字幕＋價格卡片合成直式短片",
+    "拆出『先預覽、確認後才呼叫付費 API』的生產閘門給自己的 AI 工具用",
+    "拿它的提示詞方言與角色一致性（連續性鎖）寫法當自己 Claude skill 的參考",
+    "量測競品廣告的鏡長、切點與對白密度"
+  ],
+  "stack": ["Claude Code / Codex Agent Skills（Markdown）", "Python 3.9+ 標準函式庫（20 支腳本、20,461 行）", "ffmpeg / ffprobe", "Remotion 4 + React 19（選用字幕疊層）", "純 JavaScript 本機 Dashboard", "檔案系統（Markdown/JSON/JSONL），無資料庫"],
+  "run_requirements_zh": "npx skills add zenstory-ai/drama-skills -y -g 或 symlink 到 ~/.claude/skills；需 Python 3.9+，剪輯要 ffmpeg；不需 GPU。寫作用 Claude Code 本身。生成媒體才需 API Key：ARK_API_KEY（Seedance，預設火山方舟北京區）、MINIMAX_API_KEY（H3 影片／語音／音樂）、OPENAI_API_KEY（GPT Image 2）。README 自述 68 秒樣片影片生成約 40 元人民幣，各模型單價未確認。",
+  "key_features_zh": [
+    "12 個 skill：原著分析、故事開發、劇本、資產、圖片提示詞、分鏡、影片提示詞、生產、剪輯、對標拆解、審查、總路由",
+    "五份 Markdown 創作文件＋交叉引用檢查器（creator_markdown_check.py）",
+    "Seedance 2.0/2.5、MiniMax H3、Wan 3.0 影片提示詞方言",
+    "生產閘門：job 指紋＋一次性確認碼＋任務 ID 落盤＋collect/audit 防重複扣款",
+    "內建 5 個 stdlib adapter：Seedance、GPT Image 2、MiniMax H3 影片、MiniMax 語音、MiniMax 音樂",
+    "ffmpeg 剪輯：入出點、靜幀運鏡、自動接色、音效、逐字字幕、兩遍 loudnorm",
+    "Remotion 疊層：系統面板、任務面板、價格卡片、角標、倒數",
+    "只綁 localhost 的本機創作台 Dashboard"
+  ],
+  "reusable_parts": [
+    {"name": "生產確認閘門", "path": "skills/short-drama-produce/scripts/production_tool.py", "difficulty": "中", "note_zh": "去掉 creator-first Markdown 比對段（約 L787–L1011），保留指紋、確認碼、輸入快照、任務 ID 落盤，即可通用於任何付費 AI API 呼叫前確認。"},
+    {"name": "多供應商 adapter", "path": "skills/short-drama-produce/scripts/provider_adapters.py", "difficulty": "低", "note_zh": "純標準庫 CLI，job JSON 從 stdin 進；可直接呼叫 Seedance／MiniMax／GPT Image 2，本機參考圖自動轉 data URI。"},
+    {"name": "剪輯單→成片渲染器", "path": "skills/short-drama-edit/scripts/edit_tool.py", "difficulty": "中", "note_zh": "用靜幀段＋運鏡＋配音＋字幕＋卡片做商品短片；需把字型 Noto Sans CJK SC 改成 TC。"},
+    {"name": "Remotion 面板元件", "path": "skills/short-drama-edit/assets/remotion/src/screen/", "difficulty": "低", "note_zh": "卡片、系統面板、任務面板、角標、倒數元件，可搬進任何 Remotion 專案做價格卡／促銷倒數。"},
+    {"name": "兩遍 loudnorm", "path": "skills/short-drama-edit/scripts/edit_tool.py", "difficulty": "低", "note_zh": "_loudnorm_filter（L2120–L2147）約 30 行，抄進任何 ffmpeg 流程統一音量。"},
+    {"name": "影片提示詞方言庫", "path": "skills/short-drama-video-prompts/references/", "difficulty": "低", "note_zh": "seedance-2.0/2.5、minimax-h3、wan-3.0 方言 Markdown 直接放進自己的 Claude skill。"},
+    {"name": "對標劇測量工具", "path": "skills/short-drama-breakdown/scripts/breakdown_tool.py", "difficulty": "低", "note_zh": "量競品廣告鏡長、切點、對白密度，做節奏分析。"}
+  ],
+  "ai_integration_zh": "原生 Claude Code skill（SKILL.md），寫作用 Claude 本身、不呼叫 Anthropic API、無 MCP；Codex 另有 agents/openai.yaml。生產階段用 Seedance、MiniMax H3／Speech／music-3.0、GPT Image 2；Wan 3.0 只有提示詞方言。adapter 走 argv＋JSON stdin/stdout 協定，可自行接其他模型。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-07 建立，已出 25 個正式版本（目前 0.10.2，2026-11-03），32 個測試檔、757 個 test 函式，CI 跑 Python 3.9/3.10/3.14、Chromium 與 Windows 回歸，有 59 份設計決策紀錄。",
+  "risks_zh": [
+    "字幕字型固定簡體（Noto Sans CJK SC），繁中字形為大陸規範，需自行改 TC",
+    "文件、目錄名、錯誤訊息全為簡體中文，無繁中／台灣口音專門指引",
+    "Seedance 預設端點為火山方舟北京區，台灣開通與付款需自行確認",
+    "語音只有 MiniMax 預置音色，不做聲音複製；配樂混音需外部工具",
+    "流程嚴謹但耗 Claude context 與時間，不是一鍵出片",
+    "生成內容的改編權、肖像權、平台 AI 標示規定需自行處理"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要用 Claude Code 做短劇或劇情廣告就直接裝；做商品影片則拆它的剪輯器與生產閘門，記得換繁中字型。",
+  "keywords": ["drama-skills", "AI 短劇", "漫劇", "劇情廣告", "分鏡", "影片提示詞", "角色一致性", "連續性鎖", "Claude Code skill", "Agent Skills", "Seedance", "MiniMax H3", "Wan 3.0", "GPT Image 2", "TTS", "ffmpeg", "Remotion", "字幕", "小說改編", "short drama", "micro-drama", "storyboard", "video prompt", "MIT"],
+  "pack_path": "_oss-research/03-video-script/zenstory-ai__drama-skills.md"
+}

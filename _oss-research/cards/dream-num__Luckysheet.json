@@ -1,0 +1,59 @@
+{
+  "repo": "dream-num/Luckysheet",
+  "category": "01-web-excel",
+  "commit": "5b3fe58f5ad2aaa6a3cef15c6d567f5e10ea1f37",
+  "scanned_at": "2026-11-04",
+  "stars": 16630,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、複製、拿片段放進自己的倉儲 App。",
+  "license_commercial_zh": "公司商用：可閉源商用，只需保留 MIT 著作權聲明；打包的 jQuery、lodash、內嵌 SheetJS SSF（Apache-2.0）等第三方授權也要一併附上。沒有付費版，但 xlsx 匯出、列印等官方導向 Univer。",
+  "one_liner_zh": "已停止維護、純 JS 可嵌入的類 Excel 網頁試算表（Univer 前身）",
+  "use_cases_zh": [
+    "用 CDN 兩支 JS 直接把類 Excel 試算表嵌進現有的純 JavaScript 倉儲網頁",
+    "做進貨成本、定價、毛利、廣告 ROAS 的網頁試算表給自己或員工用",
+    "用 hook.updated＋getAllSheets() 把 celldata 存進 Firebase Firestore",
+    "用內建 REMOTE 公式＋remoteFunction 經自家後端呼叫 Claude，在儲存格產生商品文案",
+    "當作自己寫試算表的教材：Canvas 虛擬捲動、公式解析與依賴圖重算、Excel 貼上解析"
+  ],
+  "stack": ["JavaScript (ES Module)", "jQuery 2.2.4", "Canvas 2D", "esbuild + gulp", "dayjs", "numeral", "pako", "flatpickr", "SheetJS SSF（內嵌）", "圖表外掛：Vue 2 + ECharts 4（unpkg CDN 動態載入）", "選用：WebSocket 後端（Java LuckysheetServer）"],
+  "run_requirements_zh": "純前端靜態檔即可（CDN 或 Firebase Hosting），不需後端、資料庫、GPU 或任何 API Key，費用 0 元。要載入/儲存/協作才需自建伺服器（loadUrl、updateUrl WebSocket）；xlsx 匯出需自備伺服器；接 Claude 則依 API 用量計費。dist 套件實際大小未確認（未建置）。",
+  "key_features_zh": [
+    "Canvas 繪製＋只畫可視範圍的虛擬捲動",
+    "自寫公式引擎：375 個函數定義、374 個有實作（自行 grep 計數），含跨工作表參照、動態陣列、calcChain 依賴圖重算",
+    "Excel 數字格式（內嵌 SSF）、條件格式（資料橫條、色階、圖示集、前 10 名、重複值、公式）",
+    "合併儲存格、凍結窗格、篩選、排序、資料驗證下拉選單、拖拉填滿、復原/重做",
+    "可從 Excel／Google 試算表貼上（解析 HTML 表格樣式、框線、合併）",
+    "樞紐分析、走勢圖、圖片、註解、工作表保護",
+    "109 個 API 函數、37 種實際被呼叫的 hook、customFunctions 與 REMOTE 非同步公式",
+    "繁體中文介面 lang: 'zh_tw'；基本觸控捲動"
+  ],
+  "reusable_parts": [
+    {"name": "整套 CDN 嵌入", "path": "docs/guide/README.md", "difficulty": "低", "note_zh": "載入 plugin.js＋luckysheet.umd.js，luckysheet.create({container}) 即可；用 hook.updated 存 Firestore。"},
+    {"name": "REMOTE 非同步公式模式", "path": "src/function/functionImplementation.js", "difficulty": "低", "note_zh": "第 27885 行起：公式先回 Loading…，callback 回填並重算；可做 =AI 文案、=查價。"},
+    {"name": "虛擬捲動：累積列高＋二分搜尋", "path": "src/controllers/sheetSearch.js", "difficulty": "低", "note_zh": "搭配 src/global/rhchInit.js；用在自家大清單的可視列計算。"},
+    {"name": "Excel 數字格式引擎 SSF", "path": "src/global/format.js", "difficulty": "低", "note_zh": "是 SheetJS SSF 0.11.2 內嵌版，建議直接改用 npm ssf 套件。"},
+    {"name": "外部 HTML 表格貼上解析", "path": "src/controllers/handler.js", "difficulty": "中", "note_zh": "第 6064–6330 行讀 td 樣式/框線/rowspan；改寫成獨立函數並改用 DOMParser 避免 XSS。"},
+    {"name": "協作操作訊息格式", "path": "src/controllers/server.js", "difficulty": "中", "note_zh": "saveParam 的 {t,i,v,r,c} 精簡操作格式，可改寫成 Firestore 子集合＋onSnapshot；無衝突解決。"},
+    {"name": "函數演算法參考庫", "path": "src/function/functionImplementation.js", "difficulty": "高", "note_zh": "依賴大量全域狀態，不宜整包搬；挑 PMT、NETWORKDAYS、DATEDIF 等演算法讓 Claude 改寫成純函數。"},
+    {"name": "繁中語系字串", "path": "src/locale/zh_tw.js", "difficulty": "低", "note_zh": "7022 行繁中 UI 與函數說明，可當翻譯參考。"}
+  ],
+  "ai_integration_zh": "沒有真正的 AI：ASK_AI 只是對寫死示範資料做本地統計的假 AI，GET_AIRTABLE_DATA 用原始碼內寫死的 Airtable Token；無模型、無 prompt、無 MCP/Skills。但內建 REMOTE 公式＋remoteFunction 設定（無文件）可很容易經自家後端接 Claude。",
+  "claude_support": "可接",
+  "maintenance_zh": "官方宣布停止維護、改推 Univer；最後 push 2025-08-19 只是文件連結修改，CHANGELOG 停在 v2.1.13（2021-01）；repo 無任何測試檔。",
+  "risks_zh": [
+    "已停止維護，bug 與資安問題不會再修",
+    "公式轉成 JS 字串後以 new Function 執行；loadUrl 回應也用 new Function 解析，有 XSS／程式碼注入疑慮",
+    "貼上外部 HTML 直接 .html() 塞進 DOM，剪貼簿惡意 HTML 可能執行",
+    "核心 import 了 demoData（約 371 KB 示範資料＋寫死的 Airtable Token），推斷會被打包進正式 dist",
+    "資料存成完整二維陣列並大量深複製，10 萬列以上效能未確認、推測偏弱",
+    "全域狀態，一頁只能放一個試算表實例",
+    "開源版沒有 xlsx 匯入/匯出（匯入需 Luckyexcel、匯出需自備伺服器），列印為空檔",
+    "圖表外掛只有壓縮檔，且執行時從 unpkg 載入 Vue2/ECharts",
+    "文件列約 60 個 hook，原始碼實際只呼叫 37 種；缺 XLOOKUP、IFS、SWITCH、TEXTJOIN、LET、LAMBDA",
+    "協作非 OT/CRDT，無衝突合併"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "純 JS 嵌入門檻最低、適合個人快速做成本試算表與學原理；正式產品請改用 Univer，Luckysheet 只拆想法與小模組。",
+  "keywords": ["Luckysheet", "Univer", "網頁版 Excel", "線上試算表", "online spreadsheet", "Canvas", "jQuery", "vanilla JS 嵌入", "公式引擎", "formula engine", "calcChain", "celldata", "條件格式", "資料驗證", "樞紐分析", "pivot table", "Excel 貼上", "REMOTE 公式", "customFunctions", "hook", "Firestore", "WebSocket 協作", "Luckyexcel", "MIT", "停止維護"],
+  "pack_path": "_oss-research/01-web-excel/dream-num__Luckysheet.md"
+}
