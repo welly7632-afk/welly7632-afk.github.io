@@ -38,9 +38,7 @@ cd "$ROOT" 2>/dev/null || { echo "cannot cd to $ROOT" >&2; exit 2; }
 HAVE_GIT=0
 git rev-parse --git-dir >/dev/null 2>&1 && HAVE_GIT=1
 
-NFIND=0
-emit() { # code severity location message
-  NFIND=$((NFIND + 1))
+emit() { # code severity location message（有些呼叫在子 shell 裡，所以不在這裡計數；數量由呼叫端數輸出行）
   printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"
 }
 info() { printf '# %s\n' "$*"; }
@@ -76,7 +74,7 @@ is_none() { case "$1" in ""|none|None|NONE|-|null) return 0 ;; esac; return 1; }
 
 if [ ! -f AGENTS.md ]; then
   emit H0 HIGH "AGENTS.md" "找不到 AGENTS.md：基礎架構還沒安裝，後續檢查全部略過"
-  info "mech-check: findings=$NFIND (aborted)"
+  info "mech-check: aborted（沒有 AGENTS.md）"
   exit 0
 fi
 
@@ -183,8 +181,6 @@ awk -F'\t' '
       }
     }
   }' <<< "$DOCTAB" | while IFS=$'\t' read -r c s l m; do emit "$c" "$s" "$l" "$m"; done
-# 上面在子 shell 發出，計數另外補：
-NFIND=$((NFIND + 0))
 
 # ---------- C4：現行文件仍引用已取代的文件 ----------
 SUPERSEDED=$(awk -F'\t' '$3 == "superseded" { print $1 "\t" $2 }' <<< "$DOCTAB")
@@ -194,8 +190,12 @@ if [ -n "$SUPERSEDED" ]; then
     while IFS= read -r af; do
       [ -z "$af" ] && continue
       [ "$af" = "$sf" ] && continue
-      hit=$(body_of "$af" | grep -n -F -e "$sf" ${sid:+-e "$sid"} | head -n 1)
-      [ -n "$hit" ] && emit C4 MEDIUM "$af:${hit%%:*}" "現行文件仍引用已取代的 $sf（$sid），可能照舊版做事"
+      hit=$(awk -v a="$sf" -v b="$sid" '
+        { l = $0; sub(/\r$/, "", l) }
+        FNR == 1 && l == "---" { inf = 1; next }
+        inf { if (l == "---") inf = 0; next }
+        index(l, a) || (b != "" && index(l, b)) { print FNR; exit }' "$af")
+      [ -n "$hit" ] && emit C4 MEDIUM "$af:$hit" "現行文件仍引用已取代的 $sf（$sid），可能照舊版做事"
     done <<< "$ACTIVE_SCAN"
   done <<< "$SUPERSEDED"
 fi
@@ -208,6 +208,7 @@ if [ "$ln" -gt 200 ]; then emit H3 MEDIUM "AGENTS.md" "共 $ln 行，太長（�
 elif [ "$ln" -gt 150 ]; then emit H3 LOW "AGENTS.md" "共 $ln 行，超過建議的 150 行"; fi
 while IFS= read -r f; do
   [ -z "$f" ] && continue
+  case "$f" in docs/ai/TASKS.md|docs/ai/handoff.md|docs/ai/INDEX.md|docs/ai/decisions/*) continue ;; esac
   c=$(body_of "$f" | grep -c '<填寫')
   if [ "$c" -gt 0 ]; then
     sev=LOW; case "$f" in AGENTS.md|CLAUDE.md) sev=MEDIUM ;; esac
@@ -418,7 +419,7 @@ if [ "$HAVE_GIT" = 1 ]; then
       [ "$gap" -ge 2 ] && emit M3 MEDIUM "$HAND" "最新 commit 是 $lastc，但最新交接紀錄是 $lasth（落後 $gap 天）：有人做了事沒交接"
     fi
   fi
-  hits=$(git grep -n -I -E 'BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY|"private_key"[[:space:]]*:' -- . ':!_oss-research' ':!*.md' 2>/dev/null | cut -d: -f1,2 | head -n 5)
+  hits=$(git grep -n -I -E 'BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY|"private_key"[[:space:]]*:' -- . ':(exclude)_oss-research' ':(exclude).agents/skills' ':(exclude).claude/skills' 2>/dev/null | cut -d: -f1,2 | head -n 5)
   if [ -n "$hits" ]; then
     while IFS= read -r h; do emit C12 CRITICAL "$h" "疑似私密金鑰進了 git（不顯示內容；請立即由老闆處理並更換金鑰）"; done <<< "$hits"
   fi
@@ -435,6 +436,7 @@ fi
 # ---------- 引用是否存在（R1） ----------
 is_placeholder() {
   case "$1" in
+    GEMINI.md|.cursorrules|.github/copilot-instructions.md|AGENTS.override.md) return 0 ;;
     *'<'*|*'>'*|*'*'*|*'{'*|*'$'*|*YYYY*|*MM-DD*|*NNNN*|*xxx*|*XXX*|http*|mailto:*|'#'*|/*|'~'*|'') return 0 ;;
   esac
   return 1
@@ -486,9 +488,9 @@ else
 fi
 
 # ---------- 禁用舊詞（C11） ----------
-banned=$(grep -E '^- 已淘汰' AGENTS.md | head -n 1 | sed -E 's/^[^：:]*[：:]//')
+banned=$(grep -E '^- 已淘汰' AGENTS.md | head -n 1 | awk '{ p = index($0, "："); if (p) print substr($0, p + length("：")) }')
 if [ -n "$banned" ] && ! printf '%s' "$banned" | grep -q '<填寫'; then
-  printf '%s' "$banned" | awk '{ n = split($0, a, /[、,，]/); for (i = 1; i <= n; i++) { t = a[i]; p = index(t, "（"); if (p) t = substr(t, 1, p - 1); gsub(/^[ \t]+|[ \t。]+$/, "", t); if (length(t) >= 4) print t } }' |
+  printf '%s' "$banned" | awk '{ gsub(/、/, "\n"); gsub(/，/, "\n"); gsub(/,/, "\n"); n = split($0, a, "\n"); for (i = 1; i <= n; i++) { t = a[i]; p = index(t, "（"); if (p) t = substr(t, 1, p - 1); gsub(/^[ \t]+|[ \t。]+$/, "", t); if (length(t) >= 6) print t } }' |
   while IFS= read -r term; do
     [ -z "$term" ] && continue
     grep -rIn -F --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=reports --exclude-dir=archive --exclude-dir=decisions --exclude=handoff.md --exclude=AGENTS.md -e "$term" . 2>/dev/null | head -n 3 | while IFS= read -r hit; do
@@ -498,5 +500,5 @@ if [ -n "$banned" ] && ! printf '%s' "$banned" | grep -q '<填寫'; then
 fi
 
 info "mech-check: today=$TODAY docs=$NDOCS tasks=$NTASKS handoff_entries=$NHAND git=$HAVE_GIT"
-info "mech-check: 完成（上面每一行是一個發現；子流程的發現數不含在本行）"
+info "mech-check: 完成。發現數 = 本輸出中不以 # 開頭的行數"
 exit 0
