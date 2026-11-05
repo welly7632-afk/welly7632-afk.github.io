@@ -1,0 +1,157 @@
+{
+  "repo": "MrLesk/Backlog.md",
+  "category": "04-agent-rules-skills",
+  "commit": "3a296c0f6f949b31e458b849b9617702c56c1023",
+  "scanned_at": "2026-11-04",
+  "stars": 7278,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、照抄規則檔與程式碼。",
+  "license_commercial_zh": "公司商用：可以，含併入閉源商業產品；只需保留原著作權聲明與 MIT 授權全文。無付費版或閉源功能；推薦的 Groma.md 是另一產品，授權未確認。",
+  "one_liner_zh": "Markdown 任務看板，讓人與 Claude、Codex 共用交接紀錄",
+  "use_cases_zh": [
+    "替倉儲 App 建 backlog/，讓 Claude 與 Codex 透過同一組 backlog 指令領任務、寫計畫、勾驗收條件、寫結案摘要",
+    "學它的共用規則架構：AGENTS.md 為主、CLAUDE.md 做符號連結、MANIFESTO.md 當憲法、流程由工具即時輸出避免新舊版本分歧",
+    "把任務檔（描述／驗收條件／完成定義／計畫／筆記／留言／摘要）當成 AI 之間的交接單，防止漏做",
+    "用 backlog doctor 與 --json 輸出寫每日巡檢腳本，抓重複 ID、循環依賴、卡住或未指派的任務",
+    "用 onStatusChange 狀態回呼，在任務改成 In Progress 時自動叫 Claude 開工、改成 Done 時叫 Codex 審查",
+    "以 --no-git 模式管理廣告素材、影片腳本等非程式待辦，並用本機網頁看板拖拉"
+  ],
+  "stack": [
+    "TypeScript",
+    "Bun",
+    "commander",
+    "React 19",
+    "Tailwind CSS 4",
+    "neo-neo-bblessed (TUI)",
+    "fuse.js",
+    "proper-lockfile",
+    "gray-matter",
+    "@modelcontextprotocol/sdk",
+    "Markdown 檔案（無資料庫）"
+  ],
+  "run_requirements_zh": "npm i -g backlog.md（或 brew／bun／nix）後在專案跑 backlog init；裝的是各平台編譯好的執行檔。不需 GPU、不需任何 API Key、工具免費；費用只有你原本的 Claude Code／Codex 訂閱。網頁看板 backlog browser 只聽 127.0.0.1:6420。",
+  "key_features_zh": [
+    "每個任務一個 Markdown 檔，區段以 BEGIN/END 標記包住，CLI 安全改寫",
+    "backlog init／agents --update-instructions 把同一段標記區塊寫進 AGENTS.md、CLAUDE.md、GEMINI.md、Copilot 說明檔，保留原有內容",
+    "規則本體不放在說明檔，AI 每次跑 backlog instructions overview 取得最新流程",
+    "四份流程指南：overview、task-creation（先搜尋防重複）、task-execution（開工前寫計畫、範圍外要問）、task-finalization（逐條證據才勾驗收）",
+    "專案層級 Definition of Done 自動加到每個新任務",
+    "任務 ID 配發鎖放在 git common dir，多個 worktree 的 AI 同時建任務不撞號；單任務編輯鎖立即失敗不覆蓋",
+    "backlog doctor 檢查重複 ID、自我／循環依賴、封存位置，--fix 先預覽再修",
+    "跨分支讀同一任務並取最進度狀態",
+    "決策紀錄支援 --superseded-by，任務／文件／決策可封存與還原",
+    "CLI 與 MCP（24 個工具）兩種 AI 介面，--json 輸出可給腳本",
+    "Claude Code 子代理 project-manager-backlog 可一鍵安裝",
+    "終端機看板與本機網頁看板"
+  ],
+  "reusable_parts": [
+    {
+      "name": "共用規則檔 AGENTS.md 結構",
+      "path": "AGENTS.md",
+      "difficulty": "低",
+      "note_zh": "借用『先讀憲法→事實優先序→範圍規則→驗證指令→審查與完成→git 規則』段落，把 bun 指令換成你的 Firebase 指令"
+    },
+    {
+      "name": "CLAUDE.md 符號連結到 AGENTS.md",
+      "path": "CLAUDE.md",
+      "difficulty": "低",
+      "note_zh": "ln -s AGENTS.md CLAUDE.md，Claude 與 Codex 永遠讀同一份規則"
+    },
+    {
+      "name": "專案憲法範本",
+      "path": "MANIFESTO.md",
+      "difficulty": "低",
+      "note_zh": "照章節寫自己的憲法（單一事實來源、設計原則、邊界、風險），規則檔第一行要求 AI 先讀"
+    },
+    {
+      "name": "標記區塊寫入器",
+      "path": "src/agent-instructions.ts",
+      "difficulty": "低",
+      "note_zh": "純字串處理，把 Bun.file 換成 Node fs，就能寫自己的 sync-rules.js 把共用規則同步到多個 AI 說明檔"
+    },
+    {
+      "name": "四段式流程指南",
+      "path": "src/guidelines/cli-instructions/",
+      "difficulty": "低",
+      "note_zh": "改寫成『拆任務』『開工』『結案』SKILL.md，給 Claude 與 Codex 共用"
+    },
+    {
+      "name": "Claude PM 子代理",
+      "path": ".claude/agents/project-manager-backlog.md",
+      "difficulty": "低",
+      "note_zh": "直接放進 .claude/agents/，description 的 example 寫法可參考"
+    },
+    {
+      "name": "任務交接單格式",
+      "path": "backlog/tasks/back-798 - Correct-most-progressed-status-resolution-across-active-branches.md",
+      "difficulty": "低",
+      "note_zh": "不裝工具也可照此 Markdown 格式記錄批准、計畫、驗證證據、審查結果"
+    },
+    {
+      "name": "重複偵測純函式",
+      "path": "src/utils/duplicate-detection.ts",
+      "difficulty": "低",
+      "note_zh": "改 key 為正規化標題或檔名，用來巡檢規則／文件重複"
+    },
+    {
+      "name": "ID 配發與編輯檔案鎖",
+      "path": "src/file-system/operations.ts",
+      "difficulty": "中",
+      "note_zh": "照『鎖放 git common dir、編輯鎖 retries:0』模式做多 AI 併發保護；依賴 proper-lockfile 與 git"
+    },
+    {
+      "name": "依賴就緒判斷",
+      "path": "src/utils/readiness.ts",
+      "difficulty": "中",
+      "note_zh": "巡檢時列出可開工／被卡住任務；ID 不明一律視為未解決"
+    },
+    {
+      "name": "狀態變更回呼",
+      "path": "src/utils/status-callback.ts",
+      "difficulty": "低",
+      "note_zh": "直接用 onStatusChange 設定自動派工；注意會以 sh -c 執行指令"
+    }
+  ],
+  "ai_integration_zh": "本身不呼叫任何 LLM。給 AI 的流程文字在 src/guidelines/（打包進執行檔），AGENTS.md／CLAUDE.md 只放短提醒要 AI 跑 backlog instructions overview。支援 CLI 文字／JSON 與 MCP（stdio，24 個工具、backlog://workflow/* 資源，官方定位為 legacy optional）。init 可自動對 Claude Code、Codex、Gemini CLI、Kiro 註冊 MCP，並可安裝 Claude 子代理 project-manager-backlog。目前沒有 SKILL.md（BACK-595 待辦中）。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最後 commit 2026-10-29、版本 1.55.3、任務編號到 BACK-798；330 個測試檔，CI 跑型別、Biome、三 OS 測試、TUI 互動測試、編譯檔冒煙測試；作者主要以 Codex／Claude 代理開發並親自審查。",
+  "risks_zh": [
+    "只能在 Bun 上跑，程式片段搬進 Node／瀏覽器需改寫檔案與子行程 API",
+    "src/cli.ts 6,252 行、src/core/backlog.ts 5,401 行，閱讀成本高",
+    "onStatusChange 以 sh -c 執行設定中的指令，clone 不可信專案時要先檢查設定；Windows 可用性未確認",
+    "規則區塊有版本標記但沒有程式比對，不會自動警告規則過期",
+    "重複偵測只到 ID 層，不偵測語意重複的任務或規則",
+    "自家 .github/copilot-instructions.md 仍指向舊版 agent-guidelines.md，示範了規則檔漂移",
+    "沒有內建排程巡檢、沒有角色／技能系統，需要自己補",
+    "完成前勾驗收是指南約束，未見程式強制"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合當你多 AI 協作的『任務與交接骨架』：直接裝來管倉儲 App 的任務，再照抄它的 AGENTS.md＋CLAUDE.md 符號連結＋MANIFESTO 架構，角色技能與每日巡檢需從其他專案補。",
+  "keywords": [
+    "Backlog.md",
+    "任務管理",
+    "看板",
+    "Kanban",
+    "Markdown 任務",
+    "AI 協作",
+    "多代理",
+    "Claude Code",
+    "Codex",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "共用規則",
+    "單一事實來源",
+    "MANIFESTO",
+    "驗收條件",
+    "Definition of Done",
+    "交接",
+    "子代理",
+    "MCP",
+    "backlog doctor",
+    "重複 ID",
+    "onStatusChange",
+    "巡檢",
+    "spec-driven development"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/MrLesk__Backlog.md.md"
+}

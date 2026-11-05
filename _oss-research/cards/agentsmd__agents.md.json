@@ -1,0 +1,51 @@
+{
+  "repo": "agentsmd/agents.md",
+  "category": "04-agent-rules-skills",
+  "commit": "d001185d792eb6402a58e4cbef1c228b309ec25d",
+  "scanned_at": "2026-11-04",
+  "stars": 25318,
+  "license": "MIT（程式碼）；依 Technical Charter，文件類內容採 CC BY 4.0",
+  "license_personal_zh": "個人使用：完全沒問題；自己寫 AGENTS.md 不涉及本 repo 授權，檔名慣例本身不受限制。",
+  "license_commercial_zh": "公司商用：在自家專案放 AGENTS.md 無任何限制；整段複製官網文字需依 CC BY 4.0 標註出處，複製網站程式碼保留 MIT 聲明；以「AGENTS.md」當商業品牌名需另看 LF Projects 商標政策（未確認）。無付費版。",
+  "one_liner_zh": "AGENTS.md 開放格式官網：讓多家 AI 讀同一份專案規則的檔名標準",
+  "use_cases_zh": [
+    "把 GPT/Codex 與 Claude 的共用規則收斂到根目錄唯一一份 AGENTS.md，Claude 用 CLAUDE.md 匯入",
+    "用巢狀 AGENTS.md 為 Firebase functions、庫存模組等子資料夾寫專屬規則（最近者優先）",
+    "照官方建議段落（概觀、指令、風格、測試、資安、PR、部署）建立規則骨架",
+    "把完成前要跑的檢查指令寫進去，讓 AI 自動執行並修到通過（防漏的最低成本做法）",
+    "借用本 repo 自己的 AGENTS.md「禁令＋理由＋替代做法」寫法"
+  ],
+  "stack": ["TypeScript", "Next.js 16 (Pages Router)", "React 19", "Tailwind CSS 4", "Vercel", "Markdown"],
+  "run_requirements_zh": "使用格式不需要安裝或執行任何東西，只要在專案放一個 Markdown 檔；網站本身是 Next.js，選填 GH_AUTH_TOKEN，無 GPU、無 AI API Key、費用 0 元。",
+  "key_features_zh": [
+    "單一檔名 AGENTS.md，無必填欄位，純 Markdown",
+    "巢狀檔案：離被編輯檔案最近的 AGENTS.md 優先，使用者對話指示凌駕一切",
+    "官方建議段落清單與兩份範例 AGENTS.md",
+    "官網列出 23 個相容工具（Codex、Cursor、Gemini CLI、Copilot、Aider、Jules、Devin 等），不含 Claude Code",
+    "Aider、Gemini CLI 的設定方式；用 symlink 遷移舊檔名",
+    "Linux Foundation／AAIF 託管的技術章程（治理角色、MIT＋CC BY 4.0）"
+  ],
+  "reusable_parts": [
+    {"name": "官方建議段落與巢狀規則", "path": "components/HowToUseSection.tsx", "difficulty": "低", "note_zh": "直接當自家 AGENTS.md 的章節骨架與優先順序說明。"},
+    {"name": "衝突優先順序與遷移 FAQ", "path": "components/FAQSection.tsx", "difficulty": "低", "note_zh": "抄進規則檔的「優先順序」段；symlink 招式可用來讓 CLAUDE.md 指向 AGENTS.md。"},
+    {"name": "完整範例 AGENTS.md", "path": "README.md", "difficulty": "低", "note_zh": "L10-L33 範例改成 Firebase 指令即可使用。"},
+    {"name": "禁令＋理由＋替代做法範本", "path": "AGENTS.md", "difficulty": "低", "note_zh": "用來寫「AI 不得部署正式環境」「改 firestore.rules 前先說明」等規則。"},
+    {"name": "相容工具清單", "path": "components/CompatibilitySection.tsx", "difficulty": "低", "note_zh": "23 筆工具與其設定文件網址，當支援度參考表。"},
+    {"name": "簡易 Markdown 上色＋複製按鈕", "path": "components/CodeExample.tsx", "difficulty": "低", "note_zh": "parseMarkdown 與 clipboard 按鈕可改寫成純 JS，做倉儲系統內的規則檢視頁。"}
+  ],
+  "ai_integration_zh": "本 repo 不呼叫任何模型、無 prompt、無 MCP、無 Skills；AGENTS.md 本身就是給 AI 的規則。Codex 原生讀取；官網全文搜尋 claude/anthropic 為 0 筆，Claude Code 需在 CLAUDE.md 寫 @AGENTS.md 匯入或用 symlink（非本 repo 內容）。",
+  "claude_support": "可接",
+  "maintenance_zh": "標準組織型專案，由 Linux Foundation 旗下 Agentic AI Foundation 託管；最後 commit 2026-09-10（改名章程 PDF）；網站改動不頻繁，無測試、無 CI、章程提到的 CONTRIBUTING 檔不存在。",
+  "risks_zh": [
+    "沒有規格書、版本號或 schema，各工具讀取細節（是否合併上層、長度上限）未說明",
+    "只說最近者優先，沒說子資料夾規則是覆蓋還是疊加",
+    "Claude Code 不在相容清單，需自行匯入",
+    "沒有角色、Skills、交接、巡讀、防重複、過期偵測，需搭配其他專案",
+    "鼓勵當活文件持續修改，但無任何過期管理機制，容易產生新舊衝突",
+    "官網掛 Vercel Analytics（僅影響瀏覽官網者）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "必用的地基：先把所有共用規則收斂成一份 AGENTS.md 並讓 CLAUDE.md 匯入，角色、技能與每日巡讀再用 skills、OpenSpec、docguard 等補上。",
+  "keywords": ["AGENTS.md", "給 AI 看的 README", "README for agents", "共用規則", "shared rules", "單一事實來源", "single source of truth", "巢狀規則", "nested AGENTS.md", "優先順序", "CLAUDE.md 匯入", "symlink", "Codex", "Claude Code", "Cursor", "Gemini CLI", "Aider", "Agentic AI Foundation", "Linux Foundation", "多 AI 協作", "每日巡讀", "交接紀錄", "living documentation"],
+  "pack_path": "_oss-research/04-agent-rules-skills/agentsmd__agents.md.md"
+}

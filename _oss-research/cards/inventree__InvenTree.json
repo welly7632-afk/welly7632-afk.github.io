@@ -1,0 +1,136 @@
+{
+  "repo": "inventree/InvenTree",
+  "category": "02-price-erp",
+  "commit": "ec5d6324f86d350cc516702e75d565a19aa20a5a",
+  "scanned_at": "2026-11-04",
+  "stars": 7813,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、可只取片段程式碼。",
+  "license_commercial_zh": "公司商用：可商用、可改成閉源，只需保留原著作權聲明與 MIT 授權全文；未見企業版功能鎖，第三方套件授權需另查。",
+  "one_liner_zh": "自架庫存採購系統，內建多供應商級距報價與多幣別成本引擎",
+  "use_cases_zh": [
+    "抄供應商品項＋數量級距報價的資料模型，搬進自己的 Firestore 倉儲系統",
+    "把 get_price()（訂購倍數、級距、換匯、固定費）翻成 JS 做進貨報價計算",
+    "參考 PartPricing 成本快取＋背景連鎖重算，做組合商品／禮盒成本",
+    "參考 CSV/XLSX 匯入精靈（欄位對應、逐列驗證）做大量匯入商品與進價",
+    "自架起來當進貨／庫存紀錄，透過 REST API 或事件外掛與 Firebase 同步",
+    "參考每日盤點快照做庫存價值走勢"
+  ],
+  "stack": [
+    "Python",
+    "Django",
+    "Django REST Framework",
+    "django-money",
+    "django-q2",
+    "PostgreSQL / MySQL / SQLite",
+    "Redis",
+    "React 19",
+    "TypeScript",
+    "Vite",
+    "Mantine UI",
+    "mantine-datatable",
+    "Docker Compose"
+  ],
+  "run_requirements_zh": "Docker Compose 起 postgres、redis、server、worker、caddy 五個服務；不需 GPU，小型 VPS 即可；不需付費 API Key，匯率預設用免費 frankfurter.app；無法部署在 Firebase Hosting，需另備 Python 主機。",
+  "key_features_zh": [
+    "品項多供應商（SupplierPart）＋數量級距報價（SupplierPriceBreak），含包裝數、訂購倍數、固定費",
+    "PartPricing 快取 BOM／採購歷史／供應商／內部／變體／銷售的 min-max 成本，價格變動自動背景重算並往上連鎖",
+    "多幣別 MoneyField＋可插拔匯率外掛，每日更新",
+    "採購單／銷售單／退貨單／調撥單，行折扣與額外費用行",
+    "庫存入庫、出庫、盤點、合併加權平均單價、每日盤點價值快照",
+    "低庫存寄信通知",
+    "CSV/XLSX/TSV 匯入精靈與任意列表匯出",
+    "26 種外掛 mixin（供應商查價、匯率、事件、排程、UI 面板等）與完整 REST API"
+  ],
+  "reusable_parts": [
+    {
+      "name": "數量級距算價 get_price()",
+      "path": "src/backend/InvenTree/common/currency.py",
+      "difficulty": "低",
+      "note_zh": "約 80 行純邏輯，翻成 JS 函式即可放進 Firebase 倉儲的報價畫面"
+    },
+    {
+      "name": "SupplierPart／SupplierPriceBreak 資料模型",
+      "path": "src/backend/InvenTree/company/models.py",
+      "difficulty": "低",
+      "note_zh": "照欄位設計 Firestore 子集合 products/supplierParts/priceBreaks"
+    },
+    {
+      "name": "PartPricing 成本彙總規則",
+      "path": "src/backend/InvenTree/pricing/models.py",
+      "difficulty": "中",
+      "note_zh": "改寫成 Cloud Functions 觸發器，價格變動時重算 min/max 寫回商品文件"
+    },
+    {
+      "name": "訂單總價（折扣＋額外費用＋換匯）",
+      "path": "src/backend/InvenTree/order/models.py",
+      "difficulty": "低",
+      "note_zh": "TotalPriceMixin 翻成 JS，再自行補上運費／關稅分攤"
+    },
+    {
+      "name": "盤點估值快照",
+      "path": "src/backend/InvenTree/part/stocktake.py",
+      "difficulty": "中",
+      "note_zh": "用 Firebase 排程函式每日寫入庫存量與價值"
+    },
+    {
+      "name": "匯入精靈流程",
+      "path": "src/backend/InvenTree/importer/models.py",
+      "difficulty": "高",
+      "note_zh": "與 Django 綁很深，只抄流程；前端可搭配網頁試算表元件做格內修正"
+    },
+    {
+      "name": "匯率外掛範本",
+      "path": "src/backend/InvenTree/plugin/builtin/integration/currency_exchange.py",
+      "difficulty": "低",
+      "note_zh": "回傳 {幣別: 匯率} 的簡單介面，可改抓台銀匯率"
+    },
+    {
+      "name": "供應商查價外掛介面",
+      "path": "src/backend/InvenTree/plugin/base/supplier/mixins.py",
+      "difficulty": "中",
+      "note_zh": "借鏡 search／import／get_pricing_data 介面，寫 1688／批發商查價轉接器"
+    }
+  ],
+  "ai_integration_zh": "完全沒有 AI 功能（全庫搜尋 anthropic/openai/llm/mcp 0 筆），無 prompt、無 MCP、無 Skills；可透過 REST API（Token）自寫 MCP server，或寫 EventMixin／ScheduleMixin 外掛呼叫 Claude API。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：2017 年起至今，最後 commit 2026-11-04；後端 93 個測試檔約 2,088 個測試函式、前端 27 個 Playwright 測試，11 個 CI workflow。",
+  "risks_zh": [
+    "偏電子零件／製造業領域，無蝦皮、momo 等電商通路串接",
+    "本位幣預設 USD、預設清單無 TWD；預設匯率來源是否支援 TWD 未確認",
+    "CSV 匯入只支援 UTF-8／cp1252，Big5 檔會失敗",
+    "成本為 min/max 範圍，無 FIFO／移動平均成本法、無到岸成本分攤、無毛利定價功能",
+    "無台灣稅制與電子發票，繁中翻譯約 83–86%",
+    "預設每 7 天連 api.github.com 檢查更新；Sentry 預設關閉但內建官方 DSN",
+    "架構龐大（order/models.py 4,502 行），整包客製門檻高，需另備 Python 伺服器"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不建議取代你的 Firebase 倉儲，但其供應商級距報價、多幣別與成本快取設計非常值得抄成 JS 模組。",
+  "keywords": [
+    "InvenTree",
+    "庫存管理",
+    "進銷存",
+    "ERP",
+    "採購單",
+    "供應商報價",
+    "價格級距",
+    "比價",
+    "成本計算",
+    "BOM 成本",
+    "多幣別",
+    "匯率",
+    "盤點",
+    "庫存估值",
+    "低庫存通知",
+    "Excel 匯入",
+    "REST API",
+    "外掛",
+    "Django",
+    "React",
+    "SupplierPriceBreak",
+    "PartPricing",
+    "get_price",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/02-price-erp/inventree__InvenTree.md"
+}

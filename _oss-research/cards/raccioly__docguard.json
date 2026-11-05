@@ -1,0 +1,59 @@
+{
+  "repo": "raccioly/docguard",
+  "category": "04-agent-rules-skills",
+  "commit": "24f3998a0f9ed91fc27e04e9d2667edf9f7449e9",
+  "scanned_at": "2026-11-04",
+  "stars": 32,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、可拆程式碼，不需付費也不需帳號。",
+  "license_commercial_zh": "公司商用：可以，包括拆進閉源工具；只需保留原著作權聲明與 MIT 授權全文，無擔保。沒有付費版或閉源功能。",
+  "one_liner_zh": "本機 CLI，巡檢 AI 規則檔與文件的重複、矛盾、過期與漂移",
+  "use_cases_zh": [
+    "以 AGENTS.md 為唯一規則來源，用 agents --sync 產生 CLAUDE.md 等複本，agents --check 在 CI 抓出過期複本",
+    "每日巡讀：verify --instructions 找出 AGENTS.md 與 CLAUDE.md 的重複規則、直接相反規則、指向不存在檔案的規則，並把主題相近的規則配對交給 Claude/Codex 判斷",
+    "用 rules --for <路徑> 查 Codex、Claude Code、Cursor、Copilot 進到某資料夾時實際載入哪些規則與位元組數",
+    "在文件頂端加 Status 與 last-reviewed 日期，由 Freshness 驗證器提醒哪些規則／文件該複查；retire 把舊規格移出 AI 的 context",
+    "照抄 .jules/RULES.md 的排程 AI 守則（GO/STOP preflight、無發現不開 PR、不准發問）建立自己的每日巡讀流程",
+    "用 MCP（claude mcp add docguard）讓 Claude Code 直接呼叫 guard、diagnose 等唯讀工具"
+  ],
+  "stack": ["JavaScript (ES Modules)", "Node.js >=18", "@babel/parser（唯一依賴）", "Git", "MCP（stdio／HTTP）", "GitHub Actions", "GitHub Spec Kit（選用）"],
+  "run_requirements_zh": "npx docguard-cli <指令> 或 npm i -g docguard-cli 即可，需 Node.js 18 以上與 Git 歷史；不需 GPU、不需任何 API Key，工具本身零費用、不呼叫 LLM。需要判斷的部分交給你既有的 Claude Code／Codex（費用為你原本的訂閱或 token）。另有 pip、Homebrew、Docker（MCP 伺服器）、pre-commit、GitHub Action 安裝方式。",
+  "key_features_zh": [
+    "guard：36 個驗證器（以 cli/validators/*.mjs 檔案數計），檢查文件與程式碼漂移、環境變數、API 路由、版本號、數字宣稱等",
+    "verify --instructions：AGENTS.md／CLAUDE.md 規則重複、never/always 矛盾、死連結、過期指令＋交 AI 判斷的配對任務",
+    "agents --sync／--check：AGENTS.md 雜湊標記同步到 CLAUDE.md、Cursor、Copilot、Cline、Windsurf、Gemini",
+    "rules --for 與 Path-Scoped-Rules 驗證器：各家 AI 工具的規則載入模型、範圍 glob 失效、32 KiB 載入預算",
+    "Freshness：last-reviewed 標記、≥10 次 commit 或 30 天未複查提醒",
+    "文件生命週期與 retire：Status superseded/deprecated、退休紀錄 .docguard-archive.json",
+    "impact --prs：兩個開啟中 PR 同時影響同一份文件的合併風險",
+    "Claude Code PostToolUse 提醒 hook、12 個唯讀 MCP 工具、5 個 SKILL.md 技能",
+    "SARIF／JUnit／JSON 輸出，可做 CI 閘門與每日報告"
+  ],
+  "reusable_parts": [
+    {"name": "規則重複／矛盾／死連結偵測", "path": "cli/scanners/instruction-audit.mjs", "difficulty": "中", "note_zh": "抽出 extractInstructionRules、findDeterministicFindings、buildInstructionAuditTasks；需把 SIGNAL_RE 與 normalizeRule 改成支援中文，並擴大掃描範圍到子資料夾與 SKILL.md"},
+    {"name": "AGENTS.md → CLAUDE.md 雜湊同步與過期檢查", "path": "cli/commands/agents.mjs", "difficulty": "低", "note_zh": "約 40 行邏輯：sha256 前 16 碼寫入 HTML 註解標記，check 時比對；放進每日巡讀腳本"},
+    {"name": "各 AI 工具規則載入模型", "path": "cli/scanners/instruction-scopes.mjs", "difficulty": "中", "note_zh": "註解即對照表；程式可用來計算某路徑實際載入的規則檔與位元組"},
+    {"name": "last-reviewed 過期判斷", "path": "cli/validators/freshness.mjs", "difficulty": "低", "note_zh": "只取讀日期標記＋git 計算之後 commit 數的部分"},
+    {"name": "文件狀態解析", "path": "cli/scanners/lifecycle-status.mjs", "difficulty": "低", "note_zh": "16 行，巡讀時排除或警告 superseded 文件"},
+    {"name": "TF-IDF 相似度", "path": "cli/shared-ir.mjs", "difficulty": "低", "note_zh": "81 行零依賴；中文需先改成 2-gram 斷詞，用來偵測重複內容"},
+    {"name": "PR 間文件衝突", "path": "cli/commands/impact.mjs", "difficulty": "中", "note_zh": "computeDocConflicts 需 gh CLI；多 AI 各開分支時找出同時改同一份文件的 PR"},
+    {"name": "排程 AI 守則與 preflight", "path": ".jules/RULES.md", "difficulty": "低", "note_zh": "文件可直接改寫成 Codex/Claude 每日巡讀守則；preflight.mjs 的 GO/STOP 概念可借"},
+    {"name": "SKILL.md 範本", "path": "extensions/spec-kit-docguard/skills/docguard-guard/SKILL.md", "difficulty": "低", "note_zh": "frontmatter name/description/compatibility/metadata.version 寫法"}
+  ],
+  "ai_integration_zh": "工具本身不呼叫任何 LLM；確定性檢查自己做，需要判斷的部分輸出成任務或 prompt 交給 agent。原生支援 Claude Code（MCP 12 個唯讀工具、.claude/skills、PostToolUse hook、CLAUDE.md 產生）與 Codex（AGENTS.md 鏈、.agents/skills、32 KiB 預算），也支援 Cursor、Copilot、OpenHands 等。本 repo 自己同時裝了 Spec Kit 的 claude 與 codex 整合。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-03-13 建立，CHANGELOG 有 104 個版本標題，最新 0.46.0 於 2026-11-04 發布；297 個測試檔，CI 測 Node 18/20/22/24。主要為單一作者＋排程 AI 與 Dependabot，社群小（32 星），貢獻者數未確認。",
+  "risks_zh": [
+    "規則抽取只認英文情態詞，且正規化會刪掉所有非 a-z0-9 字元，中文規則會被忽略或誤判",
+    "verify --instructions 只看根目錄 AGENTS.md 與 CLAUDE.md，不做子資料夾與 SKILL.md 的重複／矛盾判斷",
+    "完整 CDD 方法論需要一整套 docs-canonical 文件，對單人小專案偏重",
+    "Firebase 只被辨識為整合項目，Firestore 資料模型與 Cloud Functions 路由不會被掃描",
+    "沒有內建每日排程，需自行在 GitHub Actions 加 schedule",
+    "retire 會刪除工作目錄檔案（靠 Git 保存），需先 --plan 確認",
+    "指令多、版本更新快，文件與 CLI 偶有落差"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最貼近「每日巡讀抓重複、矛盾、新舊衝突」需求的工具，建議先用 AGENTS.md 單一來源＋agents --check＋verify --instructions，並照抄 .jules/RULES.md；中文規則需自行改程式。",
+  "keywords": ["DocGuard", "docguard-cli", "AGENTS.md", "CLAUDE.md", "規則同步", "規則重複偵測", "規則矛盾", "verify --instructions", "drift", "文件漂移", "過期偵測", "freshness", "last-reviewed", "單一事實來源", "文件退休", "每日巡檢", "排程 AI", "Google Jules", "Spec Kit", "MCP", "SKILL.md", "Claude Code", "Codex", "多 AI 協作"],
+  "pack_path": "_oss-research/04-agent-rules-skills/raccioly__docguard.md"
+}

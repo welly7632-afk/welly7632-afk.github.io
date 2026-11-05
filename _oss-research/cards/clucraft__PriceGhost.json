@@ -1,0 +1,146 @@
+{
+  "repo": "clucraft/PriceGhost",
+  "category": "02-price-erp",
+  "commit": "33b944588d5b5e9689909858da1b9e92c369bd3f",
+  "scanned_at": "2026-11-04",
+  "stars": 1132,
+  "license": "自訂授權：README 寫「MIT」但沒有 LICENSE 檔（GitHub 偵測為無授權）",
+  "license_personal_zh": "個人使用：自己架設、研究程式碼風險很低，作者在 README 明示 MIT 意圖。",
+  "license_commercial_zh": "公司商用：缺完整 MIT 授權全文與版權聲明，嚴格來說仍屬保留權利；整段複製進商用產品前，建議請作者補 LICENSE 檔，或只參考做法自行重寫。沒有付費版或閉源功能。",
+  "one_liner_zh": "自架網頁價格追蹤，四種抓價法投票＋Claude 仲裁，降價補貨推播",
+  "use_cases_zh": [
+    "監控 momo、PChome、蝦皮、競品官網的售價，降價時用 Telegram／Discord 通知，作為調價與廣告出價參考",
+    "追蹤供應商或批發網頁（如 AliExpress）價格與有無貨",
+    "拆出多方法投票＋AI 驗證的抓價邏輯，放進 Firebase Cloud Functions，為自建倉儲 App 加上「競品價格」欄位",
+    "沿用 4 組 Claude prompt 與 HTML 精簡器，做任何「丟網頁給 Claude 抽資料」的工具",
+    "沿用 Telegram／Discord／ntfy 等推播函式做庫存或價格警示"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js 20",
+    "Express 4",
+    "React 18",
+    "Vite 5",
+    "Recharts",
+    "PostgreSQL 16",
+    "cheerio",
+    "Puppeteer + stealth",
+    "node-cron",
+    "JWT + bcrypt",
+    "Docker Compose",
+    "Anthropic / OpenAI / Gemini SDK",
+    "Ollama"
+  ],
+  "run_requirements_zh": "Docker Compose 起 postgres＋backend（含 Chromium）＋nginx 前端三個容器；一般 VPS 即可，不需 GPU（除非用 Ollama 本機模型），Puppeteer 建議 2GB 以上記憶體（經驗值）。無法跑在 Firebase Hosting。AI 選填：Claude Haiku 4.5（作者稱每次約 US$0.001）／GPT-4.1 nano／Gemini 2.5 Flash Lite／免費 Ollama；通知用 Telegram、Discord、Pushover、ntfy、Gotify 擇一。上線前務必改 JWT_SECRET 與 Postgres 預設密碼。",
+  "key_features_zh": [
+    "四種抓價方法並行：JSON-LD、10 組網站專用規則（Amazon、Walmart、Best Buy 等美國站）、通用 CSS、AI",
+    "價格投票：5% 內視為同價，多數決；無共識時 AI 仲裁，仍不確定則交由使用者在價格選擇視窗確認",
+    "錨定價格：記住使用者確認的價格，用來鎖定多規格商品的特定規格",
+    "AI 驗證價格與特定規格的庫存狀態",
+    "axios 遇 403 或 JS 重網站自動改用 Puppeteer stealth，等待 Cloudflare 驗證",
+    "排程每分鐘掃描到期商品，間隔 5 分鐘到 24 小時，±5 分鐘抖動",
+    "降價門檻、目標價、補貨三種通知，5 種推播通道，通知歷史",
+    "價格歷史圖、7 日 Sparkline、最高／最低／平均統計、庫存時間軸",
+    "多使用者、管理員、PWA、深淺色主題"
+  ],
+  "reusable_parts": [
+    {
+      "name": "多方法投票抓價 scrapeProductWithVoting",
+      "path": "backend/src/services/scraper.ts",
+      "difficulty": "中",
+      "note_zh": "L1362-L1746；把讀使用者 AI 設定改成直接傳 Key 即成純函式，可放進 Cloud Functions 或小型 Node 伺服器，結果寫回 Firestore。"
+    },
+    {
+      "name": "價格共識演算法 findPriceConsensus",
+      "path": "backend/src/services/scraper.ts",
+      "difficulty": "低",
+      "note_zh": "L41-L87，47 行無依賴純函式，可改寫成 plain JS 比對多來源報價。"
+    },
+    {
+      "name": "JSON-LD 價格抽取",
+      "path": "backend/src/services/scraper.ts",
+      "difficulty": "低",
+      "note_zh": "L90-L124、L1770-L1862；台灣電商最穩的抓價方式，幣別可正確取得 TWD。"
+    },
+    {
+      "name": "AI 用 HTML 精簡器 prepareHtmlForAI",
+      "path": "backend/src/services/ai-extractor.ts",
+      "difficulty": "低",
+      "note_zh": "L132-L216；先抽 JSON-LD 與價格元素、刪 script/style、截 25,000 字元，省 Claude token。"
+    },
+    {
+      "name": "四組 AI prompt（抽取／驗證／規格庫存／仲裁）",
+      "path": "backend/src/services/ai-extractor.ts",
+      "difficulty": "低",
+      "note_zh": "L41-L130、L948-L970；可翻成中文並加入新台幣、含稅價、會員價等台灣情境。"
+    },
+    {
+      "name": "推播發送函式",
+      "path": "backend/src/services/notifications.ts",
+      "difficulty": "低",
+      "note_zh": "每通道一個函式（Telegram、Discord、Pushover、ntfy、Gotify），可照同形狀加 LINE Messaging API 或通用 Webhook。"
+    },
+    {
+      "name": "網站專用規則框架 siteScrapers",
+      "path": "backend/src/services/scraper.ts",
+      "difficulty": "低",
+      "note_zh": "L330-L1087 的 {match, scrape} 外掛結構，適合請 Claude Code 寫 momo／PChome／蝦皮規則。"
+    },
+    {
+      "name": "Sparkline 迷你走勢",
+      "path": "frontend/src/components/Sparkline.tsx",
+      "difficulty": "低",
+      "note_zh": "145 行純 SVG React 元件，改成原生 JS 產生 SVG 字串即可放進倉儲表格。"
+    },
+    {
+      "name": "價格歷史資料表＋排程",
+      "path": "backend/src/services/scheduler.ts",
+      "difficulty": "中",
+      "note_zh": "搭配 database/init.sql；可換成 Firestore 子集合＋Cloud Scheduler。"
+    }
+  ],
+  "ai_integration_zh": "原生支援 Anthropic Claude（預設 claude-haiku-4-5-20251001，可選 Sonnet／Opus 4.5）、OpenAI（gpt-4.1-nano）、Gemini（2.5 Flash Lite）、Ollama（推薦 Qwen3，送 /nothink 並設 num_ctx 16384）。AI 用在四個時機：無候選時抽取、無共識時仲裁、單一候選時驗證、錨定價命中時驗證規格庫存。prompt 全是 backend/src/services/ai-extractor.ts 的常數字串，用 messages.create 單輪呼叫並以 regex 解析 JSON，未使用 tool use；沒有 MCP／Skills。README 自稱整個專案由 Claude Code（Opus 4.5）開發。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-01-20 建立，1/23～1/26 連發 7 個版本（1.0.0～1.0.6），最後 push 2026-02-03，至掃描日約 9 個月未更新；個人專案、短期衝刺後停更。有 GitHub Actions 建 Docker 映像，無任何測試檔。",
+  "risks_zh": [
+    "沒有 LICENSE 檔，只有 README 一行「MIT」，商用複製程式碼有法律灰色地帶",
+    "API Key 明碼存 DB，GET /api/settings/ai 會把完整 Key 回傳前端",
+    "新增商品只檢查 URL 格式，有 SSRF 風險，不宜開放陌生人註冊",
+    "docker-compose 預設 Postgres 密碼 postgres 且對外開 5432、JWT_SECRET 為預設字串",
+    "依程式碼推斷：pg DECIMAL 回傳字串，scheduler 以 !== 比較數字，價格歷史可能每次檢查都新增一筆（未實測）",
+    "不支援新台幣：NT$ 會被解析成 USD，前端與通知固定顯示 $ 與兩位小數；手動選價時幣別寫死 USD",
+    "沒有台灣電商專用規則，庫存關鍵字只有英文，介面無繁中",
+    "使用 stealth 繞過反爬，可能違反目標網站使用條款",
+    "停更約 9 個月、無測試"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "想盯競品或供應商價格可以自架來用，但真正的價值在拆出「投票＋Claude 驗證」抓價邏輯與 prompt，搬進自己的 Firebase 倉儲系統並補上新台幣與台灣電商規則。",
+  "keywords": [
+    "PriceGhost",
+    "價格追蹤",
+    "查價",
+    "比價",
+    "競品價格監控",
+    "降價通知",
+    "補貨通知",
+    "價格歷史",
+    "網頁爬蟲",
+    "AI 抓價",
+    "價格投票",
+    "Claude Haiku",
+    "Anthropic",
+    "Ollama",
+    "JSON-LD",
+    "Puppeteer",
+    "cheerio",
+    "Telegram",
+    "ntfy",
+    "PostgreSQL",
+    "self-hosted",
+    "price tracker",
+    "price drop alert",
+    "web scraping",
+    "TypeScript"
+  ],
+  "pack_path": "_oss-research/02-price-erp/clucraft__PriceGhost.md"
+}

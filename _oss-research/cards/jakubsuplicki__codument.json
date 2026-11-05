@@ -1,0 +1,59 @@
+{
+  "repo": "jakubsuplicki/codument",
+  "category": "04-agent-rules-skills",
+  "commit": "d38a1d592ef6d9a0448265ebf941efde8c08f68b",
+  "scanned_at": "2026-11-04",
+  "stars": 48,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：免費、可修改、可用在自己的專案，不需公開程式碼。",
+  "license_commercial_zh": "公司商用：可商用、可閉源；再散布時需附 Apache-2.0 全文與 NOTICE、標明修改處，不得使用作者名稱背書；含專利授權條款。frontend-design skill 引用的 LICENSE.txt 不在 repo 內，來源授權未確認。",
+  "one_liner_zh": "用文件登記表管住 AI 改程式：漂移偵測、提交前驗證、對抗式審查",
+  "use_cases_zh": [
+    "用 AGENTS.md 當正本、CLAUDE.md 指向它，讓 Codex 與 Claude 讀同一份規則（受管區塊同步）",
+    "每日機械巡檢：doctor 找沒登記的程式檔、孤兒文件、壞連結、過肥文件、未收尾的檢查清單",
+    "每日 AI 巡讀：review-codebase skill 依 feature 派子代理人審查並輸出固定格式報告",
+    "防新舊版本衝突：計畫核准綁 SHA-256，計畫被改就需重新核准；audit 回溯哪些程式改了文件沒改",
+    "多 AI 交接：work status 記錄目前步驟、暫停原因與下一關卡",
+    "倉儲 App（純 JS＋Firebase）可整檔層級套用，firestore.rules 可標風險強制簽核"
+  ],
+  "stack": ["TypeScript", "Node.js >=18", "commander", "web-tree-sitter (wasm)", "TypeScript compiler API", "JSON 檔案狀態（無資料庫）", "GitHub Actions"],
+  "run_requirements_zh": "npm install -D codument 後 npx codument init；只需 Node.js 18 以上，不需 GPU、不需任何 API Key，CLI 本身零網路呼叫、免費。AI 部分使用你自己的 Claude Code／Codex 訂閱費用。",
+  "key_features_zh": [
+    "docs/.registry.json 登記表：程式檔↔負責文件、依賴、風險標籤",
+    "doctor：文件覆蓋率三項比例＋18 種 lint（unmapped-source、orphan-doc、link-rot、bloated-doc、shipped-scaffolding 等）",
+    "review／verify：逐符號比對兩個 git 版本的文件漂移，簽章變動必須更新文件",
+    "AGENTS.md／CLAUDE.md 受管區塊＋三方雜湊合併升級",
+    "Claude PostToolUse hook 改檔即提醒更新文件；git pre-commit 與 CI 雙關卡",
+    "15 個 skills（8 流程＋7 領域）與 5 個子代理人（含對抗式審查員／計畫審查員）",
+    "計畫核准雜湊綁定與 work 狀態機（start/pause/block/resume/supersede/finish）",
+    "audit 回溯歷史漂移；SARIF 輸出；讀本機 Claude／Codex 紀錄估算 token 成本"
+  ],
+  "reusable_parts": [
+    {"name": "受管區塊寫入器", "path": "src/lib/scaffold.ts", "difficulty": "低", "note_zh": "upsertManagedSection 約 25 行，改寫成同步 AGENTS.md／CLAUDE.md 共用規則的腳本"},
+    {"name": "三方雜湊合併判斷", "path": "src/lib/codemod.ts", "difficulty": "低", "note_zh": "decideMergeStrategy：中央規則範本同步到各專案時決定覆蓋／跳過／備份"},
+    {"name": "Claude 改檔提醒 hook", "path": "src/hooks/check-docs.ts", "difficulty": "低", "note_zh": "讀 stdin 的 file_path 查登記表，印出應更新的文件；搭配 claude-settings.ts 寫入 settings.json"},
+    {"name": "文件巡檢 lint（連結、過肥、孤兒、未登記）", "path": "src/lib/analyze.ts", "difficulty": "中", "note_zh": "computeLinkRot、computeBloat、orphan-doc、unmapped-source 幾段可抄進每日 patrol.js"},
+    {"name": "文件翻譯程式碼壞味道偵測", "path": "src/lib/prose-altitude.ts", "difficulty": "中", "note_zh": "純字串規則，掃 AI 寫的文件是否只是重述函式名或寫死行號"},
+    {"name": "計畫核准雜湊", "path": "src/lib/plan-approval.ts", "difficulty": "中", "note_zh": "approvalDigest＋assessPlanApproval 的 bound/unbound/stale 概念，用來偵測計畫被偷改"},
+    {"name": "全專案 AI 巡讀 skill", "path": "skills/review-codebase/SKILL.md", "difficulty": "低", "note_zh": "直接複製到 .claude/skills/，報告寫成 reports/日期.md 逐日比對"},
+    {"name": "對抗式審查員子代理人", "path": "agents/adversarial-reviewer.md", "difficulty": "低", "note_zh": "GPT 審 Claude 或反之的獨立審查角色，findings JSON 可當交接格式"},
+    {"name": "Feature 文件 5 層範本", "path": "templates/feature.md", "difficulty": "低", "note_zh": "倉儲 App 每個功能的說明書格式"},
+    {"name": "CI 範本", "path": "templates/ci-codument.yml", "difficulty": "低", "note_zh": "把 pull_request 改成 schedule cron 即為每日巡檢"}
+  ],
+  "ai_integration_zh": "CLI 不呼叫任何模型（src 內零網路呼叫），AI 只提出意見、判決交給可重現規則或重跑測試。Claude Code 原生：安裝 AGENTS.md＋CLAUDE.md、.claude/skills（15）、.claude/agents（5，model: sonnet）、.claude/rules、PostToolUse hook。Codex 可攜：只裝 AGENTS.md＋.agents/skills，無 hook、無子代理人。無 MCP。可讀 ~/.claude 與 ~/.codex 本機紀錄算 token 成本。",
+  "claude_support": "原生",
+  "maintenance_zh": "單人維護、48 星；CHANGELOG 21 個版本段落，最新 0.21.0（2026-10-05），2026 年 7–10 月近乎每週發版；95 個測試檔約 2,075 個測試案例，CI 跑 Node 18/20/22。",
+  "risks_zh": [
+    "整套非常重：規則全英文且很長、24 份 ADR、49 份計畫，直接照搬會讓 AI 每次開工耗大量 token",
+    "純 JavaScript 只做到整檔層級，任何 .js 變動都會要求更新文件或簽 ack，可能很吵",
+    "Codex 端無 hook、無子代理人，對抗式審查退化為手動交接",
+    "0.x 版、破壞性變更頻繁，升級後舊審查紀錄可能需重簽",
+    "沒有每日排程／heartbeat 設計，CI 範本只在 pull_request 觸發，需自行加 cron",
+    "沒有語意層級的重複內容或規則矛盾偵測",
+    "預設 commit 不加 AI Co-Authored-By 署名，與某些團隊習慣不同"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "整套偏重不必全裝，但受管區塊、文件巡檢 lint、核准雜湊與 review-codebase 巡讀 skill 非常適合拆來打造你的多 AI 基礎架構與每日巡讀。",
+  "keywords": ["codument", "文件漂移", "doc drift", "文件覆蓋率", "登記表", "registry", "單一事實來源", "AGENTS.md", "CLAUDE.md", "受管區塊", "Claude Code", "Codex", "skills", "子代理人", "對抗式審查", "adversarial review", "計畫核准", "交接", "handoff", "PostToolUse hook", "pre-commit", "每日巡讀", "孤兒文件", "Apache-2.0", "TypeScript"],
+  "pack_path": "_oss-research/04-agent-rules-skills/jakubsuplicki__codument.md"
+}

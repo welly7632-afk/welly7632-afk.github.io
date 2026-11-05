@@ -1,0 +1,124 @@
+{
+  "repo": "ag-grid/ag-grid",
+  "category": "01-web-excel",
+  "commit": "dd8bb2912dbafa34f130167bb5154eb50de71298",
+  "scanned_at": "2026-11-04",
+  "stars": 15672,
+  "license": "雙授權：ag-grid-community 等套件為 MIT；ag-grid-enterprise 為自訂商業授權（AG Grid Commercial EULA v40）",
+  "license_personal_zh": "個人使用：社群版 MIT 完全免費；企業版只允許本機（localhost）測試，沒有金鑰功能照跑但會顯示浮水印與主控台警告，放到公開網址正式使用需購買授權。",
+  "license_commercial_zh": "公司商用：社群版可自由商用、改作、閉源；企業版需依開發者人數與部署方式購買永久授權（含一年更新），價格 repo 內未載明；企業版原始碼不可拆出再利用。",
+  "one_liner_zh": "最普及的 JS 資料表格，社群版免費，公式填滿貼上匯出 Excel 需付費",
+  "use_cases_zh": [
+    "把倉儲／庫存系統的列表頁換成可直接改格子的 Excel 式表格（社群版即可）",
+    "用 valueGetter 做成本、毛利率、庫存金額等計算欄，搭配 cellClassRules 做低庫存紅字",
+    "廣告成效、比價資料的大量資料排序、篩選、匯出 CSV",
+    "編輯結果透過 onCellValueChanged 寫回 Firebase Firestore，onSnapshot 用 applyTransaction 同步",
+    "參考 AI Toolkit 思路，用 Claude 把自然語言轉成表格篩選／排序條件",
+    "用 Claude Code 搭配官方 ag-mcp 或 ag-dev skill 寫 AG Grid 程式碼"
+  ],
+  "stack": [
+    "TypeScript",
+    "純 JavaScript（UMD／ESM）",
+    "DOM 渲染",
+    "React／Angular／Vue 3 包裝",
+    "無後端",
+    "無資料庫"
+  ],
+  "run_requirements_zh": "純前端函式庫，CDN 一支 ag-grid-community.min.js 即可在純 JS 網頁使用，無需後端、GPU 或 API Key；企業版需授權金鑰（價格未確認）；AI Toolkit 需自備 LLM API（可用 Claude）。",
+  "key_features_zh": [
+    "列＋欄虛擬捲動，超高資料量容器拉伸（社群版）",
+    "文字／數字／日期／勾選／下拉編輯器與復原重做（社群版）",
+    "排序、文字數字日期篩選、凍結欄列、colSpan／spanRows 合併（社群版）",
+    "CSV 匯出、繁體中文語系 zh-TW（社群版）",
+    "公式引擎 20 個函數名稱＋自訂函數（企業版）",
+    "範圍選取、拖拉填滿、從 Excel／Google 試算表貼上（企業版）",
+    "自寫 OOXML 的 .xlsx 匯出與 PDF 匯出（企業版）",
+    "樞紐、分組、內建圖表、迷你圖（企業版）",
+    "AI Toolkit：getStructuredSchema 產生給 LLM 的 JSON Schema（企業版）"
+  ],
+  "reusable_parts": [
+    {
+      "name": "社群版表格元件（整包直接用）",
+      "path": "packages/ag-grid-community/src",
+      "difficulty": "低",
+      "note_zh": "CDN 載入後 agGrid.createGrid(div, gridOptions)，rowData 來自 Firestore。"
+    },
+    {
+      "name": "列虛擬化演算法",
+      "path": "packages/ag-grid-community/src/rendering/rowRenderer.ts",
+      "difficulty": "中",
+      "note_zh": "workOutFirstAndLastRowsToRender 的 scrollTop→可見列＋buffer 邏輯可改寫成獨立函式。"
+    },
+    {
+      "name": "超高容器拉伸",
+      "path": "packages/ag-grid-community/src/rendering/rowContainerHeightService.ts",
+      "difficulty": "低",
+      "note_zh": "141 行，解決瀏覽器 div 最大高度限制，可移植到任何 DOM 虛擬捲動。"
+    },
+    {
+      "name": "復原重做堆疊",
+      "path": "packages/ag-grid-community/src/undoRedo/undoRedoStack.ts",
+      "difficulty": "低",
+      "note_zh": "59 行有上限堆疊，MIT，可直接抄進自己的編輯器。"
+    },
+    {
+      "name": "繁中語系字串",
+      "path": "community-modules/locale/src/zh-TW.ts",
+      "difficulty": "低",
+      "note_zh": "847 個 key，可當翻譯對照表；部分用語需改成台灣用法。"
+    },
+    {
+      "name": "Grid 狀態存取",
+      "path": "packages/ag-grid-community/src/misc/state/stateApi.ts",
+      "difficulty": "低",
+      "note_zh": "api.getState() 存進 Firestore，initialState 還原欄寬排序篩選。"
+    },
+    {
+      "name": "公式引擎（僅參考，商業授權）",
+      "path": "packages/ag-grid-enterprise/src/formula/formulaService.ts",
+      "difficulty": "高",
+      "note_zh": "授權不允許拆用；需要公式請改接 HyperFormula 或 Univer。"
+    }
+  ],
+  "ai_integration_zh": "函式庫本身不呼叫 AI 也無網路請求；企業版 AiToolkit 模組提供 api.getStructuredSchema() 產生 7 類表格狀態的 JSON Schema，官方範例用 ChatGPT 回傳 gridState 再 setState，可直接換成 Claude tool use。官方另有 ag-mcp MCP 伺服器與 ag-grid/skills（ag-dev、ag-update）明寫支援 Claude Code，但兩者原始碼不在此 repo。",
+  "claude_support": "可接",
+  "maintenance_zh": "AG GRID LTD 全職維護，掃描當天仍有推送，版本 36.3.0；src 內 90 個單元測試檔、testing/behavioural 679 個測試檔、25 個 CI workflow；安全更新支援 32.x 與 36.x。",
+  "risks_zh": [
+    "像 Excel 的關鍵功能（公式、範圍選取、填滿、複製貼上、xlsx 匯出、樞紐、圖表）全在付費企業版",
+    "企業版沒金鑰也能執行，容易在不知不覺中違反 EULA 上線",
+    "公式只有 20 個函數名稱，無 VLOOKUP、陣列公式、跨工作表，且不支援分組／樞紐／伺服器端資料模型",
+    "沒有 .xlsx 匯入、沒有多人即時協作，需自己接 SheetJS 與 Firestore",
+    "cellRenderer 回傳字串會以 innerHTML 插入，處理外部輸入時有 XSS 風險",
+    "大版本升級常有破壞性變更"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當倉儲／報表的「資料表格層」首選社群版；若要真正的試算表（公式、多工作表、xlsx 匯入）請改看 Univer，或搭配 HyperFormula＋SheetJS。",
+  "keywords": [
+    "AG Grid",
+    "ag-grid-community",
+    "ag-grid-enterprise",
+    "資料表格",
+    "Data Grid",
+    "網頁版 Excel",
+    "試算表",
+    "虛擬捲動",
+    "virtual scrolling",
+    "公式引擎",
+    "拖拉填滿",
+    "fill handle",
+    "剪貼簿",
+    "Excel 匯出",
+    "CSV 匯出",
+    "樞紐分析",
+    "條件格式",
+    "繁體中文",
+    "純 JavaScript",
+    "Firestore",
+    "雙授權",
+    "MIT",
+    "AI Toolkit",
+    "MCP",
+    "Claude Code"
+  ],
+  "pack_path": "_oss-research/01-web-excel/ag-grid__ag-grid.md"
+}

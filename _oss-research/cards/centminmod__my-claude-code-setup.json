@@ -1,0 +1,147 @@
+{
+  "repo": "centminmod/my-claude-code-setup",
+  "category": "04-agent-rules-skills",
+  "commit": "7d5c3743942606a9c5756de47ecdb41e2317c8b6",
+  "scanned_at": "2026-11-04",
+  "stars": 2713,
+  "license": "MIT（內附 Highcharts 圖表檔為 Highcharts 非商業授權）",
+  "license_personal_zh": "個人使用：MIT，可自由複製、修改，保留版權聲明即可；Highcharts 個人使用免費。",
+  "license_commercial_zh": "公司商用：MIT 部分可商用；session-metrics 內附的 Highcharts 商用需向 Highsoft 買授權，或改用 --chart-lib none／uplot／chartjs。Claude、Codex、OpenRouter 等外部服務另計費。",
+  "one_liner_zh": "Claude Code 記憶庫範本：同步子代理、去重封存、雙AI比對",
+  "use_cases_zh": [
+    "把 core-rules.md 與 CLAUDE-template-3.md 當成倉儲系統專案的 AI 共用規則骨架",
+    "建立 activeContext／patterns／decisions／troubleshooting／config-variables 五個記憶庫檔，防止 AI 忘記決策",
+    "用 memory-bank-synchronizer 子代理當每日巡讀角色，比對文件與程式碼、保留規劃與歷史",
+    "用 /cleanup-context 定期找重複檔、合併成 comprehensive 檔、舊檔搬到 archive/",
+    "用 CLAUDE-history-template 讓 Claude 與 Codex 用同一格式寫交接紀錄並檢查文件是否過期",
+    "用 consult-codex 讓 Codex 與 Claude 對同一問題各查一次，輸出一致／單方／矛盾比對表",
+    "用 ai-image-creator 生成電商商品圖，或把廣告影片分析成文字給腳本工具",
+    "用 session-metrics 追蹤每天 Claude Code 的 token 與費用"
+  ],
+  "stack": [
+    "Markdown",
+    "Claude Code（agents／commands／skills／hooks／rules）",
+    "Python 3（標準函式庫，uv 執行）",
+    "Codex CLI（選用）",
+    "OpenRouter／Google AI Studio API（選用）"
+  ],
+  "run_requirements_zh": "無伺服器、無資料庫、不需 GPU。把 .claude/ 與 CLAUDE*.md 複製到專案根目錄，開 Claude Code 跑 /init 即可。需 Claude 付費方案；建議裝 rg、fd、jq、uv；consult-codex 需 Codex CLI 與 OpenAI 帳號；生圖需 OpenRouter 等 API Key（按張計費）；Stop 通知 hook 只適用 macOS（terminal-notifier）。",
+  "key_features_zh": [
+    "3 種 CLAUDE.md 範本＋給 AI 用的遷移提示詞",
+    "行為規則外移到 .claude/rules/core-rules.md（含完成前驗證）",
+    "雙記憶架構：git 內 CLAUDE-*.md 記憶庫＋Claude 原生 auto memory",
+    "memory-bank-synchronizer：文件與程式碼同步，規劃與歷史一律保留",
+    "/cleanup-context：刪過期、合併重複、建立 archive/ 並建議每月／每季整理",
+    "CLAUDE-history 開發歷程索引＋一事一檔＋漂移檢查",
+    "consult-codex／consult-zai：雙 AI 比對與 Corroborated／Solo／Disputed 分級",
+    "audit-session-metrics：檢查 CLAUDE.md 過大與全域／專案規則重複",
+    "ai-image-creator：11 類商品／廣告圖提示詞公式、圖片與影片分析",
+    "session-metrics：本機解析 Claude Code 用量與費用並輸出 HTML／CSV"
+  ],
+  "reusable_parts": [
+    {
+      "name": "核心行為規則",
+      "path": ".claude/rules/core-rules.md",
+      "difficulty": "低",
+      "note_zh": "直接複製，同段文字放進 AGENTS.md 讓 Codex 共讀"
+    },
+    {
+      "name": "CLAUDE.md 範本 3",
+      "path": "CLAUDE-template-3.md",
+      "difficulty": "低",
+      "note_zh": "填入 Firebase 專案資訊與測試／部署指令，第一行改為先讀 AGENTS.md"
+    },
+    {
+      "name": "記憶庫檔案表與讀取時機",
+      "path": "CLAUDE-template-2.md",
+      "difficulty": "低",
+      "note_zh": "第 77–104 行；repo 只給檔名與用途，內容要自己建"
+    },
+    {
+      "name": "記憶庫同步子代理",
+      "path": ".claude/agents/memory-bank-synchronizer.md",
+      "difficulty": "低",
+      "note_zh": "放 .claude/agents/ 當每日巡讀執行者，保留規則第 23–45 行必留"
+    },
+    {
+      "name": "去重／合併／封存指令",
+      "path": ".claude/commands/cleanup/cleanup-context.md",
+      "difficulty": "低",
+      "note_zh": "放 .claude/commands/，每週或每月跑；建議先只列候選不直接刪"
+    },
+    {
+      "name": "開發歷程範本",
+      "path": "CLAUDE-history-template.md",
+      "difficulty": "低",
+      "note_zh": "第 27–120 行貼進共用規則，兩個 AI 共用交接紀錄格式"
+    },
+    {
+      "name": "雙 AI 比對 skill",
+      "path": ".claude/skills/consult-codex/SKILL.md",
+      "difficulty": "中",
+      "note_zh": "需 Codex CLI、jq、timeout 與 code-searcher 子代理；可改成巡讀時讓兩個 AI 各巡一次再比對"
+    },
+    {
+      "name": "程式碼搜尋／審查角色",
+      "path": ".claude/agents/code-searcher.md",
+      "difficulty": "低",
+      "note_zh": "第 26–28 行「找不到也是有效結果」「先推翻再回報」適合所有審查角色"
+    },
+    {
+      "name": "規則檔健檢標準",
+      "path": ".claude/skills/audit-session-metrics/references/detailed-audit.md",
+      "difficulty": "中",
+      "note_zh": "借 claudemd_oversize／claudemd_duplication 判斷標準進巡讀清單"
+    },
+    {
+      "name": "AI 商品圖與影片分析",
+      "path": ".claude/skills/ai-image-creator/SKILL.md",
+      "difficulty": "中",
+      "note_zh": "需 uv 與 API Key；影片只能分析不能生成"
+    }
+  ],
+  "ai_integration_zh": "原生 Claude Code：規則、6 個子代理、14 個指令、7 個 skill、Stop hook、Chrome DevTools MCP。Codex 只是被 Claude 呼叫的唯讀顧問（codex exec -s read-only --json），透過 consult-codex 與 Claude 的 code-searcher 比對；另支援 z.ai GLM、Gemini CLI（GEMINI.md）、Cline（.clinerules 指回 CLAUDE.md）。沒有讓 Codex 與 Claude 共讀同一份規則的設計。",
+  "claude_support": "原生",
+  "maintenance_zh": "活躍：最後推送 2026-10-08，session-metrics 從 v1.0.0（2026-04）到 v1.91.0（2026-10）共 137 個版本；但根目錄 CHANGELOG 停在 2025-07／2026-04，README 與子代理的模型版本描述有新舊不一致；repo 內沒有測試檔。",
+  "risks_zh": [
+    "不是 GPT＋Claude 共讀同一份規則的設計，GEMINI.md 與 CLAUDE.md 還互相要求忽略對方",
+    "範本同時說記憶庫 git 共享又要 commit 時排除，且 repo 沒有 .gitignore，採用時要自己決定",
+    "文件內模型版本新舊不一致（GPT-5.2 vs 設定檔決定、GLM 4.7 vs 5.2）",
+    "settings.local.json 權限白名單過寬（curl、python、pip install 等）且有重複項",
+    "Highcharts 為非商業授權，商用需換圖表庫",
+    "通知 hook 寫死作者 macOS 路徑、依賴 terminal-notifier",
+    "引用的 consult-panel、ai-image-test-run skill 不在 repo",
+    "沒有排程或自動化巡讀，需要自己用 /loop、排程任務或 GitHub Actions cron 補上",
+    "repo 內沒有測試"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當你 Claude 端的記憶庫＋巡讀骨架很合適，直接借 core-rules、同步子代理、去重封存與歷程範本；GPT 共讀規則與排程要另外補。",
+  "keywords": [
+    "CLAUDE.md",
+    "記憶庫",
+    "memory bank",
+    "auto memory",
+    "漸進揭露",
+    "progressive disclosure",
+    "core-rules",
+    "memory-bank-synchronizer",
+    "記憶庫同步",
+    "cleanup-context",
+    "去重",
+    "封存",
+    "archive",
+    "開發歷程",
+    "交接紀錄",
+    "drift",
+    "consult-codex",
+    "雙 AI 比對",
+    "Codex CLI",
+    "subagents",
+    "子代理",
+    "SKILL.md",
+    "巡讀",
+    "git worktree",
+    "Claude Code"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/centminmod__my-claude-code-setup.md"
+}

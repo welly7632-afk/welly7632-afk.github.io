@@ -1,0 +1,56 @@
+{
+  "repo": "VoltAgent/awesome-claude-code-subagents",
+  "category": "04-agent-rules-skills",
+  "commit": "ed74d115b7fb7026a22a4f816a8e3250f425e3b4",
+  "scanned_at": "2026-11-04",
+  "stars": 26328,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：可自由複製、修改、翻成中文使用，無任何限制。",
+  "license_commercial_zh": "公司商用：可以，含放進內部規則或產品；需保留 VoltAgent 的 MIT 版權聲明。有 6 個角色標註改編自其他 MIT 專案，原專案授權未逐一確認。無付費版或閉源功能。",
+  "one_liner_zh": "166 個 Claude Code 子代理角色檔，可當 AI 角色說明書範本",
+  "use_cases_zh": [
+    "挑 memory-curator、context-manager 的守則，建立多個 AI 共用的狀態檔與「舊決定標記 closed、不刪除」的新舊版本管理",
+    "用 ponder-auditor（100% 覆蓋）＋ surgeon-reviewer（三級嚴重度＋上線結論）組成每日巡讀員角色",
+    "用 docs-drift-editor 當「程式改了文件沒改」的修正手，限定 40% 修改上限並輸出 edited/skipped 紀錄",
+    "用 knowledge-synthesizer／error-coordinator 每週從各 AI 的紀錄找重複犯的錯（附證據路徑）",
+    "搭配姊妹專案 awesome-codex-subagents 的 .toml 格式，讓 Codex 與 Claude 有同名同職責的角色",
+    "借 javascript-pro、landing-page-copywriter、data-analyst、motion-director 當倉儲系統、廣告文案、產品動畫的角色底稿"
+  ],
+  "stack": ["Markdown", "YAML frontmatter", "JSON（plugin.json / marketplace.json）", "Bash（install-agents.sh）", "GitHub Actions", "Claude Code"],
+  "run_requirements_zh": "不需伺服器、資料庫或 GPU。把 .md 放進 ~/.claude/agents/ 或專案 .claude/agents/ 即可，或用 claude plugin marketplace add 安裝。安裝腳本需 curl。費用只有 Claude 訂閱／API 用量；角色 model 欄位實測 sonnet 111、inherit 27、haiku 19、未填 9、opus 0。少數角色需 npm 外部套件或 MCP。",
+  "key_features_zh": [
+    "166 個角色分 10 類（實際數檔），每個含 name／description／tools，157 個含 model",
+    "新式角色有「Scope and honesty rules／Required inputs／Workflow／Report back／Integration」固定段落，可當角色模板",
+    "memory-curator：一條記憶一個事實、舊事實以 closed＋superseded by 關閉、矛盾兩條並列、定期批次修剪",
+    "docs-drift-editor：只改清單內檔案、超過 40% 留 TODO、保留舊錨點、輸出 JSON 報告",
+    "GitHub Actions 強制：類別內容改動必須升 plugin 版本並與 marketplace 同步",
+    "四種安裝方式（外掛市集、手動、互動腳本、agent-installer 角色）＋ /subagent-catalog 搜尋指令（12 小時快取）"
+  ],
+  "reusable_parts": [
+    {"name": "memory-curator 記憶與新舊版本守則", "path": "categories/09-meta-orchestration/memory-curator.md", "difficulty": "低", "note_zh": "整份翻中文放 .claude/agents/；記憶資料夾改到 docs/ai/memory/ 讓 Codex 也讀"},
+    {"name": "context-manager 共用狀態檔結構", "path": "categories/09-meta-orchestration/context-manager.md", "difficulty": "低", "note_zh": "照 state.md／decisions.md／task-history.md／metadata.json 建資料夾，並指定每檔唯一寫入者"},
+    {"name": "docs-drift-editor 文件走樣修正", "path": "categories/06-developer-experience/docs-drift-editor.md", "difficulty": "低", "note_zh": "當巡讀後的修正手；偵測者需自行撰寫。注意此檔未列入 06 類 plugin.json，用外掛安裝可能拿不到"},
+    {"name": "ponder-auditor 全覆蓋稽核", "path": "categories/04-quality-security/ponder-auditor.md", "difficulty": "低", "note_zh": "取「先列清單、覆蓋率<100%不准結束、Skeptic 先推翻自己」當巡讀步驟"},
+    {"name": "surgeon-reviewer 三級審查", "path": "categories/04-quality-security/surgeon-reviewer.md", "difficulty": "低", "note_zh": "WILL BREAK／WILL COST／WILL ROT＋SHIP 結論，直接當巡讀報告格式；Codex 寫、Claude 審"},
+    {"name": "knowledge-synthesizer／error-coordinator 證據式彙整", "path": "categories/09-meta-orchestration/knowledge-synthesizer.md", "difficulty": "低", "note_zh": "每週讀 docs/ai/patrol/*.md，輸出 pattern/evidence/frequency/confidence"},
+    {"name": "backlog-grooming 待辦健康標準", "path": "categories/08-business-product/backlog-grooming.md", "difficulty": "低", "note_zh": "Now/Next/Later/Icebox/Won't Do 分類與 90 天未動規則套到 TODO.md"},
+    {"name": "版本號強制升級 CI", "path": ".github/workflows/enforce-plugin-version-bump.yml", "difficulty": "中", "note_zh": "改成檢查 AGENTS.md 改動時 RULES_VERSION 與 CHANGELOG 是否同步更新"},
+    {"name": "repo 規則檔骨架", "path": "CLAUDE.md", "difficulty": "低", "note_zh": "照其段落（概述、結構、格式、權限、改 X 要同步 Y）寫你的 AGENTS.md"}
+  ],
+  "ai_integration_zh": "原生為 Claude Code 子代理：prompt 即角色 .md 本文，description 決定自動挑選，model 欄位選 sonnet/haiku/inherit（README 宣稱有 opus 但實際 0 個）。少數角色使用 MCP 工具。沒有 SKILL.md 技能。Codex 版在姊妹 repo awesome-codex-subagents（.toml、sandbox_mode、放 .codex/agents/），但兩邊內容不同步、角色組也不同。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍，最新合併 2026-11-02（PR #335）。無角色品質測試，僅有版本號 CI。內部有多處文件與實際不一致（數量 161/158/166、2 個角色未入 plugin.json、opus 說法不符）。",
+  "risks_zh": [
+    "126 個舊式角色含虛構 JSON 通訊協定與假進度數字，易讓 AI 編造狀態，借用時要刪",
+    "許多審查角色（如 code-reviewer）實際有 Write/Edit/Bash 權限，與自訂的只讀原則不符",
+    "安裝腳本從 main 分支直接 curl 下載，無版本固定與雜湊驗證；角色檔即 prompt，需逐份審閱",
+    "docs-drift-editor、motion-director 未列入 plugin.json，外掛安裝可能缺漏（未實測）",
+    "codebase-orchestrator 的 tools 欄位列入其他角色名與外部 MCP，實際行為未確認",
+    "沒有 AGENTS.md、共用規則分層、排程巡讀或 SKILL.md，這些要自己補",
+    "部分角色需 npm -g 外部套件（unslop、prompt-to-asset），有供應鏈風險"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "當「AI 角色範本庫」很好用：挑 memory-curator、context-manager、docs-drift-editor、ponder-auditor、surgeon-reviewer 翻成中文，再自行補 AGENTS.md 與每日巡讀排程；不要整包安裝。",
+  "keywords": ["Claude Code", "subagent", "子代理", "角色檔", "YAML frontmatter", "description 觸發", "tools 權限", ".claude/agents", "plugin marketplace", "Codex", ".codex/agents", "多代理協作", "context-manager", "memory-curator", "新舊版本衝突", "docs drift", "巡讀", "patrol", "ponder-auditor", "surgeon-reviewer", "程式碼審查", "防重複", "單一事實來源", "VoltAgent"],
+  "pack_path": "_oss-research/04-agent-rules-skills/VoltAgent__awesome-claude-code-subagents.md"
+}

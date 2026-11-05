@@ -1,0 +1,54 @@
+{
+  "repo": "bradautomates/claude-video",
+  "category": "03-video-script",
+  "commit": "03ceb42f7fa2c4439aca01752118044baabffb8f",
+  "scanned_at": "2026-11-04",
+  "stars": 19856,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、拆解、混用，無任何付費功能或限制。",
+  "license_commercial_zh": "公司商用：可閉源商用，只需保留原著作權與 MIT 授權聲明；但 yt-dlp 下載平台影片、上傳 Google/Groq/OpenAI 需各自遵守平台與 API 條款。",
+  "one_liner_zh": "Claude Code 看影片技能：下載、抽幀、轉錄後交給 Claude",
+  "use_cases_zh": [
+    "丟競品 FB/IG/TikTok/YouTube 廣告網址，讓 Claude 拆出帶時間戳的鉤子、分鏡、字卡與 CTA",
+    "批次抓爆款短影音字幕，歸納腳本公式後改寫成自家商品腳本",
+    "AI 生成的商品影片做完後回頭驗收（字幕錯字、黑畫面、節奏）",
+    "把 YouTube 教學影片轉成步驟 SOP 文件",
+    "拆出 frames.py／download.py 當自己 AI 影片工具的「參考影片分析」模組"
+  ],
+  "stack": ["Python 3.10+（純標準函式庫）", "ffmpeg / ffprobe", "yt-dlp", "Claude Code Plugin / Agent Skills", "選用：WhisperX 3.8.6（uv + Python 3.12 + CPU PyTorch）", "選用：Google Gemini API", "選用：Groq / OpenAI Whisper API"],
+  "run_requirements_zh": "在個人電腦的 Claude Code（桌面版 Code 分頁、VS Code、終端機）用 /plugin 安裝；需 Python 3.10+、ffmpeg、最新版 yt-dlp（YouTube 另需 Deno）。不需 GPU。最省錢路徑只用平台字幕＋本機抽幀，不需任何 API Key，只消耗 Claude 看圖額度（balanced 最多 100 張）。選用：本機 WhisperX（≥8GB RAM、≥3GB 磁碟）、GEMINI_API_KEY（README 稱可用免費 key）、GROQ/OPENAI key（價格未確認）。不支援 Claude Chat、Cowork。",
+  "key_features_zh": [
+    "yt-dlp 下載（最高 720p）並優先抓平台原生字幕，只取一軌並標示來源",
+    "ffmpeg 場景切換抽幀（門檻 0.20）、關鍵幀模式、等距取樣、指定時間點截圖",
+    "16×16 RGB 縮圖去重，依影片長度自動決定截圖數量",
+    "無字幕時用本機 WhisperX 或 Groq/OpenAI Whisper 轉錄，自動切塊並對齊時間戳",
+    "Gemini 引擎：整支影片交給 gemini-3.7-flash 看並回答（影片會上傳 Google）",
+    "輸出帶時間戳的 Markdown 報告，Claude 用 Read 工具逐張看圖回答問題",
+    "四段細節等級：transcript / efficient / balanced / token-burner"
+  ],
+  "reusable_parts": [
+    {"name": "場景切換抽幀＋去重＋縮到上限", "path": "skills/watch/scripts/frames.py", "difficulty": "低", "note_zh": "連同 runtime.py 複製走，呼叫 extract_scene_or_uniform() 取得 [{path, timestamp_seconds, reason}]，可做競品分鏡縮圖表"},
+    {"name": "yt-dlp 字幕挑選與只抓字幕", "path": "skills/watch/scripts/download.py", "difficulty": "低", "note_zh": "fetch_captions(url, dir, sub_lang='zh-TW') 不下載影片即可批次取得爆款影片字幕"},
+    {"name": "WebVTT 解析與逐字稿格式化", "path": "skills/watch/scripts/transcribe.py", "difficulty": "低", "note_zh": "純 Python，parse_vtt + format_transcript 輸出 [MM:SS] 文字"},
+    {"name": "Whisper 雲端轉錄＋大檔切塊", "path": "skills/watch/scripts/whisper.py", "difficulty": "中", "note_zh": "改 endpoint 常數可接任何 OpenAI 相容 /audio/transcriptions；需要中文可在 _post_whisper 的 fields 加 language"},
+    {"name": "Gemini 影片問答（標準函式庫）", "path": "skills/watch/scripts/gemini.py", "difficulty": "低", "note_zh": "162 行完成上傳、提問、刪除；換 prompt 即可產出分鏡表"},
+    {"name": "給 LLM 讀的 Markdown 證據報告格式", "path": "skills/watch/scripts/watch.py", "difficulty": "低", "note_zh": "參考 L299-L420 的報告結構；可加 JSON/CSV 輸出接網頁試算表"},
+    {"name": "Claude Code 外掛＋市集＋SessionStart hook 範本", "path": ".claude-plugin/plugin.json", "difficulty": "低", "note_zh": "把自己的倉儲/價格工具包成 Claude Code 外掛時可直接套用結構"}
+  ],
+  "ai_integration_zh": "原生 Claude Code skill/plugin：SKILL.md 指示 Claude 跑 setup.py 與 watch.py，再用 Read 工具看截圖回答；沒有呼叫 Anthropic API、沒有 MCP。選用模型：Google gemini-3.7-flash（整片代看）、Groq whisper-large-v3、OpenAI whisper-1、本機 WhisperX small。Gemini prompt 在 gemini.py L33-L37。",
+  "claude_support": "原生",
+  "maintenance_zh": "單一作者，2026-04-24 建立、2026-09-25 釋出 0.3.2；17 個測試檔、188 個 test 函式，CI 跑 Linux/macOS/Windows；品質高但專案年輕。",
+  "risks_zh": [
+    "engine=auto 時只要偵測到 GEMINI_API_KEY（含目前資料夾 .env）就會把影片上傳 Google，私密影片要加 --engine local",
+    "yt-dlp 下載平台影片可能違反 YouTube/TikTok/Meta 服務條款；只能拆結構，不能挪用畫面與配樂",
+    "需持續更新 yt-dlp，否則常遇 403",
+    "中文轉錄只能指定 zh，繁簡與台灣口音準確度未確認",
+    "WhisperX 安裝會下載並執行 uv 安裝腳本與大量套件，僅 Apple Silicon 驗證過",
+    "token-burner 模式不設截圖上限，可能大量消耗 Claude 用量",
+    "不支援 Claude Chat、Cowork 與雲端環境（多數網站擋 yt-dlp）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不能生成影片，但是拆競品廣告與爆款腳本最順手的 Claude Code 工具，建議先裝起來用 local 引擎搭配平台字幕，並把 frames.py 收進自己的工具箱。",
+  "keywords": ["claude-video", "/watch", "Claude Code 外掛", "Claude Code plugin", "Agent Skills", "影片理解", "video understanding", "拆解競品廣告", "爆款腳本", "分鏡反推", "yt-dlp", "ffmpeg", "場景切換抽幀", "scene detection", "字幕", "逐字稿", "Whisper", "WhisperX", "Gemini", "多模態", "multimodal", "YouTube", "TikTok", "MIT"],
+  "pack_path": "_oss-research/03-video-script/bradautomates__claude-video.md"
+}

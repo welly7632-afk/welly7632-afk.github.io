@@ -1,0 +1,18 @@
+{
+  "_說明": "觸發測試（做法借自 BMAD 的 evals/triggers.json）。should_trigger=true 的句子應該叫出 daily-patrol；false 的不應該，尤其是很像、但其實該用別的角色或技能的句子。裝好後各用 5 句以上實測，記下命中率；description 改了就重測。",
+  "cases": [
+    { "query": "幫我做今天的每日巡檢", "should_trigger": true },
+    { "query": "巡讀一下整個專案，看看有沒有哪個 AI 漏掉東西", "should_trigger": true },
+    { "query": "檢查 AGENTS.md 和 CLAUDE.md 有沒有重複或互相矛盾的規則", "should_trigger": true },
+    { "query": "有沒有新舊版本的文件同時存在、不知道哪份才是現行的？", "should_trigger": true },
+    { "query": "看一下待辦有沒有沒人接、卡很久的", "should_trigger": true },
+    { "query": "文件是不是過期了？引用的檔案還在嗎？", "should_trigger": true },
+    { "query": "run the daily patrol and write today's report", "should_trigger": true },
+    { "query": "把 AGENTS.md 裡重複的那條規則刪掉", "should_trigger": false, "原因": "要動手修改，屬於 doc-keeper，不是只讀巡檢" },
+    { "query": "幫我審查 T-0012 這個任務的程式碼改動", "should_trigger": false, "原因": "單一任務的驗收，屬於 reviewer 角色" },
+    { "query": "幫我寫一個庫存扣減的函式", "should_trigger": false, "原因": "實作，屬於 implementer" },
+    { "query": "今天要做哪些任務？幫我排優先順序", "should_trigger": false, "原因": "規劃，屬於 planner" },
+    { "query": "幫我修好 reports 裡提到的斷掉連結", "should_trigger": false, "原因": "巡檢只出報告，修復要另外核准" },
+    { "query": "比較這兩個廣告文案哪個好", "should_trigger": false, "原因": "與專案文件巡檢無關" }
+  ]
+}

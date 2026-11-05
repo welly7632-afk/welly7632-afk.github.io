@@ -1,0 +1,135 @@
+{
+  "repo": "Graphify-Labs/graphify",
+  "category": "04-agent-rules-skills",
+  "commit": "59b5ab1151e031fb42e39cfc9a50bf96f2d57ae0",
+  "scanned_at": "2026-11-04",
+  "stars": 142273,
+  "license": "Apache-2.0（改授權前的貢獻另保留 MIT，見 NOTICE／LICENSE-MIT）",
+  "license_personal_zh": "個人使用：免費、可任意使用與修改。",
+  "license_commercial_zh": "公司商用：允許商用與閉源再散布；散布時需附 LICENSE 與 NOTICE、標示修改；有專利條款；名稱與 logo 為商標，衍生工具需註明非官方。付費 Graphify Cloud（多 repo、持續更新、formal verification、Sentry/Jira 連接器）不在開源 repo 中。",
+  "one_liner_zh": "把整個專案轉成可查詢知識圖譜的 AI 技能，附多平台規則防漂移範本",
+  "use_cases_zh": [
+    "對自己的倉儲 JS／Firebase 專案建程式碼圖（--code-only 免 API 費），讓 Claude 與 Codex 查同一張圖",
+    "每日巡檢讀 GRAPH_REPORT.md 的 Graph Freshness、Knowledge Gaps、Ambiguous Edges 找漏接與待確認",
+    "仿 tools/skillgen：一份規則片段產生 CLAUDE.md 與 AGENTS.md，pre-commit／CI 用 --check 擋手改與漂移",
+    "仿 tests/test_architecture_doc.py：檢查規則檔提到的路徑與函式真的存在",
+    "拼裝 A＋B＋C 前，先對別人的開源專案建圖，用 query/path/explain 快速找程式碼位置"
+  ],
+  "stack": [
+    "Python 3.10+",
+    "tree-sitter",
+    "NetworkX",
+    "numpy",
+    "rapidfuzz",
+    "Leiden/Louvain 分群",
+    "MCP（選配）",
+    "Neo4j/FalkorDB（選配）"
+  ],
+  "run_requirements_zh": "uv tool install graphifyy（雙 y）後 graphify install；不需 GPU、伺服器或資料庫。程式碼分析本機免費免 Key；文件／PDF／圖片語意萃取需 LLM：在 Claude Code 內用當下模型，或 claude-cli（用訂閱）、ANTHROPIC/OPENAI/GEMINI 等 API Key、本機 Ollama。程式內建價格表：Claude Sonnet 每百萬 token 3/15 美元。",
+  "key_features_zh": [
+    "tree-sitter 解析約 40 種語言（含 JavaScript），邊標 EXTRACTED/INFERRED/AMBIGUOUS",
+    "Markdown 標題與連結、文件中的程式碼引用連到真正的程式節點",
+    "GRAPH_REPORT.md：核心節點、意外關聯、Import Cycles、Knowledge Gaps、Ambiguous Edges、Graph Freshness",
+    "實體去重（MinHash/LSH＋Jaro-Winkler），archive/old 目錄低於 active/current",
+    "git post-commit/checkout/merge/rewrite hook 自動重建；Claude Code PreToolUse hook 提醒先查圖",
+    "skillgen：16 平台技能檔由同一組片段產生，CI 與 pre-commit 逐位元組防漂移",
+    "save-result + reflect 產生 LESSONS.md 工作記憶（有用／死路／被糾正）",
+    "MCP 伺服器：query_graph、shortest_path、get_node 等"
+  ],
+  "reusable_parts": [
+    {
+      "name": "規則片段產生器與 --check",
+      "path": "tools/skillgen/gen.py",
+      "difficulty": "中",
+      "note_zh": "抽出 render＋check＋bless 流程，用 JS 重寫成小腳本產生 CLAUDE.md/AGENTS.md 並比對快照"
+    },
+    {
+      "name": "平台差異設定",
+      "path": "tools/skillgen/platforms.toml",
+      "difficulty": "低",
+      "note_zh": "每個 AI 只寫輸出路徑、description 與差異片段"
+    },
+    {
+      "name": "冪等寫入共用規則區段",
+      "path": "graphify/install.py（_replace_or_append_section）",
+      "difficulty": "低",
+      "note_zh": "約 50 行純函式，依完全相符的 ## 標題取代或附加，不破壞手寫段落"
+    },
+    {
+      "name": "pre-commit＋CI 防漂移",
+      "path": ".pre-commit-config.yaml、.github/workflows/ci.yml",
+      "difficulty": "低",
+      "note_zh": "照結構抄，換成自己的檢查指令"
+    },
+    {
+      "name": "文件不脫節測試",
+      "path": "tests/test_architecture_doc.py",
+      "difficulty": "低",
+      "note_zh": "解析文件表格、逐一驗證提到的符號存在，並驗證解析器本身有抓到東西"
+    },
+    {
+      "name": "技能版本戳記",
+      "path": "graphify/install.py（_write_version_stamp）、graphify/__main__.py（_refresh_stale_skills）",
+      "difficulty": "低",
+      "note_zh": "安裝出去的規則/技能旁放版本檔，舊版自動更新、不降級、手改保留 .bak"
+    },
+    {
+      "name": "新舊路徑優先序",
+      "path": "graphify/dedup.py（_lifecycle_penalty）",
+      "difficulty": "低",
+      "note_zh": "巡檢遇同名衝突時 active/current 勝 archive/old/done"
+    },
+    {
+      "name": "巡檢報告段落",
+      "path": "graphify/report.py",
+      "difficulty": "中",
+      "note_zh": "Freshness／Ambiguous／Knowledge Gaps／Suggested Questions 當每日報告模板"
+    },
+    {
+      "name": "子代理 coverage 回報規範",
+      "path": "tools/skillgen/fragments/references/shared/extraction-spec.md",
+      "difficulty": "低",
+      "note_zh": "要求每個 AI 回報每檔讀了幾行，讀不完標 partial 下次重讀"
+    }
+  ],
+  "ai_integration_zh": "原生支援 Claude Code（SKILL.md＋CLAUDE.md 登記＋PreToolUse hook）與 Codex（AGENTS.md＋.codex/hooks.json，平行萃取用 spawn_agent），另支援 Cursor、Gemini CLI、Copilot、OpenCode、Kiro 等 20 多種。LLM 後端可選 Claude（API 或 claude-cli 訂閱）、OpenAI、Gemini、DeepSeek、Kimi、Azure、Bedrock、Ollama。有 MCP 伺服器。沒有角色系統。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：0.9.102 於 2026-11-03 發布，單版十幾條修正、大量外部貢獻者；521 個測試檔、約 7,730 個測試函式；CI 含 skillgen 防漂移 job。程式量大（graphify/ 約 95,000 行 Python）。",
+  "risks_zh": [
+    "不是巡檢／角色框架：沒有角色、任務清單、文件矛盾偵測，也沒附每日排程",
+    "README 說查詢預設記錄到 ~/.cache，但 querylog.py 實際是 opt-in（預設關），文件與程式碼不一致",
+    "graphify install 會改 ~/.claude/CLAUDE.md、hooks、AGENTS.md、git hooks；strict 模式會擋 AI 第一次直接讀檔",
+    "文件／PDF 語意萃取會送內容給 LLM；Kimi 後端送到中國伺服器",
+    "PyPI 正名是 graphifyy（雙 y），注意假套件；README 大量導流付費 Graphify Cloud",
+    "核心檔案巨大（extract.py 12,138 行），不宜直接改核心"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "當「專案地圖＋規則防漂移範本」很值得：裝來給自家 JS 專案建圖、抄 skillgen 的單一來源與 --check；角色分工與每日巡檢流程要搭配 OpenSpec、superpowers 等另外補。",
+  "keywords": [
+    "graphify",
+    "graphifyy",
+    "知識圖譜",
+    "knowledge graph",
+    "tree-sitter",
+    "Claude Code skill",
+    "Codex",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "skillgen",
+    "單一事實來源",
+    "規則漂移",
+    "drift check",
+    "pre-commit",
+    "巡檢",
+    "每日巡讀",
+    "GRAPH_REPORT",
+    "去重",
+    "dedup",
+    "新舊版本",
+    "PreToolUse hook",
+    "MCP",
+    "工作記憶",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/Graphify-Labs__graphify.md"
+}

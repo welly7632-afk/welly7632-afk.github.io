@@ -1,0 +1,147 @@
+{
+  "repo": "Fission-AI/OpenSpec",
+  "category": "04-agent-rules-skills",
+  "commit": "2bd5bc3be964404657439f538857fcdf550f7398",
+  "scanned_at": "2026-11-04",
+  "stars": 73913,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可使用、修改、複製與拆零件。",
+  "license_commercial_zh": "公司商用：可以，包括放進閉源商業工具；只需保留 MIT 授權與著作權聲明。repo 內未見付費或閉源功能；CLI 預設有匿名遙測可關閉。",
+  "one_liner_zh": "用現行規格＋變更提案＋封存，讓多個 AI 共用同一份真相",
+  "use_cases_zh": [
+    "把倉儲 App 的功能（庫存、進貨、成本計算）寫成 openspec/specs/ 唯一現行真相，避免 GPT 與 Claude 各講各的舊版",
+    "用 openspec init --tools claude,codex 讓 Claude Code 與 Codex 安裝同一套流程 skill，讀同一份 openspec/config.yaml 規則",
+    "分工：一個 AI 用 /opsx:propose 規劃、另一個用 /opsx:apply 實作、第三方用 /opsx:verify 驗收，最後 /opsx:archive 封存",
+    "每日巡讀：組合 openspec validate --all --strict --json、status --all --json、list --json 與 verify 報告格式",
+    "借用 bulk-archive 的衝突判定與 verify-openspec-docs 的新鮮上下文審稿員 prompt 寫自己的巡檢 skill"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js >=22.12（或獨立二進位檔）",
+    "commander",
+    "zod",
+    "yaml",
+    "@inquirer/prompts",
+    "Markdown/YAML 檔案（無資料庫）"
+  ],
+  "run_requirements_zh": "本機 CLI，不需伺服器、資料庫或 GPU；curl 安裝腳本、npm、Homebrew 皆可。OpenSpec 本身不呼叫模型、不需 API Key，AI 費用即你原本的 Claude／ChatGPT 訂閱或 API 用量。預設送匿名遙測到 edge.openspec.dev，可用 OPENSPEC_TELEMETRY=0 關閉。",
+  "key_features_zh": [
+    "specs（現行真相）＋ changes（變更提案）＋ archive/YYYY-MM-DD-*（封存）資料夾慣例",
+    "差異規格 ADDED/MODIFIED/REMOVED/RENAMED，封存時由程式合併並偵測重名、跨區段衝突、近似重名",
+    "MODIFIED 若遺失主規格現有場景即拒絕合併（提案落後主規格的過期偵測）",
+    "openspec validate（--all/--strict/--json/--archived）格式與完成度驗證",
+    "openspec/config.yaml 的 context 與 rules 每次注入給 AI，Claude 與 Codex 共用",
+    "12 個流程 SKILL.md（explore/propose/apply/verify/sync/archive/bulk-archive…），支援 50 種 AI 工具",
+    "skill 帶 generatedBy 版本戳記，openspec update 修正過舊或漂移的安裝",
+    "新版不再產生 AGENTS.md，升級時清除舊標記區塊、保留使用者內容"
+  ],
+  "reusable_parts": [
+    {
+      "name": "差異合併引擎",
+      "path": "src/core/specs-apply.ts",
+      "difficulty": "高",
+      "note_zh": "buildUpdatedSpec 依 RENAMED→REMOVED→MODIFIED→ADDED 合併並檢查衝突；依賴 parsers，多數情況直接呼叫 openspec archive --json 即可"
+    },
+    {
+      "name": "產出物 schema 與寫作 prompt",
+      "path": "schemas/spec-driven/schema.yaml",
+      "difficulty": "低",
+      "note_zh": "每個 instruction 區塊可整段搬進自己的 skill 當 AI 寫規格／任務的指示"
+    },
+    {
+      "name": "四段式交接範本",
+      "path": "schemas/spec-driven/templates/",
+      "difficulty": "低",
+      "note_zh": "proposal/spec/design/tasks 四個 .md 直接當 AI 之間的交接單"
+    },
+    {
+      "name": "驗證規則門檻",
+      "path": "src/core/validation/constants.ts",
+      "difficulty": "低",
+      "note_zh": "Why≥50字、需求≤500字、≤10差異、SHALL/MUST 等改寫成巡檢 lint"
+    },
+    {
+      "name": "tasks 勾選框計數正規表示式",
+      "path": "src/utils/task-progress.ts",
+      "difficulty": "低",
+      "note_zh": "TASK_LINE_PATTERN 用在巡檢腳本統計各 AI 漏做的任務"
+    },
+    {
+      "name": "config.yaml 規則注入",
+      "path": "src/core/project-config.ts",
+      "difficulty": "中",
+      "note_zh": "context/rules/operations 以 zod 驗證，配合 src/commands/workflow/instructions.ts 包成 <project_context><rules> 注入"
+    },
+    {
+      "name": "驗收報告格式",
+      "path": "skills/openspec-verify-change/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "Completeness/Correctness/Coherence ＋ CRITICAL/WARNING/SUGGESTION，未驗證不得算通過，直接當每日巡讀報告格式"
+    },
+    {
+      "name": "多變更衝突判定",
+      "path": "skills/openspec-bulk-archive-change/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "以規格路徑建表，2個以上變更碰同一份即衝突，去程式碼找證據決定先後"
+    },
+    {
+      "name": "新鮮上下文審稿員",
+      "path": ".agents/skills/verify-openspec-docs/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "開沒參與寫作的子代理檢查事實與重複內容，每項要附怎麼驗證，兩輪不收斂就停"
+    },
+    {
+      "name": "舊用語禁字掃描",
+      "path": "test/vocabulary-sweep.test.ts",
+      "difficulty": "低",
+      "note_zh": "把淘汰的舊名詞做成禁字表，巡檢時掃全 repo 抓舊版殘留"
+    },
+    {
+      "name": "skill 版本戳記",
+      "path": "src/core/shared/skill-generation.ts",
+      "difficulty": "低",
+      "note_zh": "在 SKILL.md metadata 寫 generatedBy，配合 tool-detection.ts 判斷 needsUpdate"
+    }
+  ],
+  "ai_integration_zh": "不呼叫任何模型，也沒有 MCP；透過 SKILL.md（Agent Skills 格式）與斜線指令驅動你的 AI 工具去呼叫 openspec CLI（--json 輸出）。Claude Code 原生支援（.claude/skills ＋ /opsx:*），Codex 只用 skill（.agents/skills，$openspec-propose），另支援 Cursor、Copilot、Gemini 等共 50 項工具。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最後 commit 2026-11-02，版本 1.16.0，CHANGELOG 57 個版本段落，repo 自己用 OpenSpec 管理（44 份規格、108 個已封存變更），234 個測試檔，CI 與每週安全掃描。",
+  "risks_zh": [
+    "沒有內建排程／每日巡檢，也沒有角色設計，需自己補",
+    "不會自動發現 tasks.md 與實際程式碼脫節（repo 內就有 33 任務全未勾但程式已部分存在的例子）",
+    "新版不產生 AGENTS.md／CLAUDE.md，通用規則仍要自己寫；舊教學提到的 openspec/AGENTS.md 已過時",
+    "場景標題必須是 4 個 #，寫錯會靜默失敗；MODIFIED 須貼完整需求",
+    "需求須含英文 SHALL/MUST；中文規格要照多語系指南保留英文關鍵字",
+    "預設開啟匿名遙測（僅指令名與版本）",
+    "npm 版需 Node 22.12+；Stores 跨 repo 功能仍是 beta"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "強烈建議當你多 AI 架構的「規格與版本」底層：用 specs/changes/archive 解決新舊衝突，再自己補 AGENTS.md 角色規則與每日巡檢 skill。",
+  "keywords": [
+    "OpenSpec",
+    "規格驅動開發",
+    "spec-driven development",
+    "單一事實來源",
+    "single source of truth",
+    "變更提案",
+    "delta spec",
+    "封存",
+    "archive",
+    "openspec validate",
+    "config.yaml",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "SKILL.md",
+    "Claude Code",
+    "Codex",
+    "多 AI 協作",
+    "每日巡讀",
+    "衝突偵測",
+    "過期偵測",
+    "drift",
+    "驗收報告",
+    "任務追蹤",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/Fission-AI__OpenSpec.md"
+}

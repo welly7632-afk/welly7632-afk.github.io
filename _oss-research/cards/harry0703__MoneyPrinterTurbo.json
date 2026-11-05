@@ -1,0 +1,139 @@
+{
+  "repo": "harry0703/MoneyPrinterTurbo",
+  "category": "03-video-script",
+  "commit": "c8dbf96e9dfee43b30f7c3f440175d6bd4de61de",
+  "scanned_at": "2026-11-04",
+  "stars": 138727,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：MIT，可自由使用、修改，沒有限制。",
+  "license_commercial_zh": "公司商用：程式碼可商用與閉源，只需保留 MIT 聲明；但內附字型（微軟雅黑、華文黑體 .ttc）為商業字型不在 MIT 範圍，Edge TTS 商用合規性未確認，素材與 AI 影片需各自遵守供應商條款。",
+  "one_liner_zh": "輸入主題即自動產生腳本、配音、字幕、素材剪輯的短影片產線",
+  "use_cases_zh": [
+    "用自己的商品圖／實拍片段（local 素材）＋台灣口音 Edge 配音，量產電商商品解說短片",
+    "同一腳本用 video_count 產多個剪輯版本，做廣告素材 A/B 測試",
+    "用 Claude 訂閱（claude_code Provider）寫腳本，免另外申請 API Key",
+    "用 cli.py --batch-file 以 JSONL 清單整批為新品產影片，或從 Firebase 網頁呼叫 /api/v1/videos",
+    "拆出 TTS、字幕對齊、MoviePy 合成、Upload-Post 上架等零件給自己的工具"
+  ],
+  "stack": [
+    "Python 3.11+",
+    "FastAPI",
+    "Streamlit",
+    "MoviePy 2.2.1",
+    "FFmpeg",
+    "edge_tts",
+    "faster-whisper",
+    "openai SDK",
+    "LiteLLM",
+    "Redis（選配）",
+    "Docker"
+  ],
+  "run_requirements_zh": "本機 uv/pip（PyPI 套件 mpt）、Windows 一鍵包或 Docker 皆可。最低 4 核 CPU／4 GB RAM，不需 GPU；Whisper 字幕或大量批次建議 8 GB RAM 以上與 4 GB 顯存。必要：一個 LLM（Claude 訂閱經 claude CLI、Anthropic API 或其他 43 家之一）；線上素材需免費 Pexels/Pixabay Key；Edge TTS 免費。最省組合每支片幾乎零成本，AI 文生影片／付費 TTS／AI 配樂則按秒或按字計費。",
+  "key_features_zh": [
+    "主題→腳本→關鍵字→配音→字幕→素材→合成的完整自動產線，可在任一階段停止（stop_at）",
+    "14 種畫面來源：Pexels、Pixabay、Coverr、本地素材、OpenAI 相容文生圖、Codex 圖片、Seedance、秘塔 MiniMax、WaveSpeed、OFox、MuAPI、Infistar、Jalapeno、LoomLoom",
+    "12 種 TTS 判斷分支，含免費 Edge TTS（有 zh-TW 三種聲音）、VoxCPM 參考音檔聲音複製",
+    "Edge 時間戳或 Whisper 產生字幕，並用 Levenshtein 對回原腳本",
+    "9:16／16:9／1:1、轉場、字幕樣式與動畫、BGM 混音",
+    "WebUI、REST API、CLI 批量、Agent Skill 四種入口",
+    "Upload-Post 一鍵發佈 TikTok／Instagram／YouTube Shorts，LLM 自動產標題與 hashtag",
+    "video_project.py 分場景專案，只重算改過的場景"
+  ],
+  "reusable_parts": [
+    {
+      "name": "LLM 供應商註冊表",
+      "path": "app/models/llm_provider.py",
+      "difficulty": "低",
+      "note_zh": "供應商以 dataclass 資料描述，照抄即可做多家 LLM 切換"
+    },
+    {
+      "name": "Claude Code CLI 呼叫器",
+      "path": "app/services/llm.py",
+      "difficulty": "低",
+      "note_zh": "L562-L680：claude -p --output-format json --tools \"\" --safe-mode，用訂閱跑純文字生成"
+    },
+    {
+      "name": "腳本與關鍵字 prompt",
+      "path": "app/services/llm.py",
+      "difficulty": "低",
+      "note_zh": "L56-L71 與 L1040 起，改寫成繁中電商話術版本"
+    },
+    {
+      "name": "多家 TTS 與字幕對齊",
+      "path": "app/services/voice.py",
+      "difficulty": "中",
+      "note_zh": "3,939 行，只取 tts()、Edge 與 create_subtitle() 產 MP3＋SRT"
+    },
+    {
+      "name": "MoviePy 合成器",
+      "path": "app/services/video.py",
+      "difficulty": "中",
+      "note_zh": "combine_videos＋generate_video，輸入片段＋音檔＋SRT 輸出 MP4，需替換 VideoParams"
+    },
+    {
+      "name": "商品圖轉縮放動態片段",
+      "path": "app/services/video.py",
+      "difficulty": "低",
+      "note_zh": "render_image_zoom_video（L1974），商品照直接變短片段"
+    },
+    {
+      "name": "分場景渲染專案",
+      "path": "app/services/video_project.py",
+      "difficulty": "低",
+      "note_zh": "獨立 CLI，只需 ffmpeg，以 episode.json 描述場景，可當自建工具的渲染層"
+    },
+    {
+      "name": "社群文案與上架",
+      "path": "app/services/upload_post.py",
+      "difficulty": "低",
+      "note_zh": "搭配 llm.py L1291 的社群文案 prompt，自動發佈到短影音平台"
+    },
+    {
+      "name": "REST API",
+      "path": "app/controllers/v1/video.py",
+      "difficulty": "低",
+      "note_zh": "整個當服務跑，Firebase 網頁 fetch POST /api/v1/videos 再輪詢 /api/v1/tasks/{task_id}"
+    }
+  ],
+  "ai_integration_zh": "43 個 LLM 供應商（預設 Kimi/moonshot）。Claude 有三種接法：anthropic Provider 走 OpenAI 相容端點 https://api.anthropic.com/v1/（預設 claude-sonnet-5，不用官方 anthropic SDK）；claude_code Provider 以 headless 呼叫本機已登入的 claude CLI 使用 Pro/Max/Team 訂閱（另有 Dockerfile.claude）；或經 OpenRouter/LiteLLM 等閘道。docs/skill/SKILL.md 是給 Claude Code 等 Agent 用的 Skill，會自動安裝並產片。沒有 MCP 伺服器。prompt 集中在 app/services/llm.py。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最新 commit 為掃描當日 2026-11-04，版本 1.3.9；256 個測試檔、2,185 個測試函式，CI 跑 Python 3.11/3.13 與安全掃描。",
+  "risks_zh": [
+    "預設 listen_host=0.0.0.0 且 api_key 為空，API 對區網開放無驗證",
+    "內附微軟雅黑／華文黑體為商業字型，商用影片需換字型",
+    "WebUI 只有簡體中文介面，沒有繁中介面",
+    "腳本清理會刪除括號內文字，商品型號放括號會消失",
+    "線上素材以英文關鍵字搜圖庫，畫面與自家商品無關，電商需自備素材",
+    "Agent Skill 要求不經確認即安裝並執行程式",
+    "付費 AI 影片按秒計費，需留意帳單；README 與供應商清單含大量贊助與推廣連結",
+    "不適合短劇：沒有角色、分鏡、多人配音與畫面一致性"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "做電商商品解說與廣告素材的最佳起點，Claude 訂閱可直接接；短劇需另找專案，零件（TTS、字幕、合成）很值得拆。",
+  "keywords": [
+    "MoneyPrinterTurbo",
+    "短影片自動生成",
+    "text-to-video",
+    "腳本生成",
+    "Edge TTS",
+    "台灣配音",
+    "zh-TW",
+    "字幕",
+    "MoviePy",
+    "FFmpeg",
+    "Pexels",
+    "商品影片",
+    "電商影片",
+    "廣告素材",
+    "批量生成",
+    "Claude Code",
+    "Anthropic",
+    "Streamlit",
+    "FastAPI",
+    "Upload-Post",
+    "聲音複製",
+    "Seedance",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/03-video-script/harry0703__MoneyPrinterTurbo.md"
+}

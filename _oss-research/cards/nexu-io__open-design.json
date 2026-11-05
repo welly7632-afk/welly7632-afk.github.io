@@ -1,0 +1,149 @@
+{
+  "repo": "nexu-io/open-design",
+  "category": "03-video-script",
+  "commit": "e7a18df64d0e5e1161903e93bb5a302229dbeb96",
+  "scanned_at": "2026-11-04",
+  "stars": 105898,
+  "license": "Apache-2.0（部分範本另有 MIT、CC-BY-4.0 等第三方授權）",
+  "license_personal_zh": "個人使用：完全可以，自由修改使用；官方桌面版預設開啟產品分析遙測，可在 Settings → Privacy 關閉（安全遙測無法關）。",
+  "license_commercial_zh": "公司商用：Apache-2.0 可商用、可閉源修改，需保留授權與著作權聲明並註明修改；範本混用 MIT、CC-BY-4.0（需標示出處）與 HeyGen 縮圖，品牌設計系統只是仿風格，不可當成他牌官方資產；OpenDesign Cloud（Vela）託管模型與圖庫為付費雲端功能。",
+  "one_liner_zh": "叫 Claude Code 做網頁、簡報、生圖與動態影片的本機 AI 設計工作區",
+  "use_cases_zh": [
+    "用 HyperFrames 範本（如 30 秒產品宣傳片）把商品名稱、價格、賣點做成文字精準的廣告 MP4",
+    "上傳商品照，用 ecommerce-image-workflow 技能產出主圖／賣點圖／情境圖三張",
+    "用 Seedance、Veo、Kling 等 API 把商品圖做成 9:16 圖生影片片段",
+    "接 MiniMax／ElevenLabs／FishAudio 做配音與聲音複製，whisper.cpp 做逐字動態字幕",
+    "把 skills／design-templates／DESIGN.md 搬進自己的 Claude Code 技能資料夾使用",
+    "透過 MCP 讓 Claude Code 直接讀寫 OpenDesign 專案檔與啟動設計任務",
+    "產生倉儲／價格看板的 HTML 儀表板外觀與簡報（可匯出 PPTX／PDF）"
+  ],
+  "stack": [
+    "TypeScript",
+    "Node.js 24",
+    "Express",
+    "SQLite (better-sqlite3)",
+    "Next.js 16",
+    "React 18",
+    "Electron",
+    "HyperFrames",
+    "GSAP",
+    "FFmpeg",
+    "MCP SDK",
+    "PostHog"
+  ],
+  "run_requirements_zh": "桌面版（Mac／Windows）直接安裝，或從原始碼 Node 24＋pnpm 10.33 執行，或 Docker Compose；不需 GPU。文字 AI 用已登入的 Claude Code 等 CLI 或 BYOK（Anthropic／OpenAI 等 API Key）；生圖／生影片／TTS 需各家 API Key（OpenAI、火山引擎 Ark、MiniMax、ElevenLabs、fal、OpenRouter 等），費用依各家計價，程式碼中無價目表（未確認）。HyperFrames 轉 MP4 預設需桌面版渲染器，Docker／網頁版要另設 HYPERFRAMES_BROWSER_PATH。",
+  "key_features_zh": [
+    "支援 27 種程式代理執行定義（Claude Code、Codex、Cursor 等），Claude Code 以 stream-json 無頭模式執行",
+    "stdio MCP 伺服器 22 個工具，od mcp install claude 一鍵接入 Claude Code",
+    "統一媒體分派 od media generate：26 家供應商（18 家已整合）的生圖、生影片、TTS、音效",
+    "HyperFrames：HTML＋GSAP 動畫以無頭瀏覽器逐格截圖＋FFmpeg 轉 MP4，含多音軌混音",
+    "169 個 SKILL.md 技能、115 個設計範本、152 套 DESIGN.md 設計系統、63 個影片範本",
+    "BYOK 代理含 SSRF 防護，daemon 預設只綁 127.0.0.1",
+    "媒體情境流程 discovery → plan → generate → critique 自評迴圈"
+  ],
+  "reusable_parts": [
+    {
+      "name": "FFmpeg 多音軌混音參數產生器",
+      "path": "apps/daemon/src/media/hyperframes-audio.ts",
+      "difficulty": "低",
+      "note_zh": "約 80 行，改成吃 JSON 音軌清單即可用於配音＋BGM＋音效合成"
+    },
+    {
+      "name": "影格序列轉 MP4 編碼",
+      "path": "apps/daemon/src/media/index.ts",
+      "difficulty": "低",
+      "note_zh": "encodeHyperFramesMp4（L4146-L4203），搭配 Puppeteer 截圖做網頁轉影片"
+    },
+    {
+      "name": "HyperFrames 影片技能與字幕／TTS 文件",
+      "path": "design-templates/hyperframes/",
+      "difficulty": "低",
+      "note_zh": "整包放進 .claude/skills/，讓 Claude Code 寫 GSAP 動畫影片"
+    },
+    {
+      "name": "30 秒產品宣傳片範本",
+      "path": "plugins/_official/video-templates/frame-product-promo-30s/",
+      "difficulty": "低",
+      "note_zh": "MIT（作者 Nate Herk），替換文案、截圖、Logo 即可批次產出促銷短片"
+    },
+    {
+      "name": "影片 API 請求格式轉換",
+      "path": "apps/daemon/src/media-adapters/video.ts",
+      "difficulty": "低",
+      "note_zh": "純函式，一份程式碼對 Seedance／Wan／Veo／Sora 組正確 body"
+    },
+    {
+      "name": "媒體供應商與模型清單",
+      "path": "apps/daemon/src/media/models.ts",
+      "difficulty": "低",
+      "note_zh": "當自己工具的模型下拉選單資料"
+    },
+    {
+      "name": "各供應商 render 函式",
+      "path": "apps/daemon/src/media/index.ts",
+      "difficulty": "中",
+      "note_zh": "建任務→輪詢→下載的模式，單一函式可抄到 Firebase Functions，需去掉內部型別"
+    },
+    {
+      "name": "電商商品圖組技能",
+      "path": "skills/ecommerce-image-workflow/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "純 prompt 流程，接任一生圖 API"
+    },
+    {
+      "name": "Claude Code 無頭呼叫參數",
+      "path": "apps/daemon/src/runtimes/defs/claude.ts",
+      "difficulty": "中",
+      "note_zh": "自建 Node 後端呼叫 Claude Code 的參數範本，勿照抄 bypassPermissions"
+    },
+    {
+      "name": "stdio MCP 伺服器樣板",
+      "path": "apps/daemon/src/mcp.ts",
+      "difficulty": "中",
+      "note_zh": "學「MCP 只轉呼叫 HTTP API」寫法，替倉儲系統做 MCP"
+    }
+  ],
+  "ai_integration_zh": "Claude 原生支援三種方式：OpenDesign 以 claude -p stream-json 叫起 Claude Code（runtimes/defs/claude.ts，帶 --resume 延續對話、--permission-mode bypassPermissions）；Claude Code 透過 od mcp install claude 連上 OpenDesign 的 22 個 MCP 工具；或 BYOK 直連 Anthropic Messages API（/api/proxy/anthropic/stream）。技能採 Agent Skills 的 SKILL.md 格式。系統提示詞在 apps/daemon/src/prompts/（共 4,675 行）。生圖／生影片／TTS 不是 Claude 做，而是 Claude 寫腳本與 HTML 後下 od media generate 指令呼叫 OpenAI、Seedance、Veo、MiniMax、ElevenLabs 等。",
+  "claude_support": "原生",
+  "maintenance_zh": "極活躍：2026-04 建立、半年 10 萬星、版本 0.25.1，CHANGELOG 記載單一版本一週 310 個 PR、88 位貢獻者；3,025 個測試檔＋389 個 e2e 檔（檔名計數，未執行）。變動快，抄程式請鎖定 commit。",
+  "risks_zh": [
+    "Claude Code 以 bypassPermissions 啟動，代理在專案資料夾內有完整執行權",
+    "官方版產品分析遙測預設開啟（opt-out），安全遙測無法關閉，送往 PostHog",
+    "範本與素材授權混雜（MIT、CC-BY-4.0、HeyGen 縮圖、品牌仿風格設計系統）",
+    "Suno／Udio 配樂未整合；AI 多段影片沒有自動串接流程（未確認）",
+    "HyperFrames 渲染在 Docker／網頁版需另設瀏覽器路徑；Linux 無桌面安裝檔",
+    "繁中台灣口音配音未見支援（未確認）",
+    "超大型單檔（server.ts 18,962 行、cli.ts 13,002 行）不易拆",
+    "AI 生成真人影片的肖像權、平台 AI 標示規範與 yt-dlp 下載著作權風險"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "做廣告動態素材與學 Claude Code 技能／MCP 寫法非常值得裝來玩；短劇與網頁 Excel 不是它的強項，建議只拆 HyperFrames 技能、混音與影片 API 轉換這幾塊來組合。",
+  "keywords": [
+    "OpenDesign",
+    "open-design",
+    "AI 設計工作區",
+    "Claude Code",
+    "MCP",
+    "Agent Skills",
+    "SKILL.md",
+    "DESIGN.md",
+    "設計系統",
+    "HyperFrames",
+    "GSAP",
+    "HTML 轉 MP4",
+    "FFmpeg",
+    "動態影片",
+    "廣告素材",
+    "電商商品圖",
+    "Seedance",
+    "Veo",
+    "MiniMax TTS",
+    "ElevenLabs",
+    "聲音複製",
+    "whisper.cpp",
+    "字幕",
+    "BYOK",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/03-video-script/nexu-io__open-design.md"
+}

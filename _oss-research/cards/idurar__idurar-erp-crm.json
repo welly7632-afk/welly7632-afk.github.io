@@ -1,0 +1,53 @@
+{
+  "repo": "idurar/idurar-erp-crm",
+  "category": "02-price-erp",
+  "commit": "e935dec13cf8b6082a7e7fc4736669e5151a80a3",
+  "scanned_at": "2026-11-04",
+  "stars": 8939,
+  "license": "AGPL-3.0（LICENSE 檔；backend/package.json 另寫 Fair-code License，說法不一致）",
+  "license_personal_zh": "個人使用：自己架、自己改都可以，不需公開任何東西。",
+  "license_commercial_zh": "公司商用：內部使用風險低；若修改後讓外部客戶透過網路使用，或把程式碼複製進自己的系統對外提供，必須以 AGPL 公開完整原始碼。寄信、報價轉發票等功能已鎖在付費雲端版。",
+  "one_liner_zh": "MERN 極簡開源發票＋收款系統，報價與稅率已從開源版移除",
+  "use_cases_zh": [
+    "參考發票明細列（Form.List＋ItemRow）寫自己的報價單／出貨單明細",
+    "參考「放一個模型檔就自動產生 9 支 REST API」的後端設計",
+    "參考部分收款與 paid／partially／unpaid 付款狀態邏輯",
+    "參考 Pug 樣板產生 PDF 發票",
+    "需要時改用舊版 commit 51eecb0 架一套英文介面的開發票小工具"
+  ],
+  "stack": ["JavaScript", "Node.js 20", "Express 4", "MongoDB", "Mongoose 8", "React 18", "Vite 5", "Ant Design 5", "Redux Toolkit", "currency.js", "Pug", "html-pdf"],
+  "run_requirements_zh": "後端 Node 20＋MongoDB（Atlas 免費層即可），npm run setup 後 npm run dev（port 8888）；前端 Vite 另開。無 Docker、不需 GPU。必填 DATABASE、JWT_SECRET；選填 RESEND_API（忘記密碼信）、DigitalOcean Spaces 金鑰。沒有使用任何付費 AI。注意：HEAD 版前端路由引用已刪除元件、setup.js 引用已刪除模型，依原始碼判斷可能無法直接跑起來，建議用 commit 51eecb0。",
+  "key_features_zh": [
+    "客戶主檔（設定檔驅動的 CRUD 頁面）",
+    "發票：明細列自動計算小計、稅額、總額，伺服器端以 currency.js 重算",
+    "收款：部分收款、自動更新付款狀態",
+    "Pug＋html-pdf 產生 PDF 發票",
+    "鍵值式系統設定（幣別符號、千分位、小數位、發票號）",
+    "模型檔自動產生 REST API（create/read/update/delete/list/listAll/search/filter/summary）"
+  ],
+  "reusable_parts": [
+    {"name": "自動路由產生器", "path": "backend/src/models/utils/index.js + backend/src/routes/appRoutes/appApi.js + backend/src/controllers/middlewaresControllers/createCRUDController/", "difficulty": "中", "note_zh": "掃描模型檔動態註冊九支 API；概念可移植到 Firebase Cloud Functions＋Firestore，建議參考後自己重寫以避開 AGPL。"},
+    {"name": "開單明細列", "path": "frontend/src/modules/InvoiceModule/Forms/InvoiceForm.jsx + frontend/src/modules/ErpPanelModule/ItemRow.jsx", "difficulty": "中", "note_zh": "antd Form.List 新增／刪除列、數量×單價自動算；純 JS 專案需改寫，要更像 Excel 可換成可編輯表格元件。"},
+    {"name": "金額精算工具", "path": "frontend/src/utils/calculate.js", "difficulty": "低", "note_zh": "currency.js 的加減乘除包裝，直接在倉儲 App 使用避免浮點誤差。"},
+    {"name": "部分收款邏輯", "path": "backend/src/controllers/appControllers/paymentController/create.js", "difficulty": "低", "note_zh": "可收上限＝總額－折扣－已收；在 Firestore 以 transaction 重寫並補上原版缺少的交易。"},
+    {"name": "PDF 發票樣板", "path": "backend/src/controllers/pdfController/index.js + backend/src/pdf/Invoice.pug", "difficulty": "中", "note_zh": "樣板可留，html-pdf（PhantomJS）已過時，建議換 Puppeteer 或瀏覽器列印。"},
+    {"name": "設定檔驅動表單", "path": "frontend/src/forms/DynamicForm/index.jsx", "difficulty": "中", "note_zh": "用 JSON 欄位定義自動產生新增／編輯表單，適合快速做供應商、商品主檔頁。"}
+  ],
+  "ai_integration_zh": "無任何 AI 功能。package.json 有 openai 套件、server.js 讀了 OPENAI_API_KEY 但從未使用；無 prompt、MCP、Skills。API 是 REST＋Bearer JWT，可自行寫 MCP 伺服器讓 Claude 建發票、查未收款。",
+  "claude_support": "可接",
+  "maintenance_zh": "共 1,646 個 commit；2025-08 後幾乎只改 README／維護者資料，2026-03 合併 4 個社群修正。2024-05 刪除所有翻譯、2025-07 刪除報價／稅率／付款方式／儀表板，功能逐步移往付費雲端版，實質開發已停。",
+  "risks_zh": [
+    "HEAD 版 routes.jsx 引用已刪除的 Quote／Taxes／PaymentMode 元件，前端可能無法啟動（依原始碼判斷）",
+    "setup.js 引用已刪除的 PaymentMode／Taxes 模型，初始化會中途出錯",
+    "預設帳密 admin@admin.com／admin123，.env 內 JWT_SECRET 為固定佔位字",
+    "/download PDF 路由不需登入，知道發票 ID 即可下載",
+    "CORS origin:true＋credentials、未啟用 rate limit、使用者輸入直接進 RegExp",
+    "收款與發票更新無資料庫交易；0 個測試檔",
+    "授權說法不一致（AGPL vs Fair-code），對外服務須公開原始碼",
+    "無繁中、無台灣稅制與電子發票、無庫存與商品模型"
+  ],
+  "fit_for_user": 2,
+  "verdict_zh": "Star 多但開源版只剩發票＋收款且 HEAD 可能跑不起來，只建議拿明細列與自動 CRUD 設計當參考，不要當主系統。",
+  "keywords": ["IDURAR", "idurar-erp-crm", "開源 ERP", "CRM", "發票系統", "收款管理", "報價單", "明細列", "金額精算", "自動 CRUD", "MERN", "Node.js", "Express", "MongoDB", "React", "Ant Design", "currency.js", "Pug PDF", "AGPL-3.0", "Fair-code", "invoice", "payment", "quote", "open source ERP CRM"],
+  "pack_path": "_oss-research/02-price-erp/idurar__idurar-erp-crm.md"
+}

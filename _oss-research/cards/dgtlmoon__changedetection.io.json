@@ -1,0 +1,63 @@
+{
+  "repo": "dgtlmoon/changedetection.io",
+  "category": "02-price-erp",
+  "commit": "c32360ae1de94b36d5bbdfc47258b1c0c82f2f67",
+  "scanned_at": "2026-11-04",
+  "stars": 35504,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全自由，可自架、修改、不公開原始碼。",
+  "license_commercial_zh": "公司商用：可以，需保留 LICENSE 與 NOTICE、散布修改版時註明修改；changedetection.io 名稱與 Logo 不在授權內，不可沿用。程式碼中沒看到付費版限定功能，官方另有 US$8.99/月代管服務。",
+  "one_liner_zh": "自架網頁變動監控，可追蹤商品價格與補貨並通知，內建 AI 與 MCP",
+  "use_cases_zh": [
+    "盯競品與供應商商品頁的價格、降價、補貨、缺貨，設定上下限與漲跌幅門檻才通知",
+    "下載每個商品的價格歷史 .xlsx，放進自己的比價試算表",
+    "用 posts:// Webhook 或 REST API 把價格與庫存狀態同步到自建的 Firebase 倉儲系統",
+    "監控競品活動頁、廣告落地頁的文案變化",
+    "用 MCP 接上 Claude Code，用自然語言查「這週哪些競品降價」或新增監控",
+    "網站沒有結構化資料時，用 Claude（Anthropic API）當 AI 抽價器",
+    "拆出 compute_price_summary、parse_currency、LLM 抽價 prompt 改寫成 JS 放進自己的系統"
+  ],
+  "stack": ["Python 3.11+", "Flask 3", "flask_restful", "Flask-SocketIO", "Jinja2", "jQuery", "檔案式儲存（JSON＋Brotli 快照，無資料庫）", "Playwright/Puppeteer/Selenium", "lxml/extruct/jsonpath-ng/jq", "Apprise", "LiteLLM", "mcp-types", "Docker"],
+  "run_requirements_zh": "Docker（docker compose up -d，port 5000）或 pip install changedetection.io；不需 GPU。盯 JS 渲染網站（如蝦皮）需另起 Chrome 瀏覽器容器並設 PLAYWRIGHT_DRIVER_URL，記憶體需求較高（未實測）。本體免費；AI 功能需自備 LLM API Key（可用 Anthropic），有月度 token 預算可控費；防爬嚴格網站可能要付費代理。不能放在 Firebase Hosting，需 VPS／家用電腦／NAS。",
+  "key_features_zh": [
+    "單一商品頁補貨＋價格偵測：先讀 JSON-LD/OpenGraph/microdata，失敗再用外掛或 AI",
+    "通知門檻：只在缺貨轉有貨、價格超出上下限、漲跌幅超過百分比時通知",
+    "瀏覽器端缺貨字串掃描（114 個多國語字串，中文僅「已售」「已售完」），並能推翻網站結構化資料的「有貨」",
+    "價格歷史統計（最低、中位數、P25/P75、歷史最低）與 SVG 走勢圖、xlsx 匯出",
+    "Browser Steps：21 種瀏覽器動作（登入、選規格、點擊）",
+    "Apprise 通知＋自訂 HTTP Webhook（具 SSRF 防護）",
+    "REST API v1 與 OpenAPI 規格",
+    "MCP 伺服器 /mcp/v1：27 個核心工具＋2 個補貨工具，含權限格與 OAuth",
+    "LLM：意圖判斷、變動摘要、AI 抽價，支援 Anthropic prompt caching",
+    "pluggy 外掛系統（21 個 hook）",
+    "繁體中文介面（zh_Hant_TW）"
+  ],
+  "reusable_parts": [
+    {"name": "價格統計 compute_price_summary", "path": "changedetectionio/processors/restock_diff/difference.py", "difficulty": "低", "note_zh": "L67-L118，只用 statistics 標準庫，可請 Claude 改寫成 JS，判斷現價是低／一般／高、是否歷史最低"},
+    {"name": "價格字串解析 Restock.parse_currency", "path": "changedetectionio/processors/restock_diff/__init__.py", "difficulty": "低", "note_zh": "L24-L48，處理千分位與小數逗號，改寫成 JS 函式"},
+    {"name": "篩選區塊抽價 extract_price_from_filtered_text", "path": "changedetectionio/processors/restock_diff/filtered_price.py", "difficulty": "低", "note_zh": "只認帶幣別的金額，原價＋特價並存時報錯而非亂猜"},
+    {"name": "純 Python 結構化資料抽取", "path": "changedetectionio/processors/restock_diff/pure_python_extractor.py", "difficulty": "低", "note_zh": "可放進 Python Cloud Function 當「商品網址→價格／庫存」API"},
+    {"name": "LLM 抽價 system prompt", "path": "changedetectionio/processors/restock_diff/plugins/llm_restock.py", "difficulty": "低", "note_zh": "L48-L113 純文字 prompt，可直接用在 Claude API，建議補繁中缺貨用語與 NT$"},
+    {"name": "缺貨文字掃描 JS", "path": "changedetectionio/content_fetchers/res/stock-not-in-stock.js", "difficulty": "低", "note_zh": "可放進 Playwright 或 Chrome 擴充功能，需自行補「缺貨」「完售」等台灣用語"},
+    {"name": "價格通知判斷規則", "path": "changedetectionio/processors/restock_diff/processor.py", "difficulty": "低", "note_zh": "L696-L751，上下限＋百分比門檻＋in_stock_only，約 55 行可照抄成 JS"},
+    {"name": "SVG 價格走勢圖", "path": "changedetectionio/static/js/restock-price-graph.js", "difficulty": "中", "note_zh": "420 行手刻 SVG，拿掉 jQuery 後可用在純 JS 專案"},
+    {"name": "MCP 伺服器與權限格", "path": "changedetectionio/blueprint/mcp/tools.py", "difficulty": "中", "note_zh": "參考其無狀態 JSON-RPC＋讀寫權限設計，讓自己的倉儲系統也能被 Claude 查詢"},
+    {"name": "自訂 HTTP Webhook 處理器", "path": "changedetectionio/notification/apprise_plugin/custom_handlers.py", "difficulty": "中", "note_zh": "post:// posts:// 轉 HTTP 請求，附 SSRF 防護寫法"}
+  ],
+  "ai_integration_zh": "全部經 LiteLLM，模型由使用者設定，可選 Anthropic（設定頁會從 api.anthropic.com 列出模型、自動對 Claude 加 prompt caching、處理 Claude 新模型參數差異）。三種 AI 功能：自然語言通知條件判斷、變動摘要、AI 抽價／庫存（只在內建抽取失敗時呼叫並快取）。內建 MCP 伺服器 /mcp/v1，可用 claude mcp add --transport http 接上 Claude Code，提供 27 個核心工具加 2 個補貨工具。repo 內無 Claude Skills。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最新 commit 2026-11-04，版本 0.60.10；201 個測試檔、CI 含 CodeQL 與 OpenAPI 驗證；註解詳盡。",
+  "risks_zh": [
+    "預設每天回報版本、安裝 ID、監控數量到 changedetection.io（且不驗 TLS），用 DISABLE_VERSION_CHECK=true 關閉",
+    "預設無登入密碼，對外開放前必須設密碼或放反向代理後面",
+    "補貨模式只適用單一商品頁，列表頁多價格會報錯",
+    "沒有台灣電商（蝦皮／momo／PChome）專門支援，中文缺貨字串只有兩個；蝦皮可能需 Chrome＋代理且可能被擋（未實測）",
+    "價格歷史以快照文字存放、非資料庫；只支援單一行程",
+    "開啟 AI 功能會把頁面內容送到第三方 AI 供應商",
+    "品牌名稱與 Logo 不在 Apache-2.0 授權內"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要盯競品／供應商價格與補貨就直接自架來用，再拆它的價格統計、抽價 prompt 進自己的 Firebase 系統；但它不是 ERP，也不是試算表。",
+  "keywords": ["changedetection.io", "網頁變動監控", "價格追蹤", "降價通知", "補貨通知", "缺貨偵測", "競品監控", "比價", "價格歷史", "price tracking", "restock alert", "website change detection", "JSON-LD", "Playwright", "Apprise", "Webhook", "REST API", "MCP server", "Claude Code", "LiteLLM", "Anthropic", "xlsx 匯出", "Flask", "Docker", "自架"],
+  "pack_path": "_oss-research/02-price-erp/dgtlmoon__changedetection.io.md"
+}

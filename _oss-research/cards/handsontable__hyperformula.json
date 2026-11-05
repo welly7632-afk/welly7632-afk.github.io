@@ -1,0 +1,126 @@
+{
+  "repo": "handsontable/hyperformula",
+  "category": "01-web-excel",
+  "commit": "187dfa1660fa0b0c3f13c15a6ddb81ccf799c9e3",
+  "scanned_at": "2026-11-04",
+  "stars": 2829,
+  "license": "GPL-3.0-only 或 Handsoncode 商業授權（雙授權，自訂 LICENSE.txt；GitHub 顯示 NOASSERTION）",
+  "license_personal_zh": "個人使用：設定 licenseKey: 'gpl-v3' 即可免費使用全部函數與 API；不填金鑰則公式全變 #LIC!、編輯類 API 丟錯。自己或公司內部使用、不對外散布時，GPL 義務一般不觸發（非法律意見）。",
+  "license_commercial_zh": "公司商用：網頁前端會把 JS 散布給使用者，若選 GPL，與它結合的前端程式碼須以 GPL 開源；不想開源需向 Handsoncode 購買商業授權（價格未載明）。3.5.0 起商業金鑰可分級，只買部分函數群組，未買的函數回 #LIC!；GPL 金鑰不受此限制。",
+  "one_liner_zh": "無畫面的 Excel 公式引擎，355 個函數，表格 UI 需自配",
+  "use_cases_zh": [
+    "在現有純 JS + Firebase 倉儲系統加入可打公式的欄位（數量×單價、SUMIF 分類加總）",
+    "成本／售價／毛利／廣告 ROAS 試算器，含 PMT、NPV、IRR、XIRR 財務函數",
+    "多供應商比價表、報價單（跨工作表參照、XLOOKUP、INDEX/MATCH、MIN）",
+    "搭配開源表格 UI（Jspreadsheet CE、glide-data-grid、x-spreadsheet 等）做出網頁版 Excel",
+    "包成 Claude 的計算工具（自建 MCP），讓 AI 算數字時結果精確可重現",
+    "搭配 ExcelJS／SheetJS 讀入 .xlsx 的值與公式後在網頁重算"
+  ],
+  "stack": [
+    "TypeScript",
+    "JavaScript（瀏覽器／Node.js）",
+    "chevrotain 6（公式解析）",
+    "tiny-emitter",
+    "無資料庫（自行存 Firestore 等）"
+  ],
+  "run_requirements_zh": "純前端函式庫：npm install hyperformula 或 jsDelivr CDN 引入 hyperformula.full.min.js 即可，不需後端、不需 GPU、不需任何雲端 API Key、不連網；唯一必要設定是 licenseKey: 'gpl-v3'。GPL 免費，商業授權需詢價。套件大小未實測（官方稱數百 kB）。預設最多 40,000 列，需調 maxRows。",
+  "key_features_zh": [
+    "自行計數：370 個正式函數（含 15 個 HF.* 運算子函數與 OFFSET）、355 個類 Excel 函數，加 53 個別名共 423 個可呼叫名稱",
+    "依賴圖 + Tarjan 拓樸排序，只重算受影響儲存格，循環參照回 #CYCLE!",
+    "同型公式共用 AST 快取、範圍重用小範圍結果、useColumnIndex 加速查表",
+    "CRUD：增刪列欄、搬移、排序重排（setRowOrder）、多工作表、跨表參照",
+    "復原／重做（含結構操作）、內部剪貼簿 copy/cut/paste、getFillRangeData 填滿",
+    "陣列公式（ARRAYFORMULA、FILTER、SORT、UNIQUE、SEQUENCE、VSTACK/HSTACK）",
+    "自訂函數 plugin、命名運算式、18 種語言包、valuesUpdated 等 8 種事件",
+    "getCellPrecedents／getCellDependents 追蹤公式來源，calculateFormula 單條公式試算"
+  ],
+  "reusable_parts": [
+    {
+      "name": "整個引擎（直接當套件用）",
+      "path": "src/HyperFormula.ts",
+      "difficulty": "低",
+      "note_zh": "CDN 引入，UI 編輯時 setCellContents，hf.on('valuesUpdated') 更新畫面；最推薦"
+    },
+    {
+      "name": "自訂函數 plugin 機制",
+      "path": "src/interpreter/plugin/FunctionPlugin.ts",
+      "difficulty": "低",
+      "note_zh": "繼承 FunctionPlugin 寫 SHIPFEE、PLATFORMFEE 等店家專用函數，registerFunctionPlugin 註冊；不支援非同步"
+    },
+    {
+      "name": "財務函數",
+      "path": "src/interpreter/plugin/FinancialPlugin.ts",
+      "difficulty": "中",
+      "note_zh": "PMT/NPV/IRR/XIRR 等，可直接用公式；複製程式碼即受 GPL 約束"
+    },
+    {
+      "name": "統計函數與 jStat 移植",
+      "path": "src/interpreter/plugin/3rdparty/jstat/jstat.ts",
+      "difficulty": "中",
+      "note_zh": "jstat.ts 檔頭為 jStat 的 MIT 授權；只要分佈演算法可改用原版 jStat 避開 GPL；廣告 A/B 檢定可用 T.TEST、CHISQ.TEST"
+    },
+    {
+      "name": "拓樸排序（Tarjan SCC）",
+      "path": "src/DependencyGraph/TopSort.ts",
+      "difficulty": "低",
+      "note_zh": "189 行泛型類別，可拿去做欄位相依重算或流程排序"
+    },
+    {
+      "name": "公式解析器",
+      "path": "src/parser/FormulaParser.ts",
+      "difficulty": "高",
+      "note_zh": "與引擎內部耦合深，建議改用 hf.validateFormula／normalizeFormula"
+    },
+    {
+      "name": "TEXT 格式字串處理",
+      "path": "src/format/format.ts",
+      "difficulty": "中",
+      "note_zh": "可參考做簡易數字／日期顯示格式，可自訂 stringifyCurrency 輸出 NT$"
+    }
+  ],
+  "ai_integration_zh": "引擎本身無 AI、無 prompt、不連網。官方提供 Claude Code Skill（handsontable/handsontable-skills，內容未確認）與文件 MCP（docs-assistant.handsontable.com/mcp），幫寫程式的 Claude 正確使用 API；官方的計算用 MCP Server（@hyperformula/mcp）與 Vercel AI SDK 整合文件標示「尚未推出、目前不能用」。可自建 MCP／tool use 讓 Claude 呼叫 calculateFormula 做精確計算。與 AI 影片／腳本生成無關。",
+  "claude_support": "可接",
+  "maintenance_zh": "活躍，商業公司 Handsoncode 維護；3.2.0（2026-02）→3.3.0（2026-05）→3.4.0（2026-08）→3.5.0（2026-10-09），master 最新 commit 2026-10-15；持續新增函數與修精度。公開 repo 只有 5 個 smoke test，完整測試在私有 repo；CI 有 lint、CodeQL、audit、performance。",
+  "risks_zh": [
+    "必須設定 licenseKey: 'gpl-v3'，否則公式全為 #LIC!、編輯 API 丟 LicenseCapabilityMissingError",
+    "GPL-3.0：對外散布（含網頁前端）需開源或購買商業授權；組合 A+B+C 時整體受 GPL 約束",
+    "3.5.0 起加入分級授權機制，未來政策可能變動，建議鎖版本",
+    "無 UI：渲染、虛擬捲動、格式、合併、凍結、驗證、圖表、樞紐全部沒有",
+    "無 .xlsx/.csv 匯入匯出，需 ExcelJS／SheetJS／PapaParse，格式不保留",
+    "剪貼簿只在記憶體，從 Excel／Google 試算表貼上需自行處理",
+    "預設 maxRows 40,000、日期格式 DD/MM/YYYY，台灣用需調整",
+    "中文工作表名在公式中須加單引號，命名運算式不能用中文（依正則推斷）",
+    "不支援動態陣列、3D 參照、非同步函數、反覆運算、結構化參照；OFFSET 參數須為常數",
+    "無多人即時協作"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "要做「會算公式的網頁試算表／成本試算」時，這是最成熟的開源公式核心，建議當 B 元件搭配一個表格 UI 與 ExcelJS；個人／內部用 gpl-v3 免費，對外商用要先處理 GPL。",
+  "keywords": [
+    "HyperFormula",
+    "Handsontable",
+    "無介面試算表",
+    "headless spreadsheet",
+    "公式引擎",
+    "formula engine",
+    "Excel 公式",
+    "網頁版 Excel",
+    "依賴圖",
+    "dependency graph",
+    "增量重算",
+    "自訂函數",
+    "custom functions",
+    "復原重做",
+    "陣列公式",
+    "VLOOKUP",
+    "XLOOKUP",
+    "財務函數",
+    "成本計算",
+    "比價表",
+    "Firestore",
+    "純 JavaScript",
+    "GPL-3.0",
+    "雙授權",
+    "Claude Skill"
+  ],
+  "pack_path": "_oss-research/01-web-excel/handsontable__hyperformula.md"
+}

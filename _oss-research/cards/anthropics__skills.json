@@ -1,0 +1,130 @@
+{
+  "repo": "anthropics/skills",
+  "category": "04-agent-rules-skills",
+  "commit": "ca45fc496a3436251f191354091d557da31c15b5",
+  "scanned_at": "2026-11-04",
+  "stars": 187332,
+  "license": "混合授權：14 個 skill 為 Apache-2.0（含 skill-creator、claude-api、webapp-testing）；docx/pdf/pptx/xlsx 為 Anthropic 專有授權；doc-coauthoring 無授權檔；根目錄無 LICENSE",
+  "license_personal_zh": "個人使用：Apache-2.0 的 skill 可自由使用、修改；docx/pdf/pptx/xlsx 只能透過 Claude 服務使用，不可複製出來改寫；doc-coauthoring 沒授權檔，只借概念。",
+  "license_commercial_zh": "公司商用：Apache-2.0 部分可商用（保留授權聲明、標註修改）；專有授權 4 個禁止複製、衍生作品與散布；若散布含 FFmpeg 的影片/GIF 工具要注意 GPL-3.0。",
+  "one_liner_zh": "Anthropic官方Skills範本：SKILL.md寫法、觸發測試與規則稽核",
+  "use_cases_zh": [
+    "照官方格式為每個 AI 角色寫 SKILL.md（name/description、scripts/references/assets）",
+    "用 skill-creator 的 run_eval/run_loop 測試並自動優化 description，確保技能會被正確觸發",
+    "把 claude-api 的 prompt-audit.md 改寫成每日巡讀 skill，找出 AGENTS.md/CLAUDE.md/skills 之間的矛盾、過期路徑、重複內容與重複角色",
+    "參考 managed-agents-multiagent.md 設計 lead/reviewer/test writer 角色表與交接規則",
+    "用 webapp-testing 讓 QA 角色每天以 Playwright 點測倉儲網頁",
+    "參考 xlsx skill 的規則（公式不寫死、重算、標註假設）自訂試算表匯出檢查清單（只借概念）",
+    "借 explainer-video-maker 的分鏡→平行製作→獨立審查流程做商品影片"
+  ],
+  "stack": [
+    "Markdown (SKILL.md)",
+    "Python 3",
+    "PyYAML",
+    "Claude Code CLI (claude -p)",
+    "openpyxl/pandas/LibreOffice (xlsx)",
+    "Playwright (webapp-testing)",
+    "Node/pnpm (web-artifacts-builder)"
+  ],
+  "run_requirements_zh": "不需部署、不需 GPU。Skill 本身是 Markdown，裝進 Claude Code（/plugin marketplace add anthropics/skills）或 .claude/skills/ 即可。skill-creator 觸發測試需 Python3＋pyyaml＋Claude Code 的 claude -p（用訂閱登入，不需另外 API Key，但一次最佳化約 300 次呼叫很吃額度）。Managed Agents 排程/多代理需 Anthropic API Key、按 token 計費。",
+  "key_features_zh": [
+    "19 個官方 skill＋template，SKILL.md 規範（name≤64、description≤1024、不可含角括號）",
+    "skill-creator：草稿→測試→人工檢閱→改寫的迭代流程，含 grader/comparator/analyzer 三個評審角色",
+    "description 觸發測試與 60/40 訓練/保留集自動最佳化",
+    "prompt-audit：稽核 CLAUDE.md/AGENTS.md/rules/skills/subagents 的矛盾、過期、重複，固定報告格式＋建議 diff",
+    "Managed Agents 多代理角色、cron 排程部署、記憶庫版本與樂觀鎖文件",
+    "Claude Code plugin marketplace.json 打包方式"
+  ],
+  "reusable_parts": [
+    {
+      "name": "SKILL.md 驗證器",
+      "path": "skills/skill-creator/scripts/quick_validate.py",
+      "difficulty": "低",
+      "note_zh": "純 Python＋pyyaml，放進巡讀腳本對每個 skill 資料夾驗證；可加撞名/重複 description 檢查。"
+    },
+    {
+      "name": "frontmatter 解析",
+      "path": "skills/skill-creator/scripts/utils.py",
+      "difficulty": "低",
+      "note_zh": "標準庫即可，用來列出所有 skill 做重複比對。"
+    },
+    {
+      "name": "觸發測試與 description 最佳化",
+      "path": "skills/skill-creator/scripts/run_loop.py",
+      "difficulty": "中",
+      "note_zh": "整個 skill-creator 放到 .claude/skills/，需 claude -p；會暫時寫入 .claude/commands/。"
+    },
+    {
+      "name": "評審角色指令",
+      "path": "skills/skill-creator/agents/grader.md",
+      "difficulty": "低",
+      "note_zh": "改成驗收員子代理，要求逐條附證據並批評太容易通過的檢查項。"
+    },
+    {
+      "name": "規則/技能稽核流程",
+      "path": "skills/claude-api/shared/prompt-audit.md",
+      "difficulty": "低",
+      "note_zh": "摘 Step0-1、Group 2、第182/198行、Step5-6 成 daily-patrol skill 的 references。"
+    },
+    {
+      "name": "多代理角色範本",
+      "path": "skills/claude-api/shared/managed-agents-multiagent.md",
+      "difficulty": "低",
+      "note_zh": "第59-97行的 lead/reviewer/test writer 定義翻成 ROLES.md。"
+    },
+    {
+      "name": "排程部署 YAML",
+      "path": "skills/claude-api/shared/managed-agents-quickstarts/field-monitor.md",
+      "difficulty": "中",
+      "note_zh": "改 cron 與 Asia/Taipei 時區＋預算上限，雲端每日巡讀（需 API Key）。"
+    },
+    {
+      "name": "Playwright 網頁測試",
+      "path": "skills/webapp-testing/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "整包當 QA 技能，配 scripts/with_server.py 啟動本機伺服器。"
+    }
+  ],
+  "ai_integration_zh": "本身就是 Claude 原生 Skills；可用 Claude Code plugin marketplace、Claude.ai 上傳 .skill、或 Skills API。範例模型為 claude-opus-5-5/sonnet-5-5/haiku-5-5。repo 內沒有 Codex/Cursor 支援說明；可在 AGENTS.md 指示 Codex 去讀 skills/*/SKILL.md 來共用。",
+  "claude_support": "原生",
+  "maintenance_zh": "Anthropic 官方維護，最近推送 2026-10-28；無 tests/ 與 CI；README 聲明僅供示範教育用途。",
+  "risks_zh": [
+    "授權混合：xlsx/docx/pptx/pdf 為專有授權，不可複製程式碼到自己的工具",
+    "doc-coauthoring 無授權檔",
+    "沒有自動化測試與 CI",
+    "claude-api 的 description 經我計算約 1068 字元，超過自家驗證器的 1024 上限；SKILL.md 616 行超過建議 500 行",
+    "docx/pptx/xlsx 的 scripts/office 三份完全重複（50 檔×3）",
+    "skill-creator 最佳化迴圈會大量呼叫 claude -p，耗用額度；中斷時可能殘留 .claude/commands 暫存檔",
+    "沒有提供 AGENTS.md/CLAUDE.md 共用規則範本，也沒有 Claude Code 內建每日排程，需自行組合"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "AI 協作基礎架構的必讀原廠教材：用它的 SKILL.md 規範與 skill-creator 寫角色技能，把 prompt-audit 改成每日巡讀 skill；共用規則檔與任務板要另外搭配其他專案。",
+  "keywords": [
+    "anthropics/skills",
+    "Agent Skills",
+    "SKILL.md",
+    "skill-creator",
+    "技能",
+    "description 觸發",
+    "漸進式揭露",
+    "progressive disclosure",
+    "prompt-audit",
+    "規則稽核",
+    "每日巡讀",
+    "daily patrol",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "規則衝突",
+    "過期偵測",
+    "重複角色",
+    "多代理",
+    "multiagent",
+    "角色分工",
+    "scheduled deployment",
+    "xlsx",
+    "試算表",
+    "Playwright",
+    "Claude Code plugin"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/anthropics__skills.md"
+}

@@ -1,0 +1,60 @@
+{
+  "repo": "lemomo-ai/lemo-opuscar",
+  "category": "03-video-script",
+  "commit": "bebbbe1aa92a3cb4bb6f83500e61b23a17d1aa00",
+  "scanned_at": "2026-11-04",
+  "stars": 12152,
+  "license": "MIT（程式碼與文件）＋ CC BY 4.0（demo 影片與截圖）",
+  "license_personal_zh": "個人使用：完全自由；你用它做出的影片歸你，不需標註。",
+  "license_commercial_zh": "公司商用：程式碼與 66 份風格 prompt 為 MIT 可商用；重用官方 demo 影片需標註 LemoLab（CC BY 4.0）；三支 demo 配音不可重用；中文配音預設 edge-tts（微軟線上服務），商用前要自行確認微軟條款。無付費版或閉源功能。",
+  "one_liner_zh": "讓 Claude Code 用程式碼逐格畫出影片的 66 種風格庫與工具鏈",
+  "use_cases_zh": [
+    "做風格化商品廣告與開箱短片（玻璃質感產品、產品拆解、暗色科技發布、一筆畫、1930s 卡通）",
+    "做商品使用教學或流程說明影片（50s 扁平卡通、等距信息圖）",
+    "把倉儲／價格資料用網頁 render(t) 自動做成每日新品、價格比較短片",
+    "節慶檔期素材（紅色窗花剪紙等東方風格）",
+    "拆出 HTML→MP4 渲染器、中文 TTS、Whisper 校對、SRT、響度標準化放進自己的工具",
+    "建立自己的品牌專屬影片風格（MY-STYLES 流程，可設直式 1080x1920）"
+  ],
+  "stack": ["JavaScript (ES modules)", "Canvas 2D", "WebGL2", "three.js r170", "Node 20+", "playwright-core (headless Chromium)", "ffmpeg 7+", "Python 3.11+", "numpy/scipy/soundfile/soxr", "kokoro-onnx", "edge-tts", "faster-whisper", "numba", "Claude Code plugin/skill"],
+  "run_requirements_zh": "本機執行：Node 20+、ffmpeg 7+、Python 3.11+（或 uv），macOS/Linux，Windows 需 WSL；3D／shader 風格需要 GPU。依賴分層安裝：核心約 350 MB、語音約 0.55 GB＋Whisper 模型、音色庫每套 70–400 MB。不需任何付費 API Key，只要 Claude Code；主要成本是 Claude token（每支片 30–60 分鐘，金額未確認）。中文 TTS 需連網。",
+  "key_features_zh": [
+    "66 種影片風格，每種有 STYLE.md 風格 prompt（固定 11 節）＋完整 demo 原始碼",
+    "畫面＝時間的函式：window.render(t) 決定性渲染，可平行逐格截圖",
+    "無頭 Chromium 多 worker 逐格渲染並 pipe 給 ffmpeg",
+    "edge-tts 中文配音、Kokoro 英文離線配音、Whisper 逐句校對並輸出逐字時間碼",
+    "取樣音色庫＋撥弦物理模擬＋程式合成音效寫原創配樂",
+    "兩段式 loudnorm −14 LUFS 合成、燒錄字幕＋SRT、閱讀時間自檢",
+    "DIRECTOR.md 導演方法：treatment、分鏡、cue map、交付檢查表",
+    "MY-STYLES：把風格改成自己的或從空白建立並保存"
+  ],
+  "reusable_parts": [
+    {"name": "HTML→MP4 逐格渲染器", "path": "core/render/video.mjs", "difficulty": "低", "note_zh": "連同 page.mjs、serve.mjs、browser.mjs 一起複製；你的頁面實作 window.render(t)/DUR/READY 即可出片"},
+    {"name": "動畫小工具庫", "path": "core/lib.js", "difficulty": "低", "note_zh": "44 行純 ES module：種子亂數、easing、彈簧、關鍵影格插值，可直接用在網頁 App"},
+    {"name": "中文 TTS 批次", "path": "core/tts/tts_zh.py", "difficulty": "低", "note_zh": "lines.json 進、wav＋dur.json 出；改 --voice 用台灣聲音（未驗證）"},
+    {"name": "TTS 語音校對", "path": "core/tts/asr_check.py", "difficulty": "中", "note_zh": "faster-whisper 逐句比對並輸出逐字時間碼；繁簡差異可能誤判"},
+    {"name": "合成＋響度標準化", "path": "core/render/mux.sh", "difficulty": "低", "note_zh": "任何影片管線最後一步：ffmpeg 兩段式 loudnorm −14 LUFS"},
+    {"name": "SRT 產生", "path": "core/render/srt.py", "difficulty": "低", "note_zh": "13 行，[{t0,t1,text}] → .srt"},
+    {"name": "程式合成音效", "path": "core/audio/sfx.py", "difficulty": "低", "note_zh": "免版權 click/whoosh/ding 等，numpy+scipy"},
+    {"name": "取樣器＋撥弦", "path": "core/audio/sampler.py", "difficulty": "中", "note_zh": "事件式樂譜寫原創配樂；音色庫需 tools/fetch.sh 下載"},
+    {"name": "商品照去背", "path": "styles/briefing-board/demo/kit/tools/prep_object.py", "difficulty": "中", "note_zh": "BiRefNet ONNX 去背＋統一調色，可接電商上架或影片素材"},
+    {"name": "three.js 玻璃商品棚", "path": "styles/glass-product/demo/product.js", "difficulty": "高", "note_zh": "搭配 studio.js、main.js、story.js；換幾何放自己的商品，需 GPU 與 3D 基礎"},
+    {"name": "風格 prompt 範本", "path": "styles/_template/STYLE.md", "difficulty": "低", "note_zh": "用 11 節結構寫自家品牌影片風格書"}
+  ],
+  "ai_integration_zh": "Claude Code 是唯一的大腦：以 plugin（marketplace lemolab）＋ skill lemo-opuscar 原生安裝，prompt 分三層（AGENTS.md 流程、DIRECTOR.md 導演方法、styles/<slug>/STYLE.md 風格）。程式內沒有呼叫 Anthropic/OpenAI API，也沒有 MCP；不使用影片或圖片生成模型（僅 news-package 有選用的 Codex 生圖與豆包 TTS 工具）。風格為 Claude Opus 5.5 調校。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-09-26 建立、2026-10-31 最近 push，一個多月內多次新增風格，單一作者非常活躍；專案很新，介面可能變動；無自動化測試，只有展示站 CI。",
+  "risks_zh": [
+    "DIRECTOR.md §13 地圖規則要求依中國標準地圖、台灣不得列為國家，台灣投放前需改寫或檢查",
+    "中文配音預設 edge-tts（微軟線上服務），商用條款需自行確認，且旁白文字會送到微軟",
+    "repo 內沒有使用 zh-TW 聲音，台灣口音與繁中 Whisper 校對未驗證",
+    "每支片需 30–60 分鐘 Claude 作業與大量 token，成本未確認",
+    "3D 風格需要 GPU；ffmpeg 需 7 以上",
+    "glass-product 規定商品須為虛構，拍自家商品要先改風格",
+    "沒有自動化測試，demo 程式碼約 12.6 萬行各自獨立"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "值得裝來做風格化廣告與說明短片，更值得拆出渲染器、中文 TTS、字幕與響度管線接到自己的倉儲資料，但出片前要檢查地圖規則與 TTS 商用條款。",
+  "keywords": ["lemo-opuscar", "LemoLab", "Claude Code plugin", "Claude Code skill", "程式碼生成影片", "code-rendered video", "影片風格庫", "風格 prompt", "STYLE.md", "headless Chrome", "逐格渲染", "three.js", "Canvas", "ffmpeg", "edge-tts", "Kokoro", "faster-whisper", "SRT 字幕", "原創配樂", "商品廣告影片", "產品拆解", "解說影片", "短劇", "直式短影音", "MIT"],
+  "pack_path": "_oss-research/03-video-script/lemomo-ai__lemo-opuscar.md"
+}

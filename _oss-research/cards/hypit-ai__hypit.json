@@ -1,0 +1,58 @@
+{
+  "repo": "hypit-ai/hypit",
+  "category": "03-video-script",
+  "commit": "67c15455832cea5eed8198407c488116921f5e6a",
+  "scanned_at": "2026-11-04",
+  "stars": 27938,
+  "license": "自訂授權：Hypit Open Source License（修改版 Apache-2.0＋禁止多租戶 SaaS／商業轉售、不得移除 LOGO 等附加條件）",
+  "license_personal_zh": "個人使用：可以，自己電腦安裝執行完全允許；產出的影片歸你所有。",
+  "license_commercial_zh": "公司商用：自家公司內部做廣告、幫客戶接案做影片都可以免授權；但做成多人註冊使用的 SaaS、或把 Hypit／改寫版賣給第三方，需向 Hypit.AI 取得書面商業授權；不得移除 CLI／報告上的 Hypit 名稱與 LOGO；出品方可單方面調整授權。生成內容另受模型服務商條款約束。",
+  "one_liner_zh": "給 Claude Code 用的爆款短影音複製與量產引擎（SVML＋本機渲染）",
+  "use_cases_zh": [
+    "複製跑得好的廣告結構，換商品／價格／CTA 一次產出多個 hook 版本做 A/B 測試",
+    "每天一個 SKU 的電商帶貨短影片（排行榜、Podcast 置入、街訪格式）",
+    "AI 虛擬主持人口播：生成人物照＋設計或複製聲音＋Seedance 讓照片開口說台詞",
+    "用 HTML/CSS/JS 程式繪製比價表、熱銷排行動畫，本機渲染成 MP4，不花模型費",
+    "逐字對時的中文卡拉 OK 字幕，字幕保留繁體原稿",
+    "參考它的 Skill 分層寫法，做自己的倉儲／廣告 Claude Code Skill"
+  ],
+  "stack": ["TypeScript", "Node.js 22.15+", "pnpm monorepo（86 個套件）", "SVML（自訂 XML 影片語言）", "puppeteer-core＋headless Chromium", "FFmpeg（libx264）", "sharp", "node:sqlite", "Vite（Studio 編輯器，原生 TS 無框架）", "Python：WhisperX 3.8.6、OpenCV、yt-dlp（uv 管理）"],
+  "run_requirements_zh": "在本機用 Claude Code 或 Codex 安裝 Skill（npx skills add hypit-ai/hypit -g），由 Agent 安裝 @hypit/hypit CLI；需要 Node 22.15+、FFmpeg，Chromium 會自動下載，WhisperX／OpenCV／yt-dlp 用 Python（uv）管理。生成全部走雲端時不需 GPU，渲染每個 Chromium 估 1.5 GB 記憶體，建議 16 GB 以上。需要一個 HypiHub 帳號（OAuth），或自備 TokenDance／HiAPI／Pollo／BeatAPI／Monid 的 API Key。README 範例每支 18–26 秒影片模型費約 US$1.07–1.15，另加 Claude Code 本身費用。",
+  "key_features_zh": [
+    "SVML 描述整支影片，時間錨定在『字』而非『秒』，換台詞或換語言後畫面與字幕自動重排",
+    "Claude Code／Codex 原生 Skill（SKILL.md＋69 份導演與製作參考文件）",
+    "影片模型：Seedance 2/2.5、MiniMax H3、Grok Imagine、PixVerse；圖片：GPT Image 2、Nano Banana、Seedream、Wan",
+    "語音：Fish Audio、小米 MiMo、ElevenLabs，支援聲音設計與聲音複製",
+    "WhisperX 逐字對時＋腳本對齊，卡拉 OK 字幕、隨頭部移動字幕",
+    "多 Chromium 並行逐格截圖→FFmpeg 合成 MP4，可純程式繪製免模型費",
+    "Studio 網頁時間軸預覽、參數調整與時間標記留言",
+    "plan／pricing 指令在付費前估算費用"
+  ],
+  "reusable_parts": [
+    {"name": "台詞秒數估算", "path": "packages/speech-estimate/src/program.ts", "difficulty": "低", "note_zh": "中文用字數÷語速（normal 5.25 字/秒），幾十行可改寫成純 JS，用來檢查廣告腳本長度。"},
+    {"name": "HTML 逐格截圖轉 MP4", "path": "packages/provider-html-local/src/capture.ts", "difficulty": "中", "note_zh": "puppeteer 截 PNG 經 image2pipe 餵 FFmpeg；可抽出來把倉儲 App 的比價／排行網頁錄成影片。"},
+    {"name": "Chromium 並行數自動計算", "path": "packages/provider-html-local/src/concurrency.ts", "difficulty": "低", "note_zh": "依 CPU 與記憶體決定開幾個瀏覽器，獨立小函式可直接參考。"},
+    {"name": "非同步影片 API Provider 範本", "path": "examples/provider-package/packages/provider-videos/src/provider.ts", "difficulty": "低", "note_zh": "上傳參考檔→送任務→輪詢→下載，只用 fetch，可改成你自己串任何影片生成 API 的模組。"},
+    {"name": "腳本與辨識字詞對齊", "path": "packages/narrative-speech-alignment/src/align.ts", "difficulty": "中", "note_zh": "動態規劃＋編輯距離，讓字幕顯示原稿、時間取自 Whisper；需替換 Hypit 型別。"},
+    {"name": "Seedance 參數規格表", "path": "packages/seedance/src/index.ts", "difficulty": "中", "note_zh": "Seedance 2/2.5 的參考圖／影片／音訊上限與互斥規則，可當表單驗證依據。"},
+    {"name": "系統鑰匙圈存 API Key", "path": "packages/credential-store-local/src/os.ts", "difficulty": "低", "note_zh": "macOS security／Windows Credential 存金鑰，Node 小工具可照抄做法。"},
+    {"name": "大型 Claude Code Skill 結構", "path": "skills/hypit/SKILL.md", "difficulty": "低", "note_zh": "總綱＋問題對照表＋references 分層，可當自己 Skill 的範本（文字內容仍受授權約束）。"}
+  ],
+  "ai_integration_zh": "Claude Code 是導演：程式本身不呼叫 Claude 或 OpenAI 聊天 API，腳本、參考影片解讀、分鏡都由 Claude Code 依 skills/hypit 的 Skill 完成並寫成 SVML；repo 內 .claude/skills/hypit 為符號連結。生成部分透過 HypiHub 或第三方聚合商呼叫 Seedance、GPT Image 2、Fish Audio 等付費模型。無 MCP server。Prompt Kit 在 packages/gpt-image-kits 與 packages/seedance-kits。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-07-29 建立，約三個月衝到 2.8 萬星，掃描當日仍有推送；版本 0.3.1，有遷移指南代表 API 仍快速變動。217 個測試檔，CI 跑 Ubuntu＋Windows，程式註解與型別嚴謹，但抽象層多、學習曲線陡。",
+  "risks_zh": [
+    "授權非標準開源：禁止多租戶 SaaS 與商業轉售，且出品方可單方面修改授權",
+    "沒有真正的換臉演算法，『換臉』是換參考圖後重新生成，品質受模型影響",
+    "使用真人照片當參考生成影片有肖像權、代言誤認與不實廣告風險；範例本身用了球星照片且無來源紀錄",
+    "用 yt-dlp 下載 TikTok／YouTube 影片可能違反平台條款；直接重用原片音樂畫面有版權風險",
+    "素材會上傳到 HypiHub 或第三方聚合商伺服器",
+    "需 Node 22、FFmpeg、Chromium、Python 多套環境，渲染吃記憶體",
+    "繁中字型與台灣口音需自行準備，未內建",
+    "每支影片有實際模型費（約 US$1／20 秒）加 Claude Code 費用"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "最適合拿來量產廣告與電商短影音的 Claude Code 工具，先用 HypiHub 跑一支範例體驗，拆程式時優先抽 HTML→MP4 渲染與台詞估算。",
+  "keywords": ["Hypit", "爆款影片複製", "viral video clone", "SVML", "Claude Code Skill", "廣告素材", "ad creative", "電商短影音", "TikTok Shop", "UGC 口播", "短劇", "Seedance", "GPT Image 2", "Fish Audio", "聲音複製", "voice clone", "WhisperX", "卡拉 OK 字幕", "HTML 轉影片", "puppeteer", "FFmpeg", "HypiHub", "BYOK", "修改版 Apache 授權", "肖像權"],
+  "pack_path": "_oss-research/03-video-script/hypit-ai__hypit.md"
+}

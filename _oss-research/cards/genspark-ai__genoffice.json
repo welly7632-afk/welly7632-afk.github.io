@@ -1,0 +1,132 @@
+{
+  "repo": "genspark-ai/genoffice",
+  "category": "01-web-excel",
+  "commit": "4b55db9ed1994575a695160ffc6cfd0bfc866211",
+  "scanned_at": "2026-11-04",
+  "stars": 11717,
+  "license": "Apache-2.0（ee/ 目錄另為 GenOffice Enterprise License，目前為空）",
+  "license_personal_zh": "個人使用：完全免費自由，可下載安裝版或自行編譯修改；AI 費用另依你自己的 API Key 或 Genspark 帳號計。",
+  "license_commercial_zh": "公司商用：Apache-2.0 可商用、可閉源改作，需保留 LICENSE／NOTICE 並標註修改；ee/ 企業目錄需另簽約但目前沒有任何程式碼，無付費版專屬功能。底層 Univer 只用 Apache-2.0 開源 preset，刻意避開 @univerjs-pro 付費套件。",
+  "one_liner_zh": "開源桌面AI Office，試算表用Univer，Claude可改Excel",
+  "use_cases_zh": [
+    "個人直接安裝，接 Claude API Key，用中文叫 AI 在進價／售價 .xlsx 上寫 SUMIF、樞紐分析表與圖表",
+    "讓 Claude Code 透過 genoffice MCP／CLI 把倉儲系統匯出的 JSON 產成有公式、有格式的每週庫存／廣告報表",
+    "照抄 create-univer.ts 的做法，在自己的純 JS＋Firebase 網頁裡嵌入 Univer 開源版試算表並避開 Pro 授權",
+    "參考 ai/tools.ts＋prompts/base.md，替自己的網頁試算表做「AI 幫我整理庫存表」側邊欄",
+    "用 xlsx-gateway 的 CSV 匯入（含 Big5 偵測）與樞紐引擎處理廠商報價、銷售彙總"
+  ],
+  "stack": [
+    "TypeScript",
+    "React 19",
+    "Electron 43",
+    "Vite",
+    "Univer 0.25.1（開源 preset）",
+    "Rust（xlsx sidecar）",
+    "IronCalc",
+    "calamine",
+    "jszip",
+    "zod",
+    "SQLite（本機檔案搜尋）"
+  ],
+  "run_requirements_zh": "桌面程式（macOS 11+／Windows 10+／Linux glibc 2.34+），下載 Releases 安裝即可，不需 GPU；自行編譯需 Node 22.12+、npm 10+、Rust。AI 需登入 Genspark 或自帶 Claude／OpenAI／Gemini 等 API Key，按 token 計費；沒有網頁版、沒有伺服器資料庫。",
+  "key_features_zh": [
+    "Canvas 試算表（Univer），大檔用 Rust 每 256 列分塊串流、只載入可視範圍",
+    ".xlsx 精準存檔：未改動部分逐位元組保留，做不到就拒絕存檔",
+    "公式：Univer 引擎即時算，大檔改用 IronCalc 備援；支援自訂函數",
+    "條件格式、資料驗證下拉、篩選、排序、凍結、合併、自畫 SVG 圖表、自製樞紐分析與交叉分析篩選器",
+    "AI 面板 13 個工具＋56 種 JSON 操作 DSL，整批套用可一鍵復原，可對 AI 隱藏敏感儲存格",
+    "genoffice CLI 與 MCP 伺服器（stdio／HTTP），Claude Code、Claude Desktop 可直接讀寫 .xlsx",
+    "繁體中文介面、CSV 匯入自動偵測 Big5"
+  ],
+  "reusable_parts": [
+    {
+      "name": "無 Pro 的 Univer 組裝器",
+      "path": "apps/sheets/src/renderer/create-univer.ts",
+      "difficulty": "低",
+      "note_zh": "直接複製到網頁專案，配合個別 @univerjs/preset-sheets-* 使用，避免誤裝付費套件"
+    },
+    {
+      "name": "AI 試算表工具定義與提示詞",
+      "path": "apps/sheets/src/renderer/ai/tools.ts",
+      "difficulty": "低",
+      "note_zh": "連同 ai/prompts/base.md 與 guides/*.md 改寫成 Claude API tools；先實作 read_range 與 propose_operations"
+    },
+    {
+      "name": "活頁簿操作 DSL（56 種 op）",
+      "path": "packages/xlsx-gateway/src/domain/workbook-dsl.ts",
+      "difficulty": "中",
+      "note_zh": "zod schema，可在瀏覽器驗證 AI 輸出；執行端需自行對接 Univer facade"
+    },
+    {
+      "name": "樞紐分析引擎",
+      "path": "packages/xlsx-gateway/src/domain/pivot-engine.ts",
+      "difficulty": "中",
+      "note_zh": "純 TS，輸入二維陣列輸出彙總，可用於 Firestore 匯出資料的供應商／月份彙總"
+    },
+    {
+      "name": "CSV 匯入（Big5 偵測）",
+      "path": "packages/xlsx-gateway/src/gateway/csv-import.ts",
+      "difficulty": "低",
+      "note_zh": "解析與編碼判斷可在瀏覽器用，處理台灣 Excel 存的 CSV"
+    },
+    {
+      "name": "自訂函數註冊範例",
+      "path": "apps/sheets/src/renderer/cell-function.ts",
+      "difficulty": "低",
+      "note_zh": "照 registerExecutors 寫法加入自己的查價、毛利率函數"
+    },
+    {
+      "name": "AI 代理迴圈",
+      "path": "packages/agent-core/src/loop.ts",
+      "difficulty": "中",
+      "note_zh": "多輪工具呼叫、上下文壓縮、修改前快照，可做一鍵復原 AI 修改"
+    },
+    {
+      "name": "Rust xlsx 串流與精準修補",
+      "path": "apps/sheets/native/xlsx-engine/",
+      "difficulty": "高",
+      "note_zh": "只在需要伺服器端處理超大 xlsx 時考慮；wasm 建置未確認"
+    }
+  ],
+  "ai_integration_zh": "內建 31 個模型供應商項目，Claude（預設 claude-sonnet-5-5，含 Opus／Haiku）為一等支援並直連 api.anthropic.com，也可登入 Genspark 走代理。系統提示詞在 apps/sheets/src/renderer/ai/prompts/base.md，11 份領域指南按需載入；AI 只能透過 13 個工具與 zod 驗證的 DSL 修改活頁簿。提供 genoffice MCP（stdio／HTTP，tools.ts 數到 28 個工具）與 Claude Code skill，另有 30 多個內建辦公 SKILL.md。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-07-31 建立、掃描當天仍有推送，Genspark（Mainfunc, Inc.）公司維護，非常活躍；版本仍為 0.x（release 0.11.0），2,096 個測試檔＋Playwright e2e＋多項 CI 檢查，工程品質高但程式量龐大。",
+  "risks_zh": [
+    "不是網頁版：只有 Electron 桌面程式，不能直接嵌進你的 Firebase 網頁，要嵌入得改用底層 Univer",
+    "大量補丁綁定 Univer 0.25.1 行為，換版本可能失效；App.tsx 單檔 6,444 行，拆零件成本不低",
+    "官方安裝版預設開啟 Google Analytics 匿名統計（可在設定關閉，自行編譯則無）",
+    "用 Genspark 登入時資料會經 Genspark 代理；CLI／MCP 不受「對 AI 隱藏」保護",
+    "沒有多人協作、沒有手機版；排序／篩選等僅限整份載入的活頁簿，部分 Excel 擴充規則存檔會被拒絕",
+    "公式函數數量取決於 Univer engine-formula，本 repo 內無法清點（未確認）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "個人先裝來當「Claude 幫你改 Excel」的桌面工具很值得；自己做網頁試算表時，拿它當 Univer 開源版＋AI 側邊欄的實戰範本，而不是直接搬整個程式。",
+  "keywords": [
+    "GenOffice",
+    "Genspark",
+    "AI Office",
+    "AI 試算表",
+    "網頁版 Excel",
+    "Univer",
+    "univerjs",
+    "IronCalc",
+    "Rust xlsx",
+    "xlsx 精準存檔",
+    "Electron",
+    "Canvas 渲染",
+    "虛擬捲動",
+    "公式引擎",
+    "自訂函數",
+    "樞紐分析",
+    "條件格式",
+    "資料驗證",
+    "CSV Big5",
+    "繁體中文",
+    "Claude",
+    "MCP",
+    "Claude Code",
+    "agent skill",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/01-web-excel/genspark-ai__genoffice.md"
+}

@@ -1,0 +1,136 @@
+{
+  "repo": "iOfficeAI/OfficeCLI",
+  "category": "01-web-excel",
+  "commit": "c56512c8c7b76fe284f09940e4cd492470099d3e",
+  "scanned_at": "2026-11-04",
+  "stars": 33035,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全免費，可改、可自行編譯；第三方依賴（OpenXML SDK、System.CommandLine、.NET Runtime）皆為 MIT。",
+  "license_commercial_zh": "公司商用：允許商用與閉源整合，散布時須附 LICENSE 與 NOTICE、標註修改處；注意 Excel 預覽的虛擬捲動等功能是私有實作、外掛可為閉源商業版（是否收費未確認）。",
+  "one_liner_zh": "給AI讀寫Excel／Word／PPT的單檔CLI，含公式引擎與預覽",
+  "use_cases_zh": [
+    "讓 Claude Code 透過 MCP 自動產出庫存月報、廣告成效 Excel（含樞紐表、圖表、條件格式）",
+    "用 {{key}} 範本 merge 批次產生報價單、出貨單、對帳單",
+    "把倉儲 App（Firebase）匯出的 CSV import 成格式漂亮的 .xlsx 給會計或廠商",
+    "用 query 選擇器讀取廠商報價 Excel 轉 JSON 做比價",
+    "成本試算範本：batch 寫入報價後直接取回 XLOOKUP／SUMIFS 算好的值",
+    "參考它的數字格式引擎、雙擊編輯 JS、單一工具 MCP 設計，移植到自己的網頁工具"
+  ],
+  "stack": [
+    "C#",
+    ".NET 10",
+    "DocumentFormat.OpenXml 3.4.1",
+    "System.CommandLine",
+    "原生 JavaScript（預覽頁）",
+    "MCP（stdio JSON-RPC）",
+    "Node／Python 薄 SDK（named pipe）"
+  ],
+  "run_requirements_zh": "下載單一執行檔（mac／Linux／Windows，x64 與 arm64）或 npm/brew/scoop 安裝即可，不需 GPU、不需 API Key、OfficeCLI 本身 0 元；PNG 截圖需本機有 Chrome／Edge／Chromium；Firebase Hosting 跑不了，雲端要放 Cloud Run；預設每日背景自動更新，可用 OFFICECLI_SKIP_UPDATE=1 關閉；費用只來自你用的 Claude。",
+  "key_features_zh": [
+    "內建 Excel 公式引擎：主分派 switch 共 461 個函數名稱（含新舊別名），另有 LET／LAMBDA；支援動態陣列 spill、跨工作表、OFFSET／INDIRECT",
+    "無依賴圖：公式寫入時算一次，存檔時清除可疑快取並設 fullCalcOnLoad",
+    "原生 OOXML 樞紐分析表、交叉分析篩選器、圖表（含箱型、pareto、瀑布）、條件格式、資料驗證、凍結窗格、合併、排序",
+    "view html 產生靜態 HTML 預覽（DOM table + sticky 凍結）、view screenshot 產 PNG、watch 本機即時預覽可雙擊改格",
+    "template merge（{{key}}）、dump→batch JSON 往返、batch 原子回滾",
+    "MCP Server 單一工具 officecli，一行 officecli mcp claude 註冊到 Claude Code；內建多份 Skills",
+    "CSV／TSV 匯入（可指定分隔符與小數點）"
+  ],
+  "reusable_parts": [
+    {
+      "name": "整支 CLI 當 Excel 產生器",
+      "path": "README.md",
+      "difficulty": "低",
+      "note_zh": "不拆，直接用 child_process 或 @officecli/sdk 呼叫；最實際"
+    },
+    {
+      "name": "MCP Server 單一工具設計",
+      "path": "src/officecli/McpServer.cs",
+      "difficulty": "低",
+      "note_zh": "整個 CLI 包成一個參數為 command 字串的 MCP 工具，可照抄設計把倉儲 App API 也包給 Claude"
+    },
+    {
+      "name": "Excel 公式引擎",
+      "path": "src/officecli/Core/Formula/FormulaEvaluator.Functions.cs",
+      "difficulty": "高",
+      "note_zh": "綁 OpenXML SheetData；適合當函數清單與邊界案例參考，網頁端仍建議用 JS 公式引擎"
+    },
+    {
+      "name": "數字格式引擎",
+      "path": "src/officecli/Handlers/Excel/ExcelDataFormatter.cs",
+      "difficulty": "中",
+      "note_zh": "純字串處理，可請 Claude 翻成 JS 用在網頁表格顯示格式"
+    },
+    {
+      "name": "xlsx→HTML 靜態預覽",
+      "path": "src/officecli/Handlers/Excel/ExcelHandler.HtmlPreview.cs",
+      "difficulty": "低",
+      "note_zh": "用 CLI 產 HTML 存到 Firebase Storage，前端 iframe 顯示；開源版上限 5,000 列"
+    },
+    {
+      "name": "雙擊儲存格編輯 JS",
+      "path": "src/officecli/Resources/watch-overlay.js",
+      "difficulty": "低",
+      "note_zh": "約 60 行原生 JS（L700-L760），可直接抄進倉儲 App 的表格"
+    },
+    {
+      "name": "範本套版 merge",
+      "path": "src/officecli/Core/TemplateMerger.cs",
+      "difficulty": "低",
+      "note_zh": "Firestore 資料轉 JSON 後批次產生報價單／出貨單"
+    },
+    {
+      "name": "樞紐分析表產生",
+      "path": "src/officecli/Core/PivotTableHelper.cs",
+      "difficulty": "中",
+      "note_zh": "透過 CLI add --type pivottable 使用最簡單；拆碼需連同 OpenXML SDK"
+    },
+    {
+      "name": "Excel 寫作 Skill",
+      "path": "skills/officecli-xlsx/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "零公式錯誤、能用公式不寫死等規範，可改寫成自己的成本試算／報表 Skill"
+    }
+  ],
+  "ai_integration_zh": "本身不呼叫任何 LLM、不需 API Key；是給 AI 呼叫的工具。內建 MCP Server（只暴露一個 officecli 工具），officecli mcp claude 會用 claude mcp add 註冊到 Claude Code；officecli install 會把 Skills 裝到 ~/.claude/skills 並在升級時自動刷新；截圖以圖片回傳給 Claude 形成渲染→檢查→修正迴圈。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-03 建立、2026-10-30 仍有推送，版本 1.0.160，註解大量引用 issue 修正紀錄；但公開 repo 沒有測試檔（測試疑似在私有 repo），CI 只做建置發佈與 SDK smoke。",
+  "risks_zh": [
+    "不是網頁試算表元件：網頁端只有靜態預覽與 localhost 陽春雙擊編輯，無複製貼上、拖拉填滿、復原、協作、觸控",
+    "公式引擎無依賴圖，先寫公式後匯入資料不會自動重算；官方也承認尚未有函數通過與真 Excel 的逐位比對",
+    "Excel 預覽虛擬捲動為私有實作，開源版 HTML 預覽上限 5,000 列",
+    "預設每日自動下載並替換執行檔（只驗 SHA256、無簽章），且 User-Agent 回報版本給官方鏡像",
+    "修改過的檔案會在 docProps/custom.xml 留下 OfficeCLI 稽核標記",
+    "常駐模式延遲寫檔，其他程式讀檔前需 officecli save",
+    "C#／.NET 原生執行檔無法跑在 Firebase Hosting，需要 Cloud Run 或本機"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "當「讓 Claude 自動產出正式 Excel 報表／報價單」的後端工具非常好用，但它不是可嵌入網頁的試算表，網頁編輯要另選 JS 元件搭配。",
+  "keywords": [
+    "OfficeCLI",
+    "iOfficeAI",
+    "AI agent",
+    "命令列",
+    "Excel",
+    "xlsx",
+    "試算表",
+    "報表自動產生",
+    "OpenXML",
+    "C#",
+    ".NET",
+    "MCP",
+    "Claude Code",
+    "Skills",
+    "公式引擎",
+    "樞紐分析表",
+    "條件格式",
+    "圖表",
+    "HTML 預覽",
+    "範本套版",
+    "報價單",
+    "成本試算",
+    "Apache-2.0",
+    "Word",
+    "PowerPoint"
+  ],
+  "pack_path": "_oss-research/01-web-excel/iOfficeAI__OfficeCLI.md"
+}

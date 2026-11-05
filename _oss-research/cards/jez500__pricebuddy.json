@@ -1,0 +1,61 @@
+{
+  "repo": "jez500/pricebuddy",
+  "category": "02-price-erp",
+  "commit": "f606128f5f723b70fe817362954e251c02143745",
+  "scanned_at": "2026-11-04",
+  "stars": 1490,
+  "license": "GPL-3.0",
+  "license_personal_zh": "個人使用：完全可以，自架、修改都不受限。",
+  "license_commercial_zh": "公司商用：公司內部自架使用可以；若把它的程式碼併入自家系統再散布（賣或交給他人），整套須以 GPL-3.0 公開原始碼。配套 CLI（含 MCP）為 Apache-2.0、抓網頁引擎 web-scraper-for-laravel 為 MIT，較寬鬆。預設會在 Amazon／eBay（含 ebay.com.tw）連結加作者聯盟碼，可用 AFFILIATE_ENABLED=false 關閉。無付費版。",
+  "one_liner_zh": "自架多店價格追蹤：貼網址抓價、存歷史、降價補貨通知，可用 Claude 補抓",
+  "use_cases_zh": [
+    "監控競品在各電商平台的售價與缺貨狀態，同一商品掛多家店網址比價",
+    "追蹤供應商或批發網站（Amazon、eBay、官網）進貨價，降價時推播",
+    "架成獨立查價服務，讓自建 Firebase 倉儲系統呼叫 POST /api/meta-extraction 即時查價",
+    "把 Schema.org／CSS selector 多策略抓價與 AI 補價邏輯翻成 JS，做自己的抓價 Cloud Function",
+    "透過 pricebuddy-cli 的 MCP 伺服器在 Claude Desktop 問價格與好價分數"
+  ],
+  "stack": ["PHP 8.4", "Laravel 12", "Filament 3（Livewire＋Tailwind）", "laravel/ai SDK", "Laravel Sanctum", "MySQL 8（亦支援 PostgreSQL）", "Docker Compose", "SeleniumBase 瀏覽器抓取容器", "Go（配套 CLI／MCP）"],
+  "run_requirements_zh": "docker compose up -d 起三個容器（app、MySQL、Selenium 抓取服務），預設 http://localhost:8080，預設帳密 admin@example.com/admin 必改。無 GPU 需求，小型 VPS／NAS 可跑。AI 為選用且預設關閉：自備 OpenAI／Anthropic／Gemini key 或本機 Ollama；AI 只在抓不到價格時觸發，每次最多送 25,000 字元 HTML，個人量級月費粗估數十到數百台幣（未實測）。商品搜尋需自架 SearXNG（免費）。",
+  "key_features_zh": [
+    "五種抓價策略：Schema.org JSON-LD／microdata、CSS selector（含 |屬性 語法）、XPath、Regex、JSON path",
+    "新網域自動建店：依序嘗試 Schema.org、常見 selector、regex 自動產生抓價規則",
+    "curl 與真實瀏覽器兩種抓取模式，可帶 cookie",
+    "假 404 防護：避免把「滿額免運」橫幅金額當成價格",
+    "價格歷史圖表、單位價格比較（price_factor）",
+    "好價分數 0–10、各店最便宜勝率、跌價事件、季節性等洞察",
+    "目標價、百分比降幅、每次變動三種降價通知與補貨通知",
+    "通知通道：Email、站內、Pushover、Gotify、Apprise、Telegram、Discord、ntfy（無 LINE）",
+    "AI 抽取補價（信心 ≥0.6 才採用）與 AI agent 自動修復抓價規則",
+    "REST API（Sanctum Token）＋瀏覽器擴充＋Go CLI／MCP"
+  ],
+  "reusable_parts": [
+    {"name": "Schema.org／microdata 價格解析", "path": "app/Services/SchemaOrgService.php", "difficulty": "低", "note_zh": "純解析邏輯，請 Claude 翻成 JS（cheerio／DOMParser），輸入 HTML 輸出 title/price/currency/image/availability。"},
+    {"name": "多策略取值器", "path": "app/Services/StrategyExtractor.php", "difficulty": "低", "note_zh": "搭配 ScrapeUrl::parseSelector 的「selector|屬性」語法；店家規則可存成 Firestore 文件。"},
+    {"name": "自動建店候選規則清單", "path": "config/price_buddy.php", "difficulty": "低", "note_zh": "auto_create_store_strategies 直接當資料用，再補台灣站 selector 與 NT$ regex。"},
+    {"name": "價格字串解析", "path": "app/Services/Helpers/CurrencyHelper.php", "difficulty": "低", "note_zh": "parseBySeparators() 判斷千分位與小數點，可直接翻 JS；解析失敗回 null 不誤存 0。"},
+    {"name": "假 404／橫幅金額防護", "path": "app/Services/ScrapeUrl.php", "difficulty": "低", "note_zh": "NOT_FOUND_TITLE_PATTERN 與 NOT_FOUND_BODY_PATTERN 兩條 regex，抓價後先檢查。"},
+    {"name": "AI 抽取 prompt 與 schema", "path": "app/Services/AiExtractionService.php", "difficulty": "低", "note_zh": "prompt 原文可直接搭 Claude structured output；HTML 先刪 script/style/meta 再截 25,000 字。"},
+    {"name": "AI 自我修復 agent", "path": "app/Services/AiConfigHealer.php", "difficulty": "中", "note_zh": "用 Claude tool use 實作抓 HTML、測 selector、測 regex 三工具（見 app/Services/Ai/Tools/），驗證後存回規則；需自做冷卻與鎖。"},
+    {"name": "好價分數與各店對決", "path": "app/Services/Insights/DealScoreCalculator.php", "difficulty": "低", "note_zh": "純計算，輸入每日價格序列即可；StoreShowdownCalculator.php 算各店最便宜勝率，適合放試算表或儀表板。"},
+    {"name": "降價通知判斷", "path": "app/Models/Product.php", "difficulty": "低", "note_zh": "shouldNotifyOnPrice／shouldNotifyOnPriceChange 改寫成 Firestore trigger，再推 LINE Messaging API 或 Telegram。"},
+    {"name": "SSRF 防護規則", "path": "app/Rules/PublicHttpUrl.php", "difficulty": "低", "note_zh": "自做「貼網址抓價」時用來擋內網 IP。"}
+  ],
+  "ai_integration_zh": "原生支援 OpenAI、Anthropic（Claude）、Gemini、Ollama（laravel/ai SDK），模型名稱由使用者自填。兩個功能可分別指定 provider 並可逐店覆寫：Extraction（抓不到價格時讓 AI 讀清理後的 HTML 回傳結構化價格）與 Healing（tool-using agent 最多 25 步自動修復店家抓價規則）。prompt 在 AiExtractionService.php 與 AiConfigHealer.php。API key 加密存放、錯誤訊息遮蔽、有失敗熔斷。主專案無 MCP；配套 pricebuddy-cli（Apache-2.0）提供 MCP 伺服器與 Claude Desktop .mcpb 安裝包。.ai/skills 為開發用 Skill。",
+  "claude_support": "原生",
+  "maintenance_zh": "單一作者為主，2025-02 建立、2026-10-24 仍有推送，35 個 migration 持續增加；171 個測試檔、約 1,195 個測試方法，CI 跑 Pint、PHPStan、測試與 Docker 建置，維護活躍、品質高。",
+  "risks_zh": [
+    "GPL-3.0：程式碼併入自家系統後若散布，須整套開源",
+    "預設開啟作者聯盟碼（含 ebay.com.tw），需手動關閉",
+    "預設帳密 admin/admin、docker-compose 資料庫密碼寫死",
+    "價格欄位為 float，不適合直接做會計／成本計算",
+    "介面只有英文，無繁中翻譯；無台灣電商預設規則，蝦皮／momo／PChome 能否抓到未確認",
+    "爬取電商平台可能違反其使用條款，宜低頻、個人使用",
+    "PHP／Laravel 與使用者現有 JS＋Firebase 不同，整合需走 API 或重寫",
+    "沒有通用 webhook、沒有 CSV／Excel 匯出（CLI 只能匯出 JSON／JSONL）"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "競品／進貨價監控可直接架起來用，抓價策略與 Claude 補價、自我修復邏輯很值得拆成 JS 接進自己的倉儲系統，但它不是 ERP，也沒有試算表或影片功能。",
+  "keywords": ["PriceBuddy", "價格追蹤", "查價", "比價", "競品監控", "降價通知", "補貨通知", "價格歷史", "好價分數", "網頁抓價", "爬蟲", "AI 自我修復", "price tracker", "web scraping", "JSON-LD", "Schema.org", "CSS selector", "Claude", "Anthropic", "MCP", "Laravel", "Filament", "self-hosted", "新台幣", "GPL-3.0"],
+  "pack_path": "_oss-research/02-price-erp/jez500__pricebuddy.md"
+}

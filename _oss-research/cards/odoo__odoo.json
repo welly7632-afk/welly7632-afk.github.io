@@ -1,0 +1,125 @@
+{
+  "repo": "odoo/odoo",
+  "category": "02-price-erp",
+  "commit": "6211e5f4ddecb74c211cca59c8bc8323da5f96b7",
+  "scanned_at": "2026-11-04",
+  "stars": 55539,
+  "license": "LGPL-3.0（社群版；企業版另售，不在此 repo）",
+  "license_personal_zh": "個人使用：完全免費，可自架、可修改，不必公開程式碼。",
+  "license_commercial_zh": "公司商用：可免費商用；若修改 Odoo 本身並散布給他人，修改部分須以 LGPL 公開。把程式碼搬進自家專案屬衍生作品，對外販售前建議只參考演算法重寫。企業版功能（如試算表編輯應用、自動匯率）不在社群版。",
+  "one_liner_zh": "全功能開源 ERP：價目表、比價、到岸成本、估值、台灣電子發票，內建網頁試算表",
+  "use_cases_zh": [
+    "參考價目表規則（客戶別價格、數量折扣、成本加成、最低毛利）改寫成 JS 放進自建倉儲系統",
+    "多家供應商詢價後逐品項比價（最低總價／最低單價／最快交期）",
+    "進口貨到岸成本分攤（依數量、重量、材積、成本、平均）",
+    "把 o-spreadsheet 獨立嵌入 Firebase 網頁當網頁版 Excel，自訂公式讀庫存",
+    "自架社群版跑採購＋庫存＋銷售＋會計，透過 JSON-2 API／Webhook 與 Firebase 同步",
+    "台灣 5% 營業稅、401/403/404 申報格式與綠界電子發票串接參考"
+  ],
+  "stack": [
+    "Python 3.12–3.14",
+    "Odoo ORM",
+    "PostgreSQL",
+    "OWL（前端框架）",
+    "o-spreadsheet（TypeScript）",
+    "Bootstrap",
+    "Chart.js"
+  ],
+  "run_requirements_zh": "用 odoo-bin 啟動，需 Python 3.12–3.14 與 PostgreSQL；一般 VPS 即可，不需 GPU；核心功能不需任何 AI API Key；台灣電子發票需綠界 MerchantID／HashKey／HashIV。社群版軟體免費，只有伺服器費用。",
+  "key_features_zh": [
+    "價目表規則：以售價／成本／其他價目表為基準，折扣、加成、固定價、進位、附加費、最低／最高毛利",
+    "供應商報價表（最小量、幣別、有效期、交期）與採購單自動帶價",
+    "替代詢價單比價（purchase_alternative）",
+    "庫存估值：標準成本、移動平均 AVCO、FIFO",
+    "到岸成本五種分攤方式，尾差由最後一行吸收",
+    "銷售毛利與依毛利率反推售價",
+    "o-spreadsheet：335 個公式函數、即時協作、xlsx 匯入匯出、樞紐分析",
+    "JSON-2 API、XML-RPC、Webhook 進出、CSV/xlsx/ods 匯入",
+    "台灣在地化：會計科目、5% 營業稅、申報表、TWD、繁中翻譯、綠界電子發票"
+  ],
+  "reusable_parts": [
+    {
+      "name": "o-spreadsheet 網頁試算表",
+      "path": "addons/spreadsheet/static/src/o_spreadsheet/o_spreadsheet.js（原始碼在 odoo/o-spreadsheet repo 的 src/）",
+      "difficulty": "低",
+      "note_zh": "獨立 npm 套件 @odoo/o-spreadsheet（LGPL），只依賴 OWL；用 functionRegistry.add 註冊自訂公式讀 Firestore，資料以 JSON 存取"
+    },
+    {
+      "name": "價目表計算引擎",
+      "path": "addons/product/models/product_pricelist_item.py",
+      "difficulty": "中",
+      "note_zh": "_is_applicable_for＋_compute_price＋_compute_base_price 翻成 JS 函式，規則存 Firestore"
+    },
+    {
+      "name": "多家報價比價",
+      "path": "addons/purchase_alternative/models/purchase.py",
+      "difficulty": "低",
+      "note_zh": "get_tender_best_lines 約 50 行，輸入各家報價輸出最佳價／單價／交期"
+    },
+    {
+      "name": "到岸成本分攤",
+      "path": "addons/stock_landed_costs/models/stock_landed_cost.py",
+      "difficulty": "低",
+      "note_zh": "get_valuation_lines 約 75 行，做成進口成本計算機"
+    },
+    {
+      "name": "毛利反推售價",
+      "path": "addons/sale_margin/models/sale_order_line.py",
+      "difficulty": "低",
+      "note_zh": "幾行公式可直接放進商品編輯頁"
+    },
+    {
+      "name": "綠界電子發票串接",
+      "path": "addons/l10n_tw_edi_ecpay/utils.py",
+      "difficulty": "中",
+      "note_zh": "AES-CBC 加解密與欄位對照可搬到 Firebase Cloud Functions"
+    },
+    {
+      "name": "FIFO／AVCO 估值",
+      "path": "addons/stock_account/models/product.py",
+      "difficulty": "高",
+      "note_zh": "與 stock.move 和會計綁很深，只建議參考思路"
+    }
+  ],
+  "ai_integration_zh": "社群版沒有任何 AI 功能、prompt、MCP；只有 setup/sandboxing/ 提供把 Claude Code 等 AI 程式助理關進沙箱的開發者腳本。可透過 JSON-2 API 讓 Claude（或自寫 MCP server）查詢／建立單據，或在 o-spreadsheet 註冊呼叫 Claude 的自訂公式。",
+  "claude_support": "可接",
+  "maintenance_zh": "極活躍，Odoo S.A. 官方維護，掃描當天仍有更新，一年一個大版本（預設分支 20.0）；addons 下共 2,508 個測試檔。",
+  "risks_zh": [
+    "遙測：publisher_warranty 會定期把資料庫 UUID、使用者數、已裝應用、公司名稱／Email／電話送到 services.odoo.com",
+    "系統龐大（646 個模組），版本間 API 常變，升級成本高",
+    "_select_seller 只在排序第一的供應商中挑價，不是跨供應商比最便宜",
+    "社群版無自動匯率、無試算表編輯應用（企業版），無網頁價格爬取",
+    "電子發票只支援綠界一家",
+    "JSON-2 API 可呼叫任何公開方法，API Key 權限需控管"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不必整套搬，但價目表、比價、到岸成本演算法和 o-spreadsheet 網頁試算表都非常值得拆出來，接到你的 Firebase 系統。",
+  "keywords": [
+    "Odoo",
+    "ERP",
+    "進銷存",
+    "價目表",
+    "pricelist",
+    "供應商報價",
+    "詢價單",
+    "RFQ",
+    "比價",
+    "到岸成本",
+    "landed costs",
+    "庫存估值",
+    "FIFO",
+    "移動平均",
+    "毛利",
+    "網頁版 Excel",
+    "o-spreadsheet",
+    "試算表",
+    "JSON-2 API",
+    "Webhook",
+    "台灣電子發票",
+    "綠界",
+    "ECPay",
+    "l10n_tw",
+    "LGPL-3.0"
+  ],
+  "pack_path": "_oss-research/02-price-erp/odoo__odoo.md"
+}

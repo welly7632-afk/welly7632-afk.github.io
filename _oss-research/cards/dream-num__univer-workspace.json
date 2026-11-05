@@ -1,0 +1,141 @@
+{
+  "repo": "dream-num/univer-workspace",
+  "category": "01-web-excel",
+  "commit": "852f1cbe3ed6e0e90fef782924c4e519abd8ddf0",
+  "scanned_at": "2026-11-04",
+  "stars": 2269,
+  "license": "Apache-2.0（repo 原始碼）；執行期依賴 99 個 @univerjs-pro/* 商業授權套件",
+  "license_personal_zh": "個人使用：在自己電腦 localhost／127.0.0.1 跑最順，repo 內建 90 天開發憑證（2027-02-03 到期，需拉新版輪替）；換成自己網域會被協作端點拒絕（403/9018）。",
+  "license_commercial_zh": "公司商用：repo 程式碼 Apache-2.0 可自由改用；但協作、xlsx 匯入匯出、圖表、樞紐、Slides/Base/Board 等是 Univer Pro，需購買 license（價格未確認），未授權時免費額度僅 1 協作節點、3 個同時編輯連線、每月 10 次匯出。",
+  "one_liner_zh": "Univer 官方可自架 Office 工作區，含 AI 草稿審核流程",
+  "use_cases_zh": [
+    "在自己電腦架一套私人版 Google 試算表／文件／簡報",
+    "讓 Claude Code 透過 uvw CLI＋Skill 匯入廠商報價 xlsx、算毛利、標出異常再匯出",
+    "用 HTML View 做綁定儲存格的比價看板、成本計算小網頁",
+    "參考 sheet-presets.ts 學習如何組裝 Univer 開源外掛，嵌進自己的倉儲 App",
+    "參考 IMPORTRANGE 外掛寫自己的非同步自訂公式（例如從 Firestore 查價）",
+    "用版本比對檢視器概念做新舊價目表對照"
+  ],
+  "stack": [
+    "TypeScript",
+    "React 19",
+    "Vite 8",
+    "TanStack Router/Query",
+    "Tailwind CSS 4",
+    "Node.js 24",
+    "Express 5",
+    "SQLite (node:sqlite)",
+    "Univer SDK 1.3.1（開源＋Pro）",
+    "OpenAPI 3.1",
+    "Docker",
+    "DSH（DeepSeek Harness）",
+    "Electron（Agent 桌面版）"
+  ],
+  "run_requirements_zh": "Node.js ≥24＋pnpm 11；pnpm install 後開 server（3020 埠）與 web（5173 埠）。資料存兩個 SQLite 檔＋本機資料夾，不需 GPU、不能直接放 Firebase Hosting（需長駐 Node＋WebSocket＋持久磁碟）。只用試算表不需 AI Key；Agent 聊天需模型憑證（例如 DEEPSEEK_API_KEY）；自有網域部署需 Univer Pro license（價格未確認）。",
+  "key_features_zh": [
+    "網頁版 Sheet／Doc／Slide／Base（關聯式表）／Board（白板）",
+    "多人即時協作（OT，Pro 協作伺服器＋WebSocket）",
+    "Worktree：AI 只改草稿，人審核後合併",
+    "xlsx/xls/csv/tsv、docx、pptx 匯入匯出（Pro exchange-node）",
+    "條件格式、篩選、排序、資料驗證、凍結、合併、表格、留言、超連結",
+    "圖表、樞紐、列印、迷你圖（Pro）",
+    "跨檔案公式與自訂 IMPORTRANGE",
+    "HTML View：綁定儲存格的小網頁儀表板",
+    "手機版編輯器（Mobile UI 外掛）",
+    "Space／資料夾樹／權限分享／匿名唯讀／回收筒／版本歷史",
+    "uvw CLI＋Skills 給 Claude、Codex 等 agent 使用；22 個 Agent 工具"
+  ],
+  "reusable_parts": [
+    {
+      "name": "試算表外掛清單（開源／Pro 分界）",
+      "path": "apps/workspace/web/src/features/editor/units/sheet/sheet-presets.ts",
+      "difficulty": "低",
+      "note_zh": "拿掉 Advanced 與 Collaboration 兩個 Pro preset，其餘開源 preset 可直接用在自己的純 JS 頁面。"
+    },
+    {
+      "name": "IMPORTRANGE 非同步自訂公式",
+      "path": "packages/dsh-univer-workspace-plugin/src/client/viewer/importrange-formula/",
+      "difficulty": "中",
+      "note_zh": "保留 registerAsyncFunction 骨架，把讀取來源改成 fetch Firestore 或價格 API，做成 =PRICE(sku)。"
+    },
+    {
+      "name": "手機版外掛清單",
+      "path": "apps/workspace/web/src/features/editor/units/sheet/sheet-mobile-presets.ts",
+      "difficulty": "中",
+      "note_zh": "倉庫手機盤點用；移除 Pro 公式引擎與圖表外掛即可走開源。"
+    },
+    {
+      "name": "Agent 寫試算表規則書",
+      "path": "apps/cli/skill-data/sheet/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "直接放進自己的 Claude Code Skill：{v,t} 明確型別、SKU 用 t:4、公式需等 onCalculationResultApplied。"
+    },
+    {
+      "name": "HTML View 宣告式儲存格綁定",
+      "path": "packages/workspace-html-viewer/src/engine.ts",
+      "difficulty": "高",
+      "note_zh": "依賴 labs 開發版與 Pro 協作，建議只抄 data-univer-cell-subscribe 的設計自己實作。"
+    },
+    {
+      "name": "版本比對檢視器",
+      "path": "packages/unit-comparison-viewer/",
+      "difficulty": "高",
+      "note_zh": "React＋多個 Pro 套件；取 src/sheet 的比對思路做價目表新舊對照。"
+    },
+    {
+      "name": "產品後端模組（權限／樹狀資料夾／回收筒）",
+      "path": "apps/workspace/server/src/modules/",
+      "difficulty": "中",
+      "note_zh": "Express 5＋SQLite，可當多倉庫／多店鋪權限架構參考。"
+    },
+    {
+      "name": "uvw CLI＋Skill",
+      "path": "apps/cli/",
+      "difficulty": "低",
+      "note_zh": "npm 全域安裝後指向自己的 Workspace，Claude Code 即可操作試算表。"
+    }
+  ],
+  "ai_integration_zh": "兩條路：(1) Workspace Agent 基於 DSH（DeepSeek Harness），模型憑證本機設定（例：DEEPSEEK_API_KEY 或其他供應商，是否支援 Claude 未確認），提供 22 個 univer_* 工具；(2) uvw CLI＋Skill，README 明列可給 Claude、Codex、Kimi Work 使用，agent 寫 Facade API 程式碼在草稿 Worktree 執行，人審核後合併。沒有 MCP。",
+  "claude_support": "可接",
+  "maintenance_zh": "Univer 官方團隊維護，2026-08-14 建立，最近 commit 2026-11-04（PR #173），非常活躍；264 個測試檔、5 個 CI workflow、文件完整（多為簡體中文）。",
+  "risks_zh": [
+    "重度依賴 Univer Pro（99 個 Pro 套件），授權綁網域且 90 天輪替",
+    "未授權免費額度很小：3 個同時編輯連線、每月 10 次匯出",
+    "介面只有簡體中文與英文，無繁體中文",
+    "整套是 React＋Node＋SQLite，無法直接嵌入純 JS＋Firebase 網頁",
+    "依賴 @univerjs-labs 開發版套件，HTML View 可能變動",
+    "SDK 版本強耦合，升級需整批同步；SQLite 升級需停機備份",
+    "agent 產生的 JS 在本機 Node worker 執行，沙盒強度未確認",
+    "CLI 預設連官方試用站 space.univer.ai，自用需改 origin"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "當「Univer 怎麼組裝＋怎麼讓 Claude 改試算表」的官方範本很值得讀，個人可在 localhost 試用；要嵌進自己倉儲 App 請改用開源 Univer 套件，別整套搬。",
+  "keywords": [
+    "Univer",
+    "univer-workspace",
+    "網頁版 Excel",
+    "線上試算表",
+    "多人協作",
+    "OT",
+    "自架",
+    "Canvas",
+    "公式引擎",
+    "自訂公式",
+    "IMPORTRANGE",
+    "Facade API",
+    "IWorkbookData",
+    "xlsx 匯入匯出",
+    "Univer Pro",
+    "Apache-2.0",
+    "SQLite",
+    "React",
+    "AI agent",
+    "Worktree",
+    "uvw CLI",
+    "Claude Code Skill",
+    "HTML View",
+    "比價看板",
+    "手機版試算表"
+  ],
+  "pack_path": "_oss-research/01-web-excel/dream-num__univer-workspace.md"
+}

@@ -1,0 +1,139 @@
+{
+  "repo": "odoo/o-spreadsheet",
+  "category": "01-web-excel",
+  "commit": "01aeeba88a48688b6243d800e8c4cd9d4f236ffd",
+  "scanned_at": "2026-11-04",
+  "stars": 298,
+  "license": "LGPL-3.0-or-later",
+  "license_personal_zh": "個人使用：完全免費，可以任意使用和修改。",
+  "license_commercial_zh": "公司商用：可以嵌進閉源的商用系統，也可以收費；要保留授權聲明。如果修改了 o-spreadsheet 本身的檔案，要把修改的部分以 LGPL 公開。建議只用 addFunction、plugin、registry 等擴充點，不要改原始碼。這個 repo 沒有付費版，xlsx 和協作功能全部開源。",
+  "one_liner_zh": "Odoo 的網頁試算表引擎：Canvas、336 函數、xlsx、OT 協作",
+  "use_cases_zh": [
+    "把倉儲系統的庫存表、進貨表換成可以打公式、篩選、條件格式的網頁試算表，資料以 JSON 存進 Firestore",
+    "做進貨成本、毛利、多通路比價試算表（49 個財務函數、XLOOKUP、SUMIFS、樞紐分析）",
+    "寫自訂函數，例如 =STOCK(sku) 讀 Firestore 庫存，或 =CLAUDE(prompt) 透過 Firebase Function 呼叫 Claude 產生文案",
+    "廣告成效儀表板（24 種圖表子類型、dashboard 唯讀模式）",
+    "在網頁上開啟或匯出 .xlsx 檔案",
+    "短劇分鏡表、廣告素材排程表，搭配 AI 自訂函數批次產生腳本"
+  ],
+  "stack": [
+    "TypeScript",
+    "Owl 3 (alpha)",
+    "Canvas 2D",
+    "Chart.js 4",
+    "luxon",
+    "bootstrap CSS",
+    "rbush",
+    "rolldown"
+  ],
+  "run_requirements_zh": "單人使用只需要靜態檔案（dist 的 iife.js、xml、css，加上 owl、chart.js、luxon），可以直接放在 Firebase Hosting，不需要後端或 GPU，也不需要 API Key，費用 0。多人協作需要一台依 revision 排序並廣播訊息的伺服器（範例為 Node＋WebSocket，不適合直接上線），也可以自己用 Firestore transaction 實作。要改原始碼並建置，需要 Node >=24.22.1。",
+  "key_features_zh": [
+    "Canvas 繪製，只畫可視範圍（虛擬捲動）",
+    "336 個函數（自己數：module_*.ts 的 export const），包含動態陣列、FILTER、SORT、UNIQUE、XLOOKUP、PIVOT",
+    "公式會編譯成 JS function，並依公式形狀快取；每欄一棵 interval tree 的依賴圖，只增量重算",
+    "xlsx 匯入匯出都由自家程式處理（只需自備 JSZip 壓縮或解壓縮）",
+    "OT 即時協作，伺服器協定很簡單",
+    "條件格式、資料驗證（31 種條件，含下拉選單）、合併儲存格、凍結窗格、篩選、排序、拖拉填滿、復原上限 99 步",
+    "24 種圖表子類型與樞紐分析",
+    "可以用 addFunction 新增自訂函數，也可以擴充 plugin、選單、側邊欄"
+  ],
+  "reusable_parts": [
+    {
+      "name": "整個試算表元件（Model＋Spreadsheet UI）",
+      "path": "src/index.ts",
+      "difficulty": "低",
+      "note_zh": "直接用 dist 的 o_spreadsheet.iife.js 和 Owl 掛到 div；資料用 exportData() 和 new Model(json) 存取"
+    },
+    {
+      "name": "無 UI 的 Model（公式計算）",
+      "path": "src/model.ts",
+      "difficulty": "低",
+      "note_zh": "在瀏覽器或 Node 裡用 dispatch(UPDATE_CELL) 寫值、getters.getEvaluatedCell 讀值，可以當報價或成本計算服務"
+    },
+    {
+      "name": "公式 tokenizer／parser",
+      "path": "src/formulas/parser.ts",
+      "difficulty": "中",
+      "note_zh": "index.ts 有匯出 tokenize、parse、astToFormula，可以用來驗證 Claude 產生的公式"
+    },
+    {
+      "name": "依賴圖＋interval tree",
+      "path": "src/plugins/evaluation/cell_evaluation/formula_dependency_graph.ts",
+      "difficulty": "中",
+      "note_zh": "每欄一棵 interval tree 找出受影響的公式，可以參考來做增量重算"
+    },
+    {
+      "name": "函數庫",
+      "path": "src/functions/",
+      "difficulty": "中",
+      "note_zh": "財務、日期、統計函數的實作可以單獨參考或移植"
+    },
+    {
+      "name": "數字格式引擎",
+      "path": "src/helpers/format/format.ts",
+      "difficulty": "低",
+      "note_zh": "helpers.formatValue 支援 Excel 格式字串與幣別，可以用來顯示金額"
+    },
+    {
+      "name": "xlsx 讀寫",
+      "path": "src/xlsx/",
+      "difficulty": "中",
+      "note_zh": "xlsx_reader 讀進來轉成 o-spreadsheet 的 JSON，xlsx_writer 輸出 XML 檔清單；最簡單的用法是 model.exportXLSX()"
+    },
+    {
+      "name": "協作 TransportService",
+      "path": "src/types/collaborative/transport_service.ts",
+      "difficulty": "低",
+      "note_zh": "只要實作 sendMessage、onNewMessage、leave，就能用 Firestore 或 WebSocket 接上即時協作"
+    },
+    {
+      "name": "Canvas 格線繪製",
+      "path": "src/stores/grid_renderer_store.ts",
+      "difficulty": "高",
+      "note_zh": "和 Model 綁得很緊，比較適合當教材參考"
+    }
+  ],
+  "ai_integration_zh": "產品本身沒有任何 AI 功能，也沒有 MCP。repo 裡的 CLAUDE.md 和 .claude/skills（review、testing）是給開發者用 Claude Code 的。要接 Claude，可以照 doc/add_function.md 的「外部 API」寫法做 =CLAUDE() 自訂函數（非同步加快取，經由後端代理），或讓 Claude 產生 data-model JSON 或 dispatch 命令來建立、修改試算表。",
+  "claude_support": "可接",
+  "maintenance_zh": "非常活躍：由 Odoo S.A. 維護，2026-11-03 發布 20.0.6，穩定分支從 14.0 到 20.0，另有 saas 分支和 master；tests/ 有 299 個測試檔。星數少是因為大多數人是透過 Odoo 產品在使用。",
+  "risks_zh": [
+    "UI 依賴 Owl 3.0.0-alpha.50（alpha 版，中文資源少）",
+    "公式編譯使用 new Function，嚴格 CSP 下需要允許 unsafe-eval",
+    "從 Excel／Google 試算表貼上只保留純文字值，格式和公式會遺失",
+    "沒有 CSV 匯入匯出",
+    "xlsx 匯入有部分樣式、條件格式、資料驗證不支援；壓縮和解壓縮要自備 JSZip",
+    "exportData() 每次都會建立驗證用的 Model，很耗資源，自動儲存要加 debounce",
+    "repo 沒有繁體中文翻譯檔，需要自己用 setTranslationMethod 提供",
+    "範例協作伺服器沒有身分驗證、CORS 全開，不能直接上線",
+    "10 萬列效能與套件大小未確認"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "想要「LGPL、xlsx 匯入匯出和協作都開源、由大廠長期維護」的網頁 Excel，這是首選候選之一；建議先用 dist 加最小範例接上 Firestore 做 PoC，再和 Univer 比較。",
+  "keywords": [
+    "o-spreadsheet",
+    "Odoo",
+    "網頁版 Excel",
+    "web spreadsheet",
+    "試算表引擎",
+    "Canvas 渲染",
+    "公式引擎",
+    "formula engine",
+    "依賴圖",
+    "自訂函數",
+    "addFunction",
+    "xlsx 匯入匯出",
+    "即時協作",
+    "Operational Transform",
+    "樞紐分析",
+    "pivot table",
+    "條件格式",
+    "資料驗證",
+    "Owl",
+    "LGPL-3.0",
+    "TypeScript",
+    "Firestore",
+    "嵌入",
+    "成本計算"
+  ],
+  "pack_path": "_oss-research/01-web-excel/odoo__o-spreadsheet.md"
+}

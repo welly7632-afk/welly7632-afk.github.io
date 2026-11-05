@@ -1,0 +1,58 @@
+{
+  "repo": "coreyhaines31/marketingskills",
+  "category": "03-video-script",
+  "commit": "88c79f6528a9347420e57ceb1fff9a60de651768",
+  "scanned_at": "2026-11-04",
+  "stars": 58474,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可安裝、修改、翻成中文。",
+  "license_commercial_zh": "公司商用：可以，含改寫後放進自家工具；需保留原作者著作權聲明與 MIT 授權全文。外部 AI 服務（HeyGen、Veo 等）另依各家條款收費與授權。",
+  "one_liner_zh": "53 個 Claude Code 行銷 Skills：廣告素材、短影音腳本、文案、SEO",
+  "use_cases_zh": [
+    "用 ad-creative 依顧客評論產出多切角廣告文案並輸出 CSV 上傳 Meta／Google Ads",
+    "用 hook-system 與 short-form-video 模板寫抖音／Reels 商品短片與短劇開場腳本",
+    "用 video skill 選 AI 影片工具（Veo、Kling、Seedance、HeyGen）並寫影片 prompt",
+    "用 edit-anatomy 把爆款影片拆成 Beat Sheet 分鏡表再套用到自己的素材",
+    "用 product-marketing 建立中文品牌脈絡檔，讓所有文案與腳本語氣一致",
+    "用 meta-ads.js／tiktok-ads.js CLI 拉廣告成效再回饋給 Claude 迭代素材",
+    "學習 SKILL.md 寫法，替自己的倉儲／ERP 系統寫專屬 Claude Skill"
+  ],
+  "stack": ["Markdown（Agent Skills 規格）", "Node.js 18+ 零依賴 CLI", "Python（少量腳本）", "Claude Code Plugin marketplace"],
+  "run_requirements_zh": "不需伺服器與 GPU。npx skills add coreyhaines31/marketingskills -a claude-code 或在 Claude Code 用 /plugin 安裝即可，只需 Claude 訂閱。若用 CLI 拉數據才需各廣告平台 token（如 META_ACCESS_TOKEN）；AI 影片／語音生成費用來自外部服務（如 Kling 約 $0.03/秒，以官網為準）。",
+  "key_features_zh": [
+    "53 個行銷 skill，涵蓋文案、廣告、影片、SEO、CRO、成長、銷售、策略",
+    "ad-creative 四種模式：從零產出、依成效迭代、有憑據批次、策略迴圈",
+    "Hook 三要素（畫面／口白／字幕）與 Hook 矩陣",
+    "短影音腳本模板、13 種創作者影片格式、9:16 安全區規格",
+    "AI 影片模型比較與 prompt 公式，Hyperframes／Remotion 程式化產片",
+    "去 AI 味文案黑名單",
+    "66 支零依賴廣告／分析平台 CLI，136 支合約測試",
+    "每個 skill 附 evals.json，全 repo 共 469 題"
+  ],
+  "reusable_parts": [
+    {"name": "短影音腳本模板", "path": "skills/social/references/short-form-video.md", "difficulty": "低", "note_zh": "翻成中文當影片生成專案的腳本輸出格式（Hook 0-3 秒／Body／CTA）"},
+    {"name": "Hook 系統與矩陣", "path": "skills/ad-creative/references/hook-system.md", "difficulty": "低", "note_zh": "放進 prompt，要求每個 Hook 輸出畫面、口白、字幕三欄"},
+    {"name": "9:16 直式影片規格與創作者格式", "path": "skills/ad-creative/references/short-form-video-specs.md", "difficulty": "低", "note_zh": "安全區數字寫進 Remotion／Hyperframes 字幕元件 CSS"},
+    {"name": "Beat Sheet 剪輯拆解", "path": "skills/video/references/edit-anatomy.md", "difficulty": "低", "note_zh": "當短劇／商品片分鏡表格式"},
+    {"name": "有憑據廣告產出規則", "path": "skills/ad-creative/SKILL.md", "difficulty": "低", "note_zh": "評論與得獎廣告放 inputs/ 資料夾，每條文案標出處，無素材即停"},
+    {"name": "廣告審稿頁 HTML", "path": "skills/ad-creative/assets/creative-review-template.html", "difficulty": "低", "note_zh": "單檔無依賴，JSON 資料區塊驅動，可部署到 Firebase Hosting"},
+    {"name": "Meta Ads CLI", "path": "tools/clis/meta-ads.js", "difficulty": "中", "note_zh": "api() 函式可搬進 Firebase Cloud Functions 讀廣告花費與成效"},
+    {"name": "競品價格歷史抓取", "path": "skills/reverse-engineer-marketing/scripts/teardown.mjs", "difficulty": "中", "note_zh": "cmdHistory 用 Wayback 快照抓價格，正規表示式需加 NT$／元"},
+    {"name": "品牌脈絡檔模板", "path": "skills/product-marketing/SKILL.md", "difficulty": "低", "note_zh": "建立中文品牌檔，供所有文案／影片工具共用"}
+  ],
+  "ai_integration_zh": "原生 Claude Code Skills／Plugin（.claude-plugin/marketplace.json），prompt 就是各 skill 的 SKILL.md，不直接呼叫模型 API。文件指引接 HeyGen MCP、Omnia MCP、AIsa MCP 等；影片、圖片、語音生成工具只有說明文件，沒有串接程式碼。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：最後 push 2026-10-31，repo 版本 2.14.0，多數 skill 在 2026-10 月更新；有 CI（版本檢查、skill 驗證、CLI 回歸測試）。",
+  "risks_zh": [
+    "全英文且以美國 B2B SaaS 為例，台灣電商平台（蝦皮、LINE、Dcard）未涵蓋，需自行改寫",
+    "pricing skill 是 SaaS 定價策略，不是比價或成本計算工具",
+    "AI 工具價格與模型清單會過期",
+    "README 與 tools/integrations 含作者自家產品與贊助商導流",
+    "teardown.mjs 會連外部網站（web.archive.org、crt.sh）",
+    "全部 53 個 skill 都裝會增加 Claude 判斷觸發的負擔，建議只裝需要的"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "強烈建議只裝 ad-creative、video、social、copywriting、product-marketing，並把腳本模板與 Hook 矩陣翻成中文，當你影片／短劇生成流程的前段。",
+  "keywords": ["marketingskills", "Claude Code Skills", "Agent Skills", "SKILL.md", "行銷 skill", "廣告素材", "ad creative", "廣告文案", "短影音腳本", "short-form video", "Hook", "Beat Sheet", "分鏡", "AI 影片", "Veo", "Kling", "HeyGen", "Remotion", "Hyperframes", "Meta Ads", "去 AI 味", "品牌脈絡", "電商廣告", "短劇開場"],
+  "pack_path": "_oss-research/03-video-script/coreyhaines31__marketingskills.md"
+}

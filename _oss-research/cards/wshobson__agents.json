@@ -1,0 +1,137 @@
+{
+  "repo": "wshobson/agents",
+  "category": "04-agent-rules-skills",
+  "commit": "7e2fb559cf4b824b27f1fec49fe88f7511066d26",
+  "scanned_at": "2026-11-04",
+  "stars": 42187,
+  "license": "MIT（conductor、superself 兩個外掛標 Apache-2.0；外部外掛 pensyve、hol-guard 為 Apache-2.0）",
+  "license_personal_zh": "個人使用：完全可以複製、修改、拿進自己的專案，不用付費。",
+  "license_commercial_zh": "公司商用：MIT 允許商用和閉源再散布，只要保留 Seth Hobson 的版權聲明和授權全文；借用 conductor／superself 的檔案時要依 Apache-2.0 保留 NOTICE，並註明改過哪些檔案。repo 裡沒有付費版或閉源功能。",
+  "one_liner_zh": "一份 Markdown 轉成 7 種 AI 工具格式的角色技能市集，附漂移巡檢",
+  "use_cases_zh": [
+    "照 AGENTS.md＋CLAUDE.md symlink 的做法，讓 Codex(GPT) 和 Claude 讀同一份規則",
+    "仿 tools/doc_gardener.py 寫每日巡讀腳本：抓規則檔超長、死連結、文件數字過期、同名角色分岔、產出檔過期",
+    "用 grounded-vault 的 Fingerprint/Monitored/Status 標頭＋git diff，不花 token 就能偵測文件新舊版本衝突",
+    "用 session-start/session-end 角色＋STATE.md 單一狀態檔，做 AI 開工與收工交接",
+    "用 conductor 的 tracks.md / plan.md 勾選清單當防漏 backlog，再用 conductor-validator 檢查一致性",
+    "用 multi-reviewer-patterns 合併 GPT 和 Claude 的巡讀結果並去重複",
+    "挑 session-guard、ai-debt-detector 等技能直接放進 .claude/skills/"
+  ],
+  "stack": [
+    "Markdown + YAML frontmatter",
+    "Python 3.12+",
+    "uv",
+    "ruff",
+    "ty",
+    "pyyaml",
+    "GitHub Actions",
+    "Makefile"
+  ],
+  "run_requirements_zh": "不用伺服器、資料庫或 GPU。在 Claude Code 裡用 /plugin marketplace add wshobson/agents 安裝，Codex 用 codex plugin marketplace add；其他工具要 clone 下來跑 make install-<工具>（需要 uv 和 Python 3.12+）。使用外掛不需要額外 API Key，費用就是你的 Claude/Codex 訂閱或 API 用量；plugin-eval 的 LLM 評審層會用 ANTHROPIC_API_KEY 或 Claude Code 登入。",
+  "key_features_zh": [
+    "92 個本地外掛／202 個角色／185 個技能／105 個指令（自己用 ls/glob 數過）",
+    "AGENTS.md 是唯一手寫的規則檔，CLAUDE.md 是 symlink，上限約 150 行，只當地圖",
+    "tools/adapters 把 Claude 格式轉成 Codex TOML、OpenCode、Copilot、Antigravity、Pi、Cursor 格式，並對照模型（opus→gpt-5.5）",
+    "doc_gardener.py 有 9 項漂移檢查，每項都附 Fix 修正建議",
+    "CI 檢查角色名稱唯一、改了內容必須升版號、重新產生後不能有差異",
+    "Claude Code 審 PR 的 workflow 要求不重複 Codex 和 CodeRabbit 已經提過的問題",
+    "模型分級：sonnet 70、opus 54、inherit 52、haiku 24、fable 2"
+  ],
+  "reusable_parts": [
+    {
+      "name": "AGENTS.md 地圖式規則檔＋CLAUDE.md symlink",
+      "path": "AGENTS.md",
+      "difficulty": "低",
+      "note_zh": "照段落改寫成自己專案的版本，執行 ln -s AGENTS.md CLAUDE.md，讓 GPT 和 Claude 讀同一份規則"
+    },
+    {
+      "name": "漂移巡檢腳本 doc_gardener",
+      "path": "tools/doc_gardener.py",
+      "difficulty": "中",
+      "note_zh": "保留 Finding/Report/CHECKS/main 骨架，自己補 parse_frontmatter，再把檢查項換成自己專案的；可以請 Claude 改寫成 Node.js 每日排程"
+    },
+    {
+      "name": "角色名稱重複檢查",
+      "path": "tools/check_agent_name_collisions.py",
+      "difficulty": "低",
+      "note_zh": "只用標準函式庫，改掃描路徑就能檢查 .claude/agents 和 .codex/agents"
+    },
+    {
+      "name": "升版號檢查",
+      "path": "tools/check_version_bumps.py",
+      "difficulty": "低",
+      "note_zh": "改成規則或技能檔有變動就必須升版本欄位，防止新舊版本混用"
+    },
+    {
+      "name": "grounded-vault 文件 fingerprint 規範",
+      "path": "plugins/documentation-standards/skills/grounded-vault/",
+      "difficulty": "低",
+      "note_zh": "文件標頭加 Fingerprint/Monitored/Status，每天跑 git diff 偵測過期，過期文件搬到 archive/"
+    },
+    {
+      "name": "session-start / session-end 交接角色",
+      "path": "plugins/operating-kit/agents/",
+      "difficulty": "低",
+      "note_zh": "把 {{STATE_DOC}} 換成 STATE.md、{{LIVE_CHECK}} 換成 Firebase 正式網址檢查"
+    },
+    {
+      "name": "conductor 工作登記簿與驗證角色",
+      "path": "plugins/conductor/templates/tracks.md",
+      "difficulty": "低",
+      "note_zh": "用 [ ]/[~]/[x] 標記任務狀態，搭配 agents/conductor-validator.md 做一致性檢查（Apache-2.0）"
+    },
+    {
+      "name": "多審查者去重複規則",
+      "path": "plugins/agent-teams/skills/multi-reviewer-patterns/SKILL.md",
+      "difficulty": "低",
+      "note_zh": "合併 GPT 和 Claude 的巡讀發現：同一 file:line 同一問題就合併，嚴重度取高"
+    },
+    {
+      "name": "Claude 自動審 PR workflow",
+      "path": ".github/workflows/claude-code-review.yml",
+      "difficulty": "中",
+      "note_zh": "把檢查清單換成自己專案的規則，保留『不重複其他 bot 已提過的問題』和唯讀工具白名單"
+    }
+  ],
+  "ai_integration_zh": "原生就是 Claude Code 格式（agents/skills/commands/hooks）。轉接器把模型別名對照到 Codex 的 gpt-5.5 / gpt-5.4-mini、Copilot 的 Claude ID 等，並把 Claude 工具名改寫成動作描述。185 個技能遵循 Anthropic SKILL.md 規格，也可以用 gh skill / npx skills 單獨安裝。agent-teams 需要 Claude Code 實驗旗標。2 個治理外掛用 hooks＋npx protect-mcp 執行 Cedar 政策。",
+  "claude_support": "原生",
+  "maintenance_zh": "很活躍：HEAD commit 是 2026-10-30，CI 規則持續增加；tools/tests 有 12 個 test 檔，CI 會實際安裝多種 CLI 做冒煙測試；Actions 釘在 commit SHA。",
+  "risks_zh": [
+    "202 個角色多半是社群貢獻的長篇人設提示詞，品質參差不齊，要挑過再用",
+    "全部安裝的話，技能和角色的描述文字很多，可能佔掉上下文空間（推論，未實測）",
+    "治理類 hooks 執行時用 npx 下載 protect-mcp，有供應鏈風險；沒放政策檔時會全部放行",
+    "capabilities.py 裡寫死的模型 ID 會過期",
+    "agent-teams 只能在 Claude Code 用；Codex 原生安裝時，超過 8KB 的技能本文會被截斷",
+    "沒有每日排程巡檢：garden 只在 PR/push 時跑，排程只有每週一次的評分報告"
+  ],
+  "fit_for_user": 5,
+  "verdict_zh": "不必整包安裝；把它的 AGENTS.md symlink 規則、doc_gardener 巡檢骨架、grounded-vault fingerprint 和 session 交接角色抄進自己的專案，就是一套現成的多 AI 協作基礎架構。",
+  "keywords": [
+    "wshobson/agents",
+    "AGENTS.md",
+    "CLAUDE.md symlink",
+    "單一事實來源",
+    "共用規則",
+    "Codex",
+    "Claude Code",
+    "multi-harness",
+    "外掛市集",
+    "subagent",
+    "角色",
+    "SKILL.md",
+    "技能",
+    "doc-gardener",
+    "漂移偵測",
+    "drift detection",
+    "每日巡讀",
+    "去重複",
+    "版本衝突",
+    "grounded-vault",
+    "fingerprint",
+    "session handoff",
+    "交接",
+    "conductor",
+    "code review"
+  ],
+  "pack_path": "_oss-research/04-agent-rules-skills/wshobson__agents.md"
+}

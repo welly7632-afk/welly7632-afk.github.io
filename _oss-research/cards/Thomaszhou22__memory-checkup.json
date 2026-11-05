@@ -1,0 +1,53 @@
+{
+  "repo": "Thomaszhou22/memory-checkup",
+  "category": "04-agent-rules-skills",
+  "commit": "79ca4ee0eab32a59eed6fe8ba37b4f21244ba290",
+  "scanned_at": "2026-11-04",
+  "stars": 1,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可複製、修改、合併進自己的工具。",
+  "license_commercial_zh": "公司商用：可以，含改寫後放進內部工具或產品；只需保留原版權聲明與 MIT 授權全文，作者不提供任何保證。無付費版或閉源功能。",
+  "one_liner_zh": "只讀的 AI 記憶庫健檢 Skill：抓過期數字、斷掉引用、日誌斷檔、孤兒檔",
+  "use_cases_zh": [
+    "當作「每日巡讀」腳本的起點：改掃描範圍到 AGENTS.md、CLAUDE.md、docs/、logs/",
+    "偵測 Claude 與 Codex 寫的文件中同一個商業數字（運費、安全庫存、價格規則）新舊值並存",
+    "檢查規則檔或文件裡提到的程式檔路徑是否已改名或刪除",
+    "檢查每個 AI 的每日交接日誌是否有缺天",
+    "找出沒被任何文件引用、可能是重複或遺忘舊版的文件",
+    "直接借用 SKILL.md 的五步驟流程（只讀稽核→驗證→修→重跑→回報）與 description 觸發寫法"
+  ],
+  "stack": ["Python 3（僅標準函式庫）", "Markdown（SKILL.md）", "CLI", "Claude Code / OpenClaw Skill 格式"],
+  "run_requirements_zh": "python3 scripts/memory_checkup.py --memory-dir <工作區> [--json]；不需安裝任何套件、不需 GPU、不呼叫任何 API，腳本本身 0 元，只有讓 AI 讀報告修檔時消耗 token。",
+  "key_features_zh": [
+    "過期數字偵測：同一指標（downloads/stars/users）多個值時以最新日期檔案為準，其餘列為過期",
+    "斷掉的檔案引用偵測（限含 output/skills/scripts/memory 資料夾名的路徑）",
+    "每日紀錄斷檔偵測（只看最新檔前 5 天，未跟今天比）",
+    "孤兒檔偵測（非日期檔且沒被其他檔提到）",
+    "文字報告與 --json 機器可讀輸出",
+    "SKILL.md 規定：改前先用真實證據驗證、可標註作廢保留歷史、孤兒檔不准 AI 自刪、改完重跑到 0 問題"
+  ],
+  "reusable_parts": [
+    {"name": "SKILL.md 五步驟巡檢流程", "path": "SKILL.md", "difficulty": "低", "note_zh": "改寫成 skills/daily-patrol/SKILL.md，把記憶換成專案文件、真實證據換成 Firebase 實際資料或程式碼實際值；加繁體觸發詞。"},
+    {"name": "指標規則表與上下文過濾", "path": "scripts/memory_checkup.py", "difficulty": "低", "note_zh": "L31-L60 的 DEFAULT_PATTERNS 與 _line_context_ok；換成運費、安全庫存、版本號等指標，並把簡體關鍵字改成繁簡並列。"},
+    {"name": "新舊數值排名邏輯", "path": "scripts/memory_checkup.py", "difficulty": "低", "note_zh": "L101-L123；建議日期改用 git 最後修改日，並讓 AGENTS.md／總表為最高優先，避免總表被當最舊。"},
+    {"name": "斷掉引用檢查", "path": "scripts/memory_checkup.py", "difficulty": "低", "note_zh": "L125-L133；改 PATH_RE 的資料夾名（src/、functions/、public/）與副檔名（.html/.css）。"},
+    {"name": "每日紀錄斷檔檢查", "path": "scripts/memory_checkup.py", "difficulty": "低", "note_zh": "L135-L153；用在 logs/日期-ai.md 交接日誌，務必補上與 today 比較的停擺警告。"},
+    {"name": "孤兒檔檢查", "path": "scripts/memory_checkup.py", "difficulty": "低", "note_zh": "L155-L171；找出沒被 AGENTS.md 或索引檔提到的文件，通常是 AI 多生的重複說明檔。"}
+  ],
+  "ai_integration_zh": "腳本不呼叫任何模型；以標準 Claude Code／OpenClaw Skill（SKILL.md 含 name、description）提供給 AI，AI 執行只讀腳本後依五步驟驗證與修檔。無 MCP。repo 未提及 Codex，但因是普通 Python 腳本，可在 AGENTS.md 指示 Codex 執行同一支腳本。",
+  "claude_support": "原生",
+  "maintenance_zh": "個人小專案，2026-09-07 建立、2026-09-08 最後 commit，之後無更新；1 顆星；無測試、無 CI、無範例資料，不要期待後續維護。",
+  "risks_zh": [
+    "數字關鍵字寫死簡體（下载、用户、网站），台灣繁體寫法抓不到",
+    "每日紀錄若整個停擺反而不會警告（today 參數未使用）",
+    "docstring 宣稱的 contradictions 檢查未實作，永遠為空；無法辨識「已作廢」註記",
+    "同類數字不分主體比較，不同專案或商品的數字會互相誤判為過期",
+    "無日期的總表（MEMORY.md）永遠被當作最舊來源",
+    "結束碼永遠為 0，排程無法用結束碼判斷有無問題",
+    "文字輸出含 emoji，在 Windows cp950 導向檔案時可能編碼錯誤（未實測）"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不是協作框架，但它是最貼近「每日巡讀」的小範本：借 SKILL.md 流程與 222 行腳本骨架，修好繁體與停擺偵測後當自己的巡檢工具。",
+  "keywords": ["memory-checkup", "記憶健檢", "每日巡讀", "巡檢", "文件一致性", "過期數字", "新舊版本衝突", "單一事實來源", "斷掉的引用", "孤兒檔", "每日紀錄斷檔", "只讀稽核", "memory audit", "consistency check", "stale numbers", "dangling references", "orphan files", "drift detection", "SKILL.md", "Claude Code skill", "OpenClaw", "MEMORY.md", "AGENTS.md"],
+  "pack_path": "_oss-research/04-agent-rules-skills/Thomaszhou22__memory-checkup.md"
+}

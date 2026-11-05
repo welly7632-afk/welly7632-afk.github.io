@@ -1,0 +1,62 @@
+{
+  "repo": "wikiiizhao/pm-review-copilot",
+  "category": "04-agent-rules-skills",
+  "commit": "4aef011a8d6053b2bdc3aa9f8831772bb275846b",
+  "scanned_at": "2026-11-04",
+  "stars": 1,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：可自由複製、修改、翻成繁中，無任何限制。",
+  "license_commercial_zh": "公司商用：可以，含內部工具與對外產品；散布時保留原著作權與 MIT 授權文字即可。無付費或閉源版本。",
+  "one_liner_zh": "PM 用 Agent Skill：專案記憶分層、過期偵測、版本漂移與幻覺審查",
+  "use_cases_zh": [
+    "把記憶生命週期 7 狀態（pinned/active/superseded…）與 superseded_by 欄位抄進自己的 AGENTS.md，解決新舊版本混雜",
+    "以 CURRENT_STATE.md 當單一事實來源、PENDING_UPDATES.md 當候選池，防止 GPT 與 Claude 互相覆寫規則",
+    "把新鮮度檢查（24h/72h/7 天門檻、🟢🟡🔴）改造成每日巡讀 skill 的第一段",
+    "用 RECOVERY_NOTES.md 與 MEMORY_UPDATE_LOG.md 模板規範每個 AI 收工前的交接紀錄",
+    "用 doc_diff_review.py 比對新舊規則檔或 AGENTS.md vs CLAUDE.md，找出被刪掉的約束",
+    "用 label_consistency_audit.py 比對 GPT 與 Claude 對商品分類或廣告標籤的分歧",
+    "用 5 維 0–2 分風險評分表當審查員 AI 的固定輸出格式"
+  ],
+  "stack": ["Markdown（SKILL.md）", "Python 3 標準庫（argparse、csv、difflib）", "本機檔案即資料庫"],
+  "run_requirements_zh": "不需伺服器、GPU 或 API Key；把 skills/pm-review-copilot-zh 資料夾複製到 ~/.codex/skills/（README 官方示範）或推論可放 ~/.claude/skills/。腳本只需 Python 3。費用只有原本 Claude/ChatGPT 的使用費，SKILL.md 約 500 行會占上下文。",
+  "key_features_zh": [
+    "場景路由表：9 種意圖對應先讀檔案、可寫檔案白名單、新鮮度要求與輸出格式",
+    "記憶生命週期 7 狀態與 metadata（valid_until、superseded_by）",
+    "新鮮度檢查三級輸出分類與 24/72 小時、7 天門檻，輕量檢查只讀 5 檔",
+    "PENDING_UPDATES 待更新池與 SOURCE_REGISTRY 來源快照登記（current/unknown/stale）",
+    "衝突優先順序：CURRENT_STATE > DECISION_LOG > EVIDENCE_LOG > RECOVERY_NOTES > HUMAN_BRIEF > HYPOTHESIS_LAB",
+    "PM 審查關卡：🟢🟡🔴 結論、Claim 6 類型、5 維度風險評分",
+    "Diff 審查與標註一致性兩支報告腳本",
+    "會話結束 12 題自我檢查與交接紀錄",
+    "中英雙版 skill（中文版為簡體）"
+  ],
+  "reusable_parts": [
+    {"name": "記憶生命週期規則", "path": "skills/pm-review-copilot-zh/SKILL.md#L252-L302", "difficulty": "低", "note_zh": "直接貼進 AGENTS.md 的版本管理章節，在每份規則檔頂端加 status/superseded_by/updated_at"},
+    {"name": "新鮮度檢查規則", "path": "skills/pm-review-copilot-zh/SKILL.md#L165-L201", "difficulty": "低", "note_zh": "改成每日巡讀 skill 第一步，把 PRD 換成倉儲規格或廣告素材規範"},
+    {"name": "寫入路由與提升規則", "path": "skills/pm-review-copilot-zh/SKILL.md#L124-L163", "difficulty": "低", "note_zh": "定義每個 AI 角色可寫哪些檔、假設何時可升級為事實，防重複與亂改"},
+    {"name": "CONTEXT_MANIFEST 模板（含衝突優先順序）", "path": "skills/pm-review-copilot-zh/scripts/init_pm_memory.py#L12-L84", "difficulty": "低", "note_zh": "改成自己的 docs/ai/MANIFEST.md，讓 Codex 與 Claude 讀同一份讀取順序"},
+    {"name": "PENDING_UPDATES 與 SOURCE_REGISTRY 模板", "path": "skills/pm-review-copilot-zh/scripts/init_pm_memory.py#L180-L224", "difficulty": "低", "note_zh": "AI 只能把規則變更提案寫進待更新池，由人每天確認；登記 Google 試算表等正本位置"},
+    {"name": "交接與更新日誌模板", "path": "skills/pm-review-copilot-zh/scripts/init_pm_memory.py#L357-L382", "difficulty": "低", "note_zh": "每個 AI 收工必寫，巡讀時比對 git log 找漏寫交接的變更"},
+    {"name": "init_pm_memory.py", "path": "skills/pm-review-copilot-zh/scripts/init_pm_memory.py", "difficulty": "低", "note_zh": "改 TEMPLATES dict 即成為自己的 AI 協作骨架產生器；注意 str.format 需跳脫大括號"},
+    {"name": "doc_diff_review.py", "path": "skills/pm-review-copilot-zh/scripts/doc_diff_review.py", "difficulty": "低", "note_zh": "80 行標準庫腳本，比對新舊規則檔；JS 專案可用 npm diff 套件重寫"},
+    {"name": "label_consistency_audit.py", "path": "skills/pm-review-copilot-zh/scripts/label_consistency_audit.py", "difficulty": "低", "note_zh": "多個 AI 的分類結果放同一 CSV 不同欄，輸出分歧清單"},
+    {"name": "審查報告格式與 5 維評分", "path": "skills/pm-review-copilot-zh/SKILL.md#L364-L441", "difficulty": "低", "note_zh": "作為審查員 AI 的固定輸出格式，GPT 產出、Claude 審查"}
+  ],
+  "ai_integration_zh": "不呼叫任何模型 API，是給 Agent 讀的 SKILL.md 規則書加 3 支本地腳本；README 只示範 Codex（~/.codex/skills/、$pm-review-copilot-zh 呼叫），附 agents/openai.yaml 介面中繼資料；無 MCP。SKILL.md 為通用 name/description frontmatter 格式，推論可直接放入 Claude Code skills 目錄（未實測）。",
+  "claude_support": "可接",
+  "maintenance_zh": "單一作者、1 星；v0.3.0 於 2026-07-07 發布，最後 push 2026-07-13，至掃描日約 4 個月無更新；無測試、無 CI。",
+  "risks_zh": [
+    "中文版為簡體，需自行轉繁體與台灣用語",
+    "刻意不做排程或自動巡檢，每日巡讀需自己用 cron/排程任務/GitHub Actions 補",
+    "沒有多 AI 角色設計、沒有 AGENTS.md/CLAUDE.md 範本，只解決記憶與過期這一塊",
+    "新鮮度判斷全靠 AI 讀日誌，沒有讀檔案時間的程式，可靠度有限",
+    "repo 的 .gitignore 忽略 project-memory/，照抄會導致多 AI 無法透過 git 共用記憶",
+    "evidence-sources 會存對話原文，推到公開 repo 有洩漏風險",
+    "SKILL.md 約 500 行，疊加多個 skill 會占大量上下文",
+    "label_consistency_audit.py 對含空白的列分類略有偏差，大資料量時 O(n²)"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "不是整套多 AI 架構，但「單一事實來源＋生命週期狀態＋過期門檻＋交接模板」是你解決新舊版本衝突與巡讀最值得直接抄的零件，建議轉繁中後併入自己的 AGENTS.md 與巡讀 skill。",
+  "keywords": ["pm-review-copilot", "Agent Skill", "SKILL.md", "Codex skills", "Claude Code skills", "專案記憶", "project memory", "記憶生命週期", "memory lifecycle", "新鮮度檢查", "freshness check", "過期偵測", "staleness", "版本漂移", "version drift", "單一事實來源", "single source of truth", "待更新池", "來源快照", "交接紀錄", "handoff", "幻覺檢查", "claim audit", "標註一致性", "每日巡讀"],
+  "pack_path": "_oss-research/04-agent-rules-skills/wikiiizhao__pm-review-copilot.md"
+}

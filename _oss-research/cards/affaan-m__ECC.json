@@ -1,0 +1,62 @@
+{
+  "repo": "affaan-m/ECC",
+  "category": "04-agent-rules-skills",
+  "commit": "b38be6a7f6350964d59328b52f0624e1d1d552d1",
+  "scanned_at": "2026-11-04",
+  "stars": 297007,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可複製、修改規則／角色／技能檔。",
+  "license_commercial_zh": "公司商用：MIT 允許商用與閉源改寫，只需保留版權與授權聲明；開源內容免費，另有付費託管服務 ECC Pro（GitHub App，私有 repo 每席 19 美元/月起），非必要。",
+  "one_liner_zh": "Claude／Codex 共用規則、角色、技能與文件巡檢工具大全",
+  "use_cases_zh": [
+    "照抄 AGENTS.md（共用）＋CLAUDE.md／.codex/AGENTS.md（各自補充）的寫法，讓 GPT 與 Claude 讀同一份規則",
+    "借 rules/common＋rules/web 的分層與「特定優先於通用」優先順序，建立自己的三層規則",
+    "用 living-docs-governance 把文件分成憲法／地圖／狀態／歷史，每個事實只有一個正本，防新舊版本衝突",
+    "用 docs-governance 的 audit-docs.py 當每日巡讀第一步：抓刪除檔案復活、ADR 取代鏈斷掉、孤兒文件、失效連結",
+    "用 skill-stocktake 與 rules-distill 定期找出重複技能與重複規則並合併",
+    "借 planner／code-reviewer／doc-updater／refactor-cleaner 角色檔與 Codex reviewer.toml，建立「Claude 寫、GPT 唯讀審查」分工",
+    "參考 autonomous-agent-harness 與 maintenance.yml 用 cron／GitHub Actions 排程巡檢",
+    "次要：inventory-demand-planning（安全庫存）、marketing-campaign、video-editing、fal-ai-media 等商務與影片技能"
+  ],
+  "stack": ["Node.js >=18 (CommonJS)", "Python 3（部分稽核腳本）", "Bash", "Markdown + YAML frontmatter", "TOML（Codex 設定）", "sql.js（本機 SQLite）", "ajv / zod / js-yaml"],
+  "run_requirements_zh": "不需 GPU、不需伺服器。以外掛安裝進 Claude Code（/plugin install ecc@ecc 或 npx ecc-universal@2.2.3 setup）或 Codex（codex plugin add ecc@ecc）；rules 需手動複製。ECC 本身免費，費用來自 Claude／Codex 訂閱或 API 用量；continuous-learning-v2 的觀察者會額外呼叫 haiku，部分 MCP（如 Exa）需各自 API Key。",
+  "key_features_zh": [
+    "共用規則分層：AGENTS.md＋CLAUDE.md＋.codex/AGENTS.md＋rules/common＋語言/領域覆寫",
+    "71 個角色（frontmatter 定義 tools 與 model，14 個純唯讀）",
+    "314 個技能、98 個指令、27 組 hook（minimal/standard/strict 設定檔）",
+    "文件治理：四角色單一正本、刪除區、ADR 生命週期、確定性稽核腳本",
+    "重複偵測：skill-stocktake、rules-distill、config-gc",
+    "漂移偵測：catalog.js 數量對帳、validate-skill-host-compat、harness-audit 12 類評分",
+    "團隊 Kanban 卡片 schema、work-items SQLite backlog、verification-loop 完成前驗證",
+    "Code Sovereignty：外部模型零寫入權，由 Claude 執行修改"
+  ],
+  "reusable_parts": [
+    {"name": "共用主規則骨架", "path": "AGENTS.md", "difficulty": "低", "note_zh": "取原則／角色表／自動派工／知識放置／正本政策五段結構，內容換成自己的專案，刪掉過重的 TDD 與 80% 覆蓋率要求"},
+    {"name": "Claude／Codex 補充檔分工", "path": ".codex/AGENTS.md", "difficulty": "低", "note_zh": "Codex 只讀 AGENTS.md，共用內容放 AGENTS.md，各工具專屬內容放補充檔；第 89–99 行差異表可直接參考"},
+    {"name": "規則分層與優先順序", "path": "rules/README.md", "difficulty": "低", "note_zh": "建 rules/common 與 rules/web，子檔開頭寫 extends，特定優先於通用；不要攤平資料夾"},
+    {"name": "四角色文件治理", "path": "skills/living-docs-governance/SKILL.md", "difficulty": "低", "note_zh": "整份放進 .claude/skills，照模板建 STATUS（含刪除區）與 LOG"},
+    {"name": "確定性文件稽核", "path": "skills/docs-governance/scripts/audit-docs.py", "difficulty": "中", "note_zh": "連同 markdown_links.py、module_audit.py 一起拷，用 .governance/docs-map.json 對應自己的檔名，作為每日巡讀的機械檢查"},
+    {"name": "技能盤點", "path": "skills/skill-stocktake/SKILL.md", "difficulty": "中", "note_zh": "需 Bash/Node/jq；定期抓重複、過期技能，判定 Keep/Improve/Update/Retire/Merge"},
+    {"name": "規則蒸餾 prompt", "path": "skills/rules-distill/SKILL.md", "difficulty": "低", "note_zh": "把子代理 prompt 改成掃 AGENTS.md／CLAUDE.md／skills 找重複或矛盾規則"},
+    {"name": "數量對帳 CI", "path": "scripts/ci/catalog.js", "difficulty": "中", "note_zh": "借概念：比對文件宣稱與實際程式碼，不一致就報錯"},
+    {"name": "角色檔", "path": "agents/code-reviewer.md", "difficulty": "低", "note_zh": "連同 planner、doc-updater、refactor-cleaner 放進 .claude/agents，用 tools 限制權限"},
+    {"name": "Codex 唯讀審查員", "path": ".codex/agents/reviewer.toml", "difficulty": "低", "note_zh": "sandbox_mode=read-only，讓 GPT 專職審查不寫檔"},
+    {"name": "Kanban 卡片 schema", "path": "skills/team-agent-orchestration/SKILL.md", "difficulty": "低", "note_zh": "每張卡 owner／state／acceptance／merge_gate／handoff，記錄 Claude 與 Codex 各自負責的工作"}
+  ],
+  "ai_integration_zh": "原生 Claude Code 外掛（ecc@ecc），角色 model 分布 sonnet 61／haiku 6／opus 4；Codex 端有 .codex/config.toml 多代理角色與 47 個 .agents/skills 副本（含 openai.yaml）；prompt 全為 Markdown；MCP 範本含 GitHub、Context7、Exa、Memory、Playwright；/multi-plan、/multi-execute 讓 Claude 主控呼叫 Codex（需外部 ccg-workflow），council-multi-model 經同意後請 Codex 挑毛病。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：VERSION 2.2.3，HEAD 2026-10-29（PR #3809），456 個測試檔、15 個 CI workflow；但為單人維護、每週改版，內容龐大且變動快。",
+  "risks_zh": [
+    "內容過多（314 技能），全裝會吃 context，應只挑 10–20 個",
+    "規則偏向大型團隊（強制 TDD、80% 覆蓋率），對個人 Firebase 專案過重",
+    "自家文件已有漂移：rules/common/agents.md 寫 69 個 agents（實際 71）、rules/README 樹狀圖只列 12 個子資料夾（實際 22）",
+    "Claude 版與 Codex 版技能副本內文不同步（46 個同名副本中 40 個內容不同），檢查腳本只比名稱",
+    "繁中翻譯嚴重落後（zh-TW 僅 12 agents／16 skills）",
+    "27 組 hook 每次工具呼叫都執行，continuous-learning 背景呼叫 haiku 增加用量",
+    "同一工具重複安裝會造成技能／hook 重複；需認明官方來源，有惡意重新上傳版本"
+  ],
+  "fit_for_user": 5,
+  "verdict_zh": "不要整包裝，把它當「規則分層＋文件治理＋重複/漂移檢查」零件庫，挑 AGENTS.md 結構、living-docs-governance、audit-docs.py、skill-stocktake 組成自己的基礎架構與每日巡讀。",
+  "keywords": ["ECC", "Everything Claude Code", "AGENTS.md", "CLAUDE.md", "共用規則", "規則分層", "角色", "subagent", "技能", "SKILL.md", "hooks", "Codex", "多代理協作", "文件治理", "單一事實來源", "刪除區", "ADR", "文件漂移", "drift", "重複偵測", "skill-stocktake", "rules-distill", "巡檢", "每日巡讀", "verification-loop"],
+  "pack_path": "_oss-research/04-agent-rules-skills/affaan-m__ECC.md"
+}

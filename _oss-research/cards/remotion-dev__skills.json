@@ -1,0 +1,51 @@
+{
+  "repo": "remotion-dev/skills",
+  "category": "03-video-script",
+  "commit": "c7cb2fdcacd134fb2ccb9b7a44f9ffa44e467271",
+  "scanned_at": "2026-11-04",
+  "stars": 6335,
+  "license": "repo 內無 LICENSE 檔（未確認）；依賴的 Remotion 本體為 Remotion 自訂授權",
+  "license_personal_zh": "個人使用：可以，官方鼓勵用 npx skills add 安裝；產出的影片專案依賴 Remotion，個人使用免費。",
+  "license_commercial_zh": "公司商用：skills 本身無授權檔（未確認）；真正受限的是 Remotion 本體，超過一定規模的公司需購買 Company License，門檻請到 remotion.dev/docs/license 確認；做成 SaaS 更要確認。",
+  "one_liner_zh": "Remotion 官方 Claude Code 技能包，讓 AI 用 React 程式碼做影片",
+  "use_cases_zh": [
+    "用 /remotion-create 讓 Claude Code 做商品宣傳、直式廣告短影片",
+    "用 Zod 參數化模板，把倉儲 App 的商品資料批量轉成廣告影片",
+    "短劇／口播：ElevenLabs AI 配音並自動依音檔長度決定影片長度",
+    "Whisper 本機自動上字幕、匯入 SRT、靜音偵測自動剪輯",
+    "學習官方 SKILL.md 路由器寫法，打造自己的影片或試算表 skill"
+  ],
+  "stack": ["Markdown Agent Skills", "TypeScript", "React", "Remotion 4.x", "Node.js", "Zod", "FFmpeg", "Mediabunny"],
+  "run_requirements_zh": "安裝：npx skills add remotion-dev/skills 或 gh skill install；需 Node.js、Git、Claude Code。一般電腦可渲染；Whisper 字幕需相容 GPU。選用 API Key：ElevenLabs（配音）、Mapbox/MapTiler（地圖）、AWS（Lambda 雲端渲染），費用 repo 未寫。",
+  "key_features_zh": [
+    "13 個 skills：best-practices 路由、create、markup、studio、render、maps、captions、saas、interactivity、docs、license、upgrade、multimedia",
+    "remotion-markup 33 個主題檔：轉場、特效（76 種內建 effect）、配音、音效、字幕、字型、3D、Lottie",
+    "預設先開 Studio 預覽、不擅自渲染；保護使用者手動修改",
+    "AI 配音（ElevenLabs）＋ calculateMetadata 自動影片長度",
+    "Whisper WebGPU 轉字幕與 Caption JSON 格式",
+    "SaaS：Player 嵌入、Lambda/Vercel/Node 渲染指引"
+  ],
+  "reusable_parts": [
+    {"name": "整包 skills", "path": "skills/", "difficulty": "低", "note_zh": "直接安裝到 Claude Code，或複製到專案 .claude/skills/"},
+    {"name": "影片版面規則", "path": "skills/remotion-create/video-layout.md", "difficulty": "低", "note_zh": "安全邊界與最小字級規則，可抄進自己的商品影片 skill"},
+    {"name": "AI 配音流程", "path": "skills/remotion-markup/voiceover.md", "difficulty": "中", "note_zh": "每場景 TTS 產 MP3，再用 calculateMetadata 對齊長度；TTS 供應商可替換"},
+    {"name": "字幕流程", "path": "skills/remotion-captions/", "difficulty": "中", "note_zh": "Caption JSON 當共用字幕格式；Whisper 需 GPU"},
+    {"name": "參數化模板", "path": "skills/remotion-markup/parameters.md", "difficulty": "低", "note_zh": "Firebase 商品 JSON 當 props 批量出影片"},
+    {"name": "靜音偵測", "path": "skills/remotion-markup/silence-detection.md", "difficulty": "低", "note_zh": "FFmpeg loudnorm＋silencedetect 自動剪口播空白"},
+    {"name": "路由器式 SKILL.md 寫法", "path": "skills/remotion-best-practices/SKILL.md", "difficulty": "低", "note_zh": "主檔只寫情境→載入哪個檔，可套用到自己的任何 skill"}
+  ],
+  "ai_integration_zh": "本身就是 Agent Skills（SKILL.md＋frontmatter），README 點名支援 Claude Code、Codex、Cursor、Kimi Code；另附 agents/openai.yaml 給 Codex。影片內 AI 為 ElevenLabs 配音與 Whisper 字幕，無文生影片；未附 MCP 伺服器（Studio 支援 WebMCP）。",
+  "claude_support": "原生",
+  "maintenance_zh": "官方維護、非常活躍：2026-01 建立、2026-11-02 最近推送，版本跟 Remotion 4.0.540 同步，由主 monorepo 自動同步。",
+  "risks_zh": [
+    "repo 無 LICENSE 檔，正式授權未確認",
+    "Remotion 本體公司商用需注意授權門檻",
+    "best-practices 內含其他 skill 副本，改寫時需分清正本",
+    "Whisper 字幕需 GPU；配音、地圖、雲端渲染需付費第三方 API",
+    "CSS/Tailwind 動畫無法正確渲染；Firebase 無法直接跑伺服器渲染（未確認）"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "想用 Claude Code 做商品廣告與短劇影片的首選安裝包，先個人用起來，商用前確認 Remotion 授權。",
+  "keywords": ["Remotion", "Agent Skills", "Claude Code", "SKILL.md", "React 影片", "程式碼生成影片", "商品影片", "廣告素材", "短影音", "短劇", "字幕", "Whisper", "AI 配音", "ElevenLabs", "轉場", "Remotion Studio", "渲染", "Lambda", "參數化影片", "批量影片", "programmatic video", "captions", "voiceover"],
+  "pack_path": "_oss-research/03-video-script/remotion-dev__skills.md"
+}

@@ -1,0 +1,144 @@
+{
+  "repo": "GreaterWMS/GreaterWMS",
+  "category": "02-price-erp",
+  "commit": "8344f3872155d75acce5c5d5d7d95b5b8e18dfc1",
+  "scanned_at": "2026-11-04",
+  "stars": 4431,
+  "license": "Apache-2.0",
+  "license_personal_zh": "個人使用：完全自由，可改可部署，不需公開程式碼。",
+  "license_commercial_zh": "公司商用：可以，改了也可閉源；需保留 LICENSE 與著作權聲明、註明修改。本 repo 的 2.x 功能未鎖付費版，但官方 3.0（Bomiot 重寫）不在此 repo，授權未確認。",
+  "one_liner_zh": "Django＋Quasar 開源倉儲系統：入出庫、揀貨、盤點、PDA 掃碼",
+  "use_cases_zh": [
+    "借鏡「一品項多庫存狀態欄位」設計（在途、待分揀、在架、可訂、待揀、欠貨、損壞、凍結、待檢）改進自己的點貨系統",
+    "借鏡 ASN 收貨差異計算（應收／實收／短少／多收）做點貨缺貨登記",
+    "借鏡出貨依儲位先進先出配揀＋自動拆欠貨單，強化待送清單",
+    "把運費公式 max(重量×單價, 材積×單價, 最低收費) 改成台灣物流商費率，做出貨運費比價小工具",
+    "參考 Excel/CSV 匯入（中英文標題對照、空值補齊）與 CSV 串流匯出",
+    "參考 Zebra DataWedge／東集／iData PDA 掃描頭整合方式"
+  ],
+  "stack": [
+    "Python",
+    "Django 4.1",
+    "Django REST Framework",
+    "drf-spectacular (OpenAPI)",
+    "pandas",
+    "openpyxl",
+    "daphne (ASGI/WebSocket)",
+    "SQLite（可換 MySQL/PostgreSQL）",
+    "Quasar 1 / Vue 2（網頁版）",
+    "Quasar 2 / Vue 3（PDA App）",
+    "echarts",
+    "Docker Compose"
+  ],
+  "run_requirements_zh": "pip 安裝 requirements.txt 後以 daphne 在 8008 埠啟動，前端 Quasar 在 8080；或用 docker-compose。不需 GPU、不需任何外部 API Key，只有主機費；對外部署前必須關 DEBUG、改 ALLOWED_HOSTS/CORS/JWT 金鑰。",
+  "key_features_zh": [
+    "入庫 ASN 五段狀態：建單→到貨→分揀→實收確認（自動算短少/多收）→上架到儲位",
+    "出庫 DN 六段狀態：建單→下單→放行自動配儲位揀貨（近似 FIFO）＋自動欠貨單→揀貨→派車→簽收",
+    "庫存總表 15 個數量欄位＋儲位庫存表",
+    "每日循環盤點與手動盤點，掃一次累加實盤數並算差異",
+    "建立 ASN/DN 時依城市查各物流商費率做運費比價",
+    "Excel/CSV 匯入（商品、供應商、客戶、運費、資產）與 CSV 匯出",
+    "條碼反查表＋PDA App（Zebra DataWedge、東集、iData）",
+    "REST API＋自動 Swagger/Redoc 文件、11 種介面語系含繁中"
+  ],
+  "reusable_parts": [
+    {
+      "name": "庫存多狀態欄位資料模型",
+      "path": "stock/models.py",
+      "difficulty": "低",
+      "note_zh": "照欄位在 Firestore/試算表開同名欄位，把每個動作加減哪些欄位寫成 JS 函式"
+    },
+    {
+      "name": "ASN 收貨差異計算",
+      "path": "asn/views.py",
+      "difficulty": "低",
+      "note_zh": "AsnSortedViewSet.create（L648-L713）邏輯簡單，可翻寫成點貨的預期數 vs 實點數"
+    },
+    {
+      "name": "儲位 FIFO 配揀＋自動欠貨單",
+      "path": "dn/views.py",
+      "difficulty": "中",
+      "note_zh": "DnOrderReleaseViewSet.create（L629 起約 350 行巢狀 if），建議請 Claude Code 依邏輯重寫"
+    },
+    {
+      "name": "運費比價公式與費率表",
+      "path": "utils/datasolve.py",
+      "difficulty": "低",
+      "note_zh": "transportation_calculate 7 行＋payment/models.py 費率表結構，可直接搬到前端"
+    },
+    {
+      "name": "循環盤點累加與差異",
+      "path": "cyclecount/views.py",
+      "difficulty": "低",
+      "note_zh": "L102-L125：create 一次填、update 掃一次加一次，差異＝實盤－帳面"
+    },
+    {
+      "name": "數量異動流水帳 QTYRecorder",
+      "path": "cyclecount/models.py",
+      "difficulty": "低",
+      "note_zh": "每次庫存變動 append 單號、儲位、品項、數量、操作人，方便追帳"
+    },
+    {
+      "name": "Excel/CSV 匯入（標題對照）",
+      "path": "uploadfile/views.py",
+      "difficulty": "中",
+      "note_zh": "pandas 讀檔＋goods/files.py 中英文標題 dict；JS 端可改用 SheetJS 解析後呼叫 API"
+    },
+    {
+      "name": "PDA 掃描頭整合",
+      "path": "app/src/pages/ScanAPP.vue",
+      "difficulty": "中",
+      "note_zh": "Cordova intentShim 控制 Zebra DataWedge，東集/iData 聽自訂事件；買工業 PDA 時才用得到"
+    },
+    {
+      "name": "條碼反查表",
+      "path": "scanner/models.py",
+      "difficulty": "低",
+      "note_zh": "一張表把任何條碼對到單據/商品/儲位，掃碼即可跳到對應頁面"
+    }
+  ],
+  "ai_integration_zh": "沒有任何 AI 功能、prompt、MCP 或 Skills。可利用其 REST API 與 drf-spectacular 產生的 OpenAPI 文件，請 Claude Code 生出 MCP server 讓 Claude 查庫存、建單，但需自行開發。",
+  "claude_support": "可接",
+  "maintenance_zh": "最近 push 2026-10-26，HEAD 為 2026-10-13 的 V2.1.54；官方重心已轉向 Bomiot 重寫的 3.0（不在此 repo），2.x 以維護為主；提交頻率未確認（shallow clone）。",
+  "risks_zh": [
+    "預設 DEBUG=True、ALLOWED_HOSTS=*、CSRF 關閉、CORS 全開，對外部署前必改",
+    "API token 即永不過期的 openid，權限類別一律放行，沒有角色權限控管",
+    "JWT 金鑰寫死在原始碼且效期 20 年",
+    "全專案沒有資料庫交易（無 atomic/select_for_update），多人同時操作庫存可能算錯",
+    "商品初始化匯入會刪除所有租戶的商品屬性字典（未加 openid 條件）",
+    "輸入檢查只要含 script 或 select 字樣就拒收，正常商品描述可能被擋",
+    "「發布倉庫」功能會把 openid（API token）送到作者伺服器 po.56yhz.com",
+    "每個請求都呼叫第三方套件 asgihandler，內容未確認",
+    "幾乎沒有自動化測試；網頁前端仍是已停止維護的 Vue 2",
+    "無多幣別、價目表、採購、估值、毛利、價格追蹤，亦無台灣電子發票"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "不建議整套搬用，但它的庫存狀態欄位、收貨差異、FIFO 配揀與盤點流程，很值得讓 Claude Code 翻寫進你自己的點貨系統。",
+  "keywords": [
+    "GreaterWMS",
+    "倉儲管理系統",
+    "WMS",
+    "入庫",
+    "ASN",
+    "出庫",
+    "DN",
+    "揀貨",
+    "欠貨單",
+    "back order",
+    "儲位",
+    "循環盤點",
+    "cycle count",
+    "庫存狀態",
+    "條碼",
+    "PDA",
+    "Zebra DataWedge",
+    "運費比價",
+    "Django",
+    "Quasar",
+    "Excel 匯入",
+    "CSV 匯出",
+    "OpenAPI",
+    "Apache-2.0"
+  ],
+  "pack_path": "_oss-research/02-price-erp/GreaterWMS__GreaterWMS.md"
+}

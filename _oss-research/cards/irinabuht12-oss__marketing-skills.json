@@ -1,0 +1,51 @@
+{
+  "repo": "irinabuht12-oss/marketing-skills",
+  "category": "03-video-script",
+  "commit": "b3bdcd618a61034509f66e48ac0bb588f8defceb",
+  "scanned_at": "2026-11-04",
+  "stars": 6805,
+  "license": "自訂授權：README 與 plugin.json 自稱 MIT，但 repo 內無 LICENSE 檔",
+  "license_personal_zh": "個人使用：可以，作者明言免費、MIT，複製 skills 到 ~/.claude/skills/ 即可。",
+  "license_commercial_zh": "公司商用：作者意圖為 MIT，風險低；但缺正式 LICENSE 全文，改作後公開或放入商業產品前建議保留出處並向作者確認。Ryze MCP 為閉源第三方服務。",
+  "one_liner_zh": "49 個給 Claude 的廣告／SEO 分析 Skills，純 Markdown",
+  "use_cases_zh": [
+    "每週把 Meta／Google 廣告匯出 CSV 丟給 Claude 做健檢、找疲勞素材與浪費預算",
+    "用 content-repurposer 產生 15–30 秒商品短影音腳本與廣告 hook",
+    "用 ad-copy-variant-generator 依勝出廣告產生測試用文案變體",
+    "把 MER、邊際 ROAS、A/B 樣本數公式寫進自己的試算表或倉儲系統",
+    "當範本學寫自己的繁中電商 Claude Skill 與私人 plugin"
+  ],
+  "stack": ["Markdown (SKILL.md)", "YAML frontmatter", "Claude Code plugin (.claude-plugin JSON)", "遠端 MCP（Ryze，閉源）"],
+  "run_requirements_zh": "不需伺服器或 GPU；需 Claude 訂閱（Pro/Max/Team/Enterprise）或 Claude Code。可選接 Ryze 遠端 MCP（README 稱免費）讀即時廣告資料，否則貼匯出檔即可。",
+  "key_features_zh": [
+    "49 個 skills：Google Ads、Meta Ads、LinkedIn、Reddit、SEO、AI 能見度",
+    "Meta 素材疲勞、受眾重疊的具體門檻表",
+    "MER／aMER／邊際 ROAS 公式與 70-20-10 預算分配",
+    "A/B 測試樣本數與 Z 檢定公式",
+    "短影音腳本 Hook→Value→CTA 秒數模板",
+    "可用 claude plugin install 一鍵安裝並自動接 Ryze MCP"
+  ],
+  "reusable_parts": [
+    {"name": "廣告指標公式（MER／邊際 ROAS／70-20-10）", "path": "skills/ad-spend-allocator/SKILL.md", "difficulty": "低", "note_zh": "請 Claude Code 依公式寫成 JS 函式，接到倉儲系統或網頁試算表"},
+    {"name": "A/B 樣本數與顯著性", "path": "skills/ab-test-analyzer/SKILL.md", "difficulty": "低", "note_zh": "做成小工具或試算表自訂函式"},
+    {"name": "Meta 素材疲勞門檻表", "path": "skills/meta-ads-audit/SKILL.md", "difficulty": "低", "note_zh": "匯入 Meta CSV 後做條件格式自動標示"},
+    {"name": "短影音腳本骨架", "path": "skills/content-repurposer/SKILL.md", "difficulty": "低", "note_zh": "改成繁中商品影片腳本 skill，再接影片生成專案"},
+    {"name": "廣告文案變體 skill", "path": "skills/ad-copy-variant-generator/SKILL.md", "difficulty": "低", "note_zh": "翻成繁中、限制每個變體只改 1–2 變因"},
+    {"name": "Plugin 打包結構", "path": ".claude-plugin/plugin.json", "difficulty": "低", "note_zh": "照抄結構把自己的 skills 打包成私人 plugin（拿掉 mcpServers）"}
+  ],
+  "ai_integration_zh": "原生 Claude Skills 格式（name/description frontmatter）並可作 Claude Code plugin 安裝；plugin.json 內建 Ryze 遠端 http MCP，49 個 SKILL.md 皆含 Ryze 安裝段落；不指定模型、無程式碼。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-01 建立，最後推送 2026-10-27，仍在更新，但近期 commit 偏導流連結調整；作者為 Ryze AI。",
+  "risks_zh": [
+    "無 LICENSE 檔，授權僅為 README／plugin.json 宣稱 MIT",
+    "裝 plugin 會自動註冊第三方遠端 MCP，廣告／GA4 帳號權限交給 Ryze，資料政策未確認",
+    "49 個中有 34 個只有約 40 行敘述，缺門檻與模板",
+    "不會生成影片，只到文字腳本",
+    "基準值以美國市場為主、全英文，需台灣在地化",
+    "repo 本質為 Ryze 產品導流"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "適合當廣告健檢與 Skill 寫法範本，只複製 skills/、先別裝 plugin；影片生成要另找專案。",
+  "keywords": ["Claude Skills", "Claude Code plugin", "行銷技能", "廣告健檢", "Google Ads", "Meta Ads", "素材疲勞", "受眾重疊", "ROAS", "MER", "預算分配", "A/B 測試", "短影音腳本", "video script", "廣告文案", "UTM", "GA4", "SEO", "programmatic SEO", "AI visibility", "Ryze MCP", "MCP", "CRO"],
+  "pack_path": "_oss-research/03-video-script/irinabuht12-oss__marketing-skills.md"
+}

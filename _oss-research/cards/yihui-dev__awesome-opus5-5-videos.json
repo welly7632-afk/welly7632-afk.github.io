@@ -1,0 +1,50 @@
+{
+  "repo": "yihui-dev/awesome-opus5-5-videos",
+  "category": "03-video-script",
+  "commit": "92aee2f586ac0715cb3cbcb6384834f98a33383d",
+  "scanned_at": "2026-11-04",
+  "stars": 13529,
+  "license": "MIT（僅涵蓋整理者的編排；README 聲明各影片與提示詞版權屬原作者）",
+  "license_personal_zh": "個人使用：拿提示詞學習、改寫後產生自己的影片沒問題。",
+  "license_commercial_zh": "公司商用：MIT 不涵蓋 703 則提示詞原文，勿整份轉賣；影片中的音樂、素材、品牌風格（Spotify、Apple 等）需自行確認可商用。",
+  "one_liner_zh": "703 則用 Claude Opus 5.5 寫程式產生動態影片的提示詞收藏",
+  "use_cases_zh": [
+    "以 qianqiongge-246969 範本做 9:16 15 秒電商商品使用說明影片",
+    "以 ultimaxbt-549714 的商品卡片結構做多品項廣告短片",
+    "以 redpersongpt-284430 的 10 階段流程產出廣告角度、hook 與腳本",
+    "替自己的倉儲 App 做 UI 動態宣傳片（daniel-haida-636937 的「只用真實產品」規則）",
+    "把 data/videos.json 匯入 Firebase 做個人提示詞庫",
+    "節慶行銷動畫（台灣黑熊中秋範例）"
+  ],
+  "stack": ["Markdown", "JSON", "（提示詞中的工具）Remotion", "Playwright", "ffmpeg", "Canvas", "SVG", "Three.js", "GSAP"],
+  "run_requirements_zh": "repo 無程式碼不需安裝。使用提示詞需 Claude Opus 5.5（Claude Code 訂閱或 API），本機 Node.js＋Remotion／Playwright＋ffmpeg 錄成 MP4；不需 GPU；旁白可選 ElevenLabs／Gemini TTS（另需 API Key）。長提示詞多輪渲染 token 用量可觀。",
+  "key_features_zh": [
+    "703 則提示詞（prompts/*.md），其中 418 則有 Skillry 重製版",
+    "data/videos.json 結構化資料：分類、技術標籤、是否完整提示詞、原文",
+    "四大分類：motion 369、3d 117、explainer 116、interactive 101",
+    "約 3 成（207 筆）僅有貼文原文、非完整提示詞",
+    "常見結構：<inputs>/<direction>/<structure>/<build>/<gotchas>、seek(t) 純函式時間軸、BPM 節拍剪輯、先出分鏡與靜幀再全渲染"
+  ],
+  "reusable_parts": [
+    {"name": "提示詞資料集", "path": "data/videos.json", "difficulty": "低", "note_zh": "直接匯入 Firestore，依 category／tech_tags／prompt_partial 篩選"},
+    {"name": "直式電商商品說明影片範本（中文）", "path": "prompts/qianqiongge-246969.md", "difficulty": "低", "note_zh": "換商品圖與賣點即可用 Remotion 產出 1080×1920 MP4"},
+    {"name": "商品卡片輪播發表影片", "path": "prompts/ultimaxbt-549714.md", "difficulty": "中", "note_zh": "卡片欄位（照片、名稱、價格、評分）可接倉儲資料批次生成"},
+    {"name": "XML 分段產品影片骨架", "path": "prompts/twoclipping-000267.md", "difficulty": "中", "note_zh": "改寫成 Claude Code Skill，每次只換 inputs"},
+    {"name": "10 階段廣告企劃代理", "path": "prompts/redpersongpt-284430.md", "difficulty": "低", "note_zh": "替換產品段落即產出 persona、hooks、腳本"},
+    {"name": "真實產品為準的品牌片規格", "path": "prompts/daniel-haida-636937.md", "difficulty": "中", "note_zh": "讓 Claude 先讀自家 repo tokens 與截圖，禁止捏造數據"}
+  ],
+  "ai_integration_zh": "全部以 Claude Opus 5.5 為主（原生 Claude）；提示詞放在 prompts/*.md 與 videos.json 的 prompt 欄位。repo 內無 MCP 或 SKILL.md，但多則提到 Remotion 官方 skill、HyperFrames，部分搭配 ElevenLabs、Gemini TTS、Seedance。",
+  "claude_support": "原生",
+  "maintenance_zh": "2026-09-27 建立、10-13 最後推送，五次批量新增後約三週未更新；熱潮型收藏，並作為 skillry.dev 導流。",
+  "risks_zh": [
+    "提示詞版權屬原作者，MIT 不涵蓋",
+    "約 3 成非完整提示詞，且有大量重複範本",
+    "部分提示詞要求代理自主上網、不詢問，直接在自家 repo 執行前要先審閱",
+    "模仿品牌風格與音樂素材的商用授權風險",
+    "影片為程式碼動畫，不適合真人短劇"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "當作電商／產品廣告動畫的提示詞範本庫很實用，挑 5–10 則結構化範本改成自己的 Skill；真人短劇需另找專案。",
+  "keywords": ["Claude Opus 5.5", "提示詞", "prompt", "動態圖像", "motion graphics", "產品影片", "product launch video", "電商短影音", "廣告素材", "ad creative", "Remotion", "HyperFrames", "Playwright", "ffmpeg", "Canvas", "Three.js", "直式影片", "9:16", "分鏡", "storyboard", "程式碼生成影片", "awesome list"],
+  "pack_path": "_oss-research/03-video-script/yihui-dev__awesome-opus5-5-videos.md"
+}

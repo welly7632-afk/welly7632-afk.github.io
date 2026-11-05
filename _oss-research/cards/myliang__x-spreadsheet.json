@@ -1,0 +1,138 @@
+{
+  "repo": "myliang/x-spreadsheet",
+  "category": "01-web-excel",
+  "commit": "0c55f3ee1e708002eaef280432d6efeaeabdc886",
+  "scanned_at": "2026-11-04",
+  "stars": 14571,
+  "license": "MIT",
+  "license_personal_zh": "個人使用：完全自由，可修改、複製、拆片段進自己的倉儲 App。",
+  "license_commercial_zh": "公司商用：可閉源商用與轉售，只需保留 MIT 著作權聲明與授權全文；無付費版或閉源功能。若搭配 SheetJS 匯入匯出，需另附其 Apache-2.0 聲明。",
+  "one_liner_zh": "純 JS 零依賴 Canvas 網頁試算表，易嵌入易讀，但公式僅 8 個且已停更",
+  "use_cases_zh": [
+    "在現有純 JS + Firebase 倉儲網頁嵌入類 Excel 表格（進貨清單、盤點表、簡易報價單）",
+    "用 getData()/loadData() 把整張表以 JSON 存取 Firestore",
+    "用 extendToolbar 加「存檔」「呼叫 Claude 產生商品文案」按鈕，結果用 cellText() 回填",
+    "當作用 Claude Code 自寫試算表的學習範本：Canvas 可視範圍渲染、稀疏資料模型、公式解析器",
+    "拆出 alphabet.js、cell_range.js、draw.js、validator.js 等小工具給自家專案用"
+  ],
+  "stack": [
+    "JavaScript (ES2015+)",
+    "Canvas 2D",
+    "LESS",
+    "webpack 4",
+    "babel 7",
+    "mocha",
+    "無後端",
+    "無資料庫（自行接 Firestore 等）"
+  ],
+  "run_requirements_zh": "純前端靜態檔：CDN 引入 xspreadsheet.js（約 198 KB，gzip 約 42 KB）＋ CSS（約 23 KB）即可執行；不需後端、GPU、API Key，費用為零。自行重建需 webpack 4 舊工具鏈。",
+  "key_features_zh": [
+    "Canvas 繪製＋只畫可視範圍（虛擬渲染）",
+    "多工作表、合併儲存格、凍結窗格、欄寬列高、隱藏列欄",
+    "公式 8 個（SUM、AVERAGE、MAX、MIN、IF、AND、OR、CONCAT），無依賴圖、每次重繪重算",
+    "數字格式 11 種、框線、字型、顏色、對齊、自動換行、格式刷",
+    "資料驗證（list 下拉、number、date、phone、email）",
+    "複製貼上（內部可分值／格式；外部只吃純文字）、自動填滿、undo/redo",
+    "陽春篩選（勾選值）、列印預覽、注音輸入法支援（compositionend）",
+    "API：loadData/getData/cellText/cell/cellStyle、change 與 cell-selected/cell-edited 事件、extendToolbar"
+  ],
+  "reusable_parts": [
+    {
+      "name": "稀疏資料模型＋樣式去重",
+      "path": "src/core/data_proxy.js",
+      "difficulty": "低",
+      "note_zh": "第 18–70 行註解即格式規格，addStyle() 樣式去重；可直接當自家表格存 Firestore 的 JSON 格式。"
+    },
+    {
+      "name": "A1 參照轉換",
+      "path": "src/core/alphabet.js",
+      "difficulty": "低",
+      "note_zh": "91 行無依賴，expr2xy/xy2expr/expr2expr，直接複製。"
+    },
+    {
+      "name": "範圍運算 CellRange",
+      "path": "src/core/cell_range.js",
+      "difficulty": "低",
+      "note_zh": "交集、差集、包含、解析 A1:C3，有 368 行測試。"
+    },
+    {
+      "name": "Canvas 繪圖工具 Draw/DrawBox",
+      "path": "src/canvas/draw.js",
+      "difficulty": "低",
+      "note_zh": "高 DPI、文字換行、框線、裁切；可用於自繪庫存熱圖或貨架格位圖。"
+    },
+    {
+      "name": "可視範圍渲染器",
+      "path": "src/component/table.js",
+      "difficulty": "中",
+      "note_zh": "學只畫可視區與凍結四象限的寫法，需連 DataProxy 介面一起搬。"
+    },
+    {
+      "name": "公式解析器",
+      "path": "src/core/cell.js",
+      "difficulty": "低",
+      "note_zh": "中序轉後序教材；計算部分精度有問題，建議改接其他函數庫與十進位運算。"
+    },
+    {
+      "name": "資料驗證",
+      "path": "src/core/validator.js",
+      "difficulty": "低",
+      "note_zh": "136 行，可搬到倉儲表單；phone/email 規則需改成台灣格式並修正正規表示式。"
+    },
+    {
+      "name": "小型事件系統",
+      "path": "src/component/event.js",
+      "difficulty": "低",
+      "note_zh": "createEventEmitter 的 on/once/fire，純 JS 可直接用。"
+    },
+    {
+      "name": "中文輸入法處理",
+      "path": "src/component/selector.js",
+      "difficulty": "低",
+      "note_zh": "隱藏 input + compositionend，讓 Canvas 表格支援注音輸入。"
+    }
+  ],
+  "ai_integration_zh": "無任何 AI／LLM／MCP 程式碼。可透過 extendToolbar 按鈕把 getData() 送到自己的 Firebase Cloud Function 呼叫 Claude，再用 cellText()+reRender() 回填；公式是重繪時同步計算，不適合直接做 =AI() 函數。",
+  "claude_support": "可接",
+  "maintenance_zh": "已停止維護：專案描述寫明遷移到 @wolf-table/table，master HEAD 為 2023-08-15；測試 9 檔 845 行只涵蓋 core，CI 為已停用的 Travis + Node 10。",
+  "risks_zh": [
+    "小數乘除會被 toFixed 四捨五入（例如 =0.5*0.5 依程式邏輯得 0.3、=1/3 得 0.33），不適合算成本與匯率",
+    "AVERAGE 把空白格算進分母，MIN/MAX 把空白當 0",
+    "排序依列號而非內容，實際只會原序或反轉",
+    "不支援 $A$1 絕對參照、跨工作表參照、<> 運算子；只有 8 個函數",
+    "undo 以整份 JSON 快照且無上限，大表記憶體風險；外部貼上與欄寬列高變更不進 history",
+    "編輯框以 innerHTML 寫入儲存格文字，載入不可信資料時有 XSS 風險",
+    "change 事件每個按鍵觸發，需 debounce；欄寬列高與隱藏不觸發 change；loadData 會改動傳入物件",
+    "無 .xlsx/.csv 內建匯入匯出、無條件格式、圖表、樞紐、協作；無繁體中文語系"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "適合當學習範本與倉儲 App 的輕量表格檢視／簡單編輯器；要算錢或做報表請改用 Univer 等，或替換其公式引擎。",
+  "keywords": [
+    "x-spreadsheet",
+    "x-data-spreadsheet",
+    "wolf-table",
+    "網頁版 Excel",
+    "網頁試算表",
+    "Canvas 試算表",
+    "canvas spreadsheet",
+    "web spreadsheet",
+    "純 JavaScript",
+    "vanilla JS",
+    "零依賴",
+    "虛擬渲染",
+    "公式解析器",
+    "formula parser",
+    "稀疏 JSON",
+    "Firestore",
+    "資料驗證",
+    "下拉選單",
+    "凍結窗格",
+    "合併儲存格",
+    "自動填滿",
+    "SheetJS",
+    "extendToolbar",
+    "注音輸入法",
+    "MIT"
+  ],
+  "pack_path": "_oss-research/01-web-excel/myliang__x-spreadsheet.md"
+}

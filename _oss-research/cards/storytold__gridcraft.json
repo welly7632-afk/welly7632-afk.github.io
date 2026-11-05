@@ -1,0 +1,59 @@
+{
+  "repo": "storytold/gridcraft",
+  "category": "01-web-excel",
+  "commit": "632e4a1bc51ee86b3f0a55e95ee78def391aab30",
+  "scanned_at": "2026-11-04",
+  "stars": 7139,
+  "license": "MIT OR Apache-2.0（雙授權任選；GitHub 只偵測到 Apache-2.0）",
+  "license_personal_zh": "個人使用：完全免費、可修改，無付費版或授權金鑰。",
+  "license_commercial_zh": "公司商用：可商用、可閉源、可收費，只需保留版權與授權條文（選 Apache-2.0 須保留 NOTICE）；ArtCraft 名稱與 docs/brand 標誌是商標，不在授權內，fork 要移除。",
+  "one_liner_zh": "Rust 寫的仿 Excel 試算表，支援瀏覽器與 Claude MCP",
+  "use_cases_zh": [
+    "用 claude mcp add gridcraft 讓 Claude Code 開啟、整理、加公式、做樞紐與圖表、另存 .xlsx 報表",
+    "用 gridcraft-cli eval／convert／run 在腳本中批次計算 Excel 公式、xlsx 轉 csv／json",
+    "把網頁版（靜態 wasm 網站）放上 Firebase Hosting，以 iframe＋postMessage 整本開啟／儲存 xlsx",
+    "研究並移植其公式引擎、依賴圖重算、copy-on-write 儲存、Excel 剪貼簿數值解析到自己的 JS 工具",
+    "用財務函數與規劃求解（Solver）做成本、報價、採購組合試算"
+  ],
+  "stack": ["Rust 2024", "egui 0.37 / eframe", "wgpu（WebGPU／WebGL2／DX12／Vulkan／Metal）", "WebAssembly + trunk", "quick-xml + zip（自寫 xlsx 讀寫）", "serde / serde_json", "MCP（stdio JSON-RPC 2.0，手寫）"],
+  "run_requirements_zh": "桌面版下載 GitHub Release 安裝檔即可；網頁版為純靜態檔（index.html＋js＋wasm），任何靜態主機（含 Firebase Hosting）可放，需 HTTPS 才有 WebGPU 與剪貼簿。自行編譯需 Rust 1.95＋wasm32 target＋trunk。不需資料庫、不需任何 API Key，費用為零；wasm 實際大小未確認。",
+  "key_features_zh": [
+    "約 515 個工作表函數（自數：491 個註冊＋24 個引擎特殊形式），含動態陣列、LET、LAMBDA、XLOOKUP、GROUPBY",
+    "依賴圖增量重算（區間樹反向索引、循環偵測、反覆運算），單執行緒",
+    "copy-on-write 稀疏儲存格，復原快照幾乎免費",
+    "XLSX 原生讀寫（自寫）、CSV／TSV，.xls／.xlsb／.ods 只匯入，PDF／HTML 匯出",
+    "條件格式、資料驗證下拉、合併、凍結、篩選、排序、填滿、Flash Fill、表格",
+    "圖表（約 17 種以上）、走勢圖、樞紐分析、規劃求解、儲存格內圖片",
+    "MCP 伺服器 22 個工具＋約 269 個引擎指令、CLI、桌面 TCP 控制通道、JSON 宣告式巨集",
+    "網頁版 Canvas（WebGPU／WebGL2）渲染，iframe postMessage 橋接開檔存檔"
+  ],
+  "reusable_parts": [
+    {"name": "MCP 伺服器", "path": "crates/mcp/src/tools.rs", "difficulty": "低", "note_zh": "直接用 Release 的 gridcraft-cli mcp 接 Claude Code；或當成自家倉儲系統 MCP 工具設計範本。"},
+    {"name": "CLI（eval／convert／run）", "path": "apps/gridcraft-cli", "difficulty": "低", "note_zh": "在 Node／Python 腳本中呼叫執行檔做公式計算與格式轉換。"},
+    {"name": "網頁版 iframe 橋接", "path": "apps/gridcraft-web/src/host.rs", "difficulty": "低", "note_zh": "同網域 iframe ?host=parent，用 gridcraft:open／save 訊息收送 xlsx 位元組，存 Firebase Storage。"},
+    {"name": "公式 parser＋AST", "path": "crates/formula/src/parser.rs", "difficulty": "中", "note_zh": "純 Rust 無 UI，可包 wasm-bindgen 給 JS，或當移植參考。"},
+    {"name": "工作表函數庫", "path": "crates/functions/src", "difficulty": "中", "note_zh": "每個函數是獨立純函數，財務、查找等可單獨抄或當行為參考答案。"},
+    {"name": "依賴圖與增量重算", "path": "crates/calc/src/recalc.rs", "difficulty": "高", "note_zh": "與 model 綁緊，建議學其區間樹反向索引設計後用 JS 重寫。"},
+    {"name": "copy-on-write 稀疏儲存", "path": "crates/model/src/store.rs", "difficulty": "低", "note_zh": "64 列一個 band 的結構共享做法容易移植到 JS，讓復原變便宜。"},
+    {"name": "剪貼簿 HTML 數值解析", "path": "crates/engine/src/clip_html.rs", "difficulty": "低", "note_zh": "讀 Excel 的 x:num 屬性還原數值，可用 JS 重寫給倉儲頁的「從 Excel 貼上」。"},
+    {"name": "數字格式引擎", "path": "crates/numfmt/src/lib.rs", "difficulty": "低", "note_zh": "獨立 crate，可編 wasm 給 JS 格式化數字；僅 en-US。"},
+    {"name": "XLSX 讀寫", "path": "crates/xlsx/src/lib.rs", "difficulty": "高", "note_zh": "需連 model、formula 一起帶走；JS 端改用 SheetJS／ExcelJS 較省事。"}
+  ],
+  "ai_integration_zh": "程式本身不呼叫任何 LLM、沒有 prompt 或 API Key；定位是讓外部 AI 代理操作。內建 MCP 伺服器（gridcraft-cli mcp，無視窗或 --connect 連桌面 App），文件直接給出 claude mcp add 指令，22 個工具（read_range、write_range、set_cell、evaluate_formula、insert_chart、create_table、sort_range、filter、execute_command 等），execute_command 可呼叫全部約 269 個指令。無 Claude Skills 檔；Python 儲存格只保存不執行。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-10-07 建立，最新 commit 2026-11-03，PR／issue 編號已過 3000；23 萬行 Rust、3,372 個測試、SonarCloud／CodeRabbit／多平台 CI。自評 alpha、約 50% 可用於實際工作，大量由 AI 代理撰寫（文件以 Opus 5.5 agent-hours 估工時）。",
+  "risks_zh": [
+    "alpha 階段，官方自評約 50% 可用於實際工作",
+    "XLSX 輸出未在真實 Excel 與真實檔案語料驗證，可能有修復提示或資料遺失（交叉分析篩選器快取、時間軸、Power Pivot、部分圖表選項）",
+    "大檔案弱：約 100 MB xlsx 開不了、重算單執行緒",
+    "沒有繁體中文介面（只有簡體），數字格式僅 en-US，中文 PDF 匯出很可能不行",
+    "網頁版是整個 App 的 canvas，只能 iframe 整本開存，沒有逐格 JS API 或變更事件",
+    "沒有多人即時協作、沒有手機版版面",
+    "大量 AI 生成程式碼，長期維護與人工審查程度不明；依賴團隊自己 fork 的 egui／winit／craft-libs",
+    "網頁版貼上不讀剪貼簿 HTML，格式化數字可能貼成文字"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "當作「讓 Claude 透過 MCP 操作 xlsx 的工具」與公式引擎參考很值得；想嵌進自己的純 JS 倉儲頁面逐格讀寫則不適合，改用 Univer／Handsontable。",
+  "keywords": ["GridCraft", "網頁版 Excel", "試算表", "Rust", "WebAssembly", "egui", "WebGPU", "Canvas 渲染", "公式引擎", "formula engine", "依賴圖", "動態陣列", "LAMBDA", "xlsx", "CSV", "樞紐分析", "條件格式", "規劃求解", "MCP", "Claude Code", "CLI", "iframe 嵌入", "postMessage", "MIT", "Apache-2.0"],
+  "pack_path": "_oss-research/01-web-excel/storytold__gridcraft.md"
+}

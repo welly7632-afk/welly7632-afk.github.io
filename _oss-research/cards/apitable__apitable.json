@@ -1,0 +1,145 @@
+{
+  "repo": "apitable/apitable",
+  "category": "01-web-excel",
+  "commit": "c9255a752a85913e2e6b362ff6c306b0fc3585df",
+  "scanned_at": "2026-11-04",
+  "stars": 15658,
+  "license": "AGPL-3.0（另有付費 Advanced Embedding License 與企業版）",
+  "license_personal_zh": "個人使用：自己架、自己用完全免費，無限制。",
+  "license_commercial_zh": "公司商用：不改程式碼給內部用一般沒問題；若修改後透過網路提供給外部使用，或把它的程式碼抄進自己的產品，就要以 AGPL 公開原始碼；嵌入頁面拿掉「Powered by APITable」要買嵌入授權；AI、SSO、稽核、Embed 產生器等在企業版（閉源）。",
+  "one_liner_zh": "開源版 Airtable：Canvas 表格＋欄位公式＋OT 即時協作",
+  "use_cases_zh": [
+    "自架商品／庫存／進貨／訂單資料庫，用關聯欄位＋LookUp＋公式算庫存與毛利",
+    "當成現有 Firebase 倉儲網頁的後台資料庫，透過 Fusion REST API 讀寫",
+    "從 Excel／Google 試算表直接貼上廣告花費、比價資料，用公式欄位算 ROAS",
+    "看板／表單／日曆視圖管理拍片與上架進度，表單分享給廠商填",
+    "拆參考：欄位公式引擎、Excel 剪貼簿解析、拖拉填滿序列偵測、json0 OT＋復原設計"
+  ],
+  "stack": [
+    "TypeScript",
+    "React 18",
+    "Next.js",
+    "Redux",
+    "Konva（Canvas）",
+    "NestJS",
+    "socket.io",
+    "Java 17",
+    "Spring Boot 3.2",
+    "MySQL 8",
+    "Redis",
+    "RabbitMQ",
+    "MinIO",
+    "ot-json0",
+    "exceljs",
+    "EasyExcel",
+    "Rust WASM（僅二進位）",
+    "Docker Compose"
+  ],
+  "run_requirements_zh": "Docker Compose 一鍵安裝（10 個服務：web、backend(Java)、room(Node)、databus、gateway、imageproxy、MySQL、Redis、RabbitMQ、MinIO）；建議 4 CPU／8GB RAM，僅 amd64 映像；不需 GPU；開源版不需任何付費 API Key；雲主機約每月 US$40–80（估計，未確認）；預設密碼 apitable@com 必改。",
+  "key_features_zh": [
+    "Canvas（Konva）表格＋二分搜尋虛擬捲動",
+    "欄位式公式引擎：82 個函數名（81 個實作），自寫 lexer/parser/interpreter",
+    "27 種欄位型別，含關聯、LookUp/Rollup、公式、附件、成員、按鈕",
+    "Grid／看板／相簿／表單／日曆／甘特／組織圖 7 種視圖",
+    "json0 OT 即時協作，room-server 以 Redis 鎖＋revision 合併",
+    "復原／重做（50 步）、拖拉填滿（等差、日期序列）",
+    "可從 Excel／Google 試算表貼上（HTML table／TSV）",
+    "匯入 xlsx/xls/csv（EasyExcel）、匯出 xlsx/csv（exceljs）",
+    "Fusion REST API（records/fields/views、filterByFormula）",
+    "Widget SDK 小程式、自動化（webhook／slack／sms）"
+  ],
+  "reusable_parts": [
+    {
+      "name": "欄位公式引擎",
+      "path": "packages/core/src/formula_parser/",
+      "difficulty": "中",
+      "note_zh": "保留 lexer/parser/interpreter/functions，把 evaluate.ts 的 resolverWrapper 換成從 JSON 物件依欄位名取值，i18n 字串改固定繁中；AGPL，建議請 Claude 參考後重寫。"
+    },
+    {
+      "name": "計算欄位相依圖",
+      "path": "packages/core/src/compute_manager/compute_reference_manager.ts",
+      "difficulty": "低",
+      "note_zh": "refMap/reRefMap＋遞迴找受影響欄位，可直接套用到自己的公式欄位重算。"
+    },
+    {
+      "name": "Excel/Google 試算表貼上解析",
+      "path": "packages/datasheet/src/pc/common/clipboard/",
+      "difficulty": "低",
+      "note_zh": "csv_parser.ts、html_parser.ts 幾乎是純函數，可在純 JS 的 paste 事件中把剪貼簿轉二維陣列；需自行加 DOMPurify。"
+    },
+    {
+      "name": "拖拉填滿序列偵測",
+      "path": "packages/core/src/commands/datasheet/fill_data_to_cells.ts",
+      "difficulty": "低",
+      "note_zh": "patternFinder() 判斷數字等差與日期序列，改成吃陣列回傳下一批值即可。"
+    },
+    {
+      "name": "json0 OT 動作與 UndoManager",
+      "path": "packages/core/src/engine/ot/ ; packages/core/src/command_manager/undo_manager.ts",
+      "difficulty": "中",
+      "note_zh": "學「每個操作都是可反轉的 json0 動作」設計，在 Firestore 存 changeset 做復原與歷史；直接用 MIT 的 ot-json0。"
+    },
+    {
+      "name": "xlsx/csv 匯出",
+      "path": "packages/datasheet/src/pc/utils/catalog.ts",
+      "difficulty": "低",
+      "note_zh": "動態 import exceljs → addWorksheet → addRows → writeBuffer 下載；CSV 加 \\uFEFF BOM 讓 Excel 正確顯示中文。"
+    },
+    {
+      "name": "Canvas 虛擬捲動座標模型",
+      "path": "packages/datasheet/src/pc/components/konva_grid/model/coordinate/coordinate.ts",
+      "difficulty": "中",
+      "note_zh": "純 TS 類別，處理列高欄寬→位置→可見範圍；繪圖本體與 Redux 綁太深，不建議整包搬。"
+    },
+    {
+      "name": "Fusion REST API",
+      "path": "packages/room-server/src/fusion/fusion.api.controller.ts",
+      "difficulty": "高",
+      "note_zh": "不拆，直接自架後呼叫；或模仿其 records/fields/views 介面設計自己的 Cloud Functions。"
+    }
+  ],
+  "ai_integration_zh": "開源版沒有任何 AI 程式碼（搜尋 openai/anthropic/claude 無實際用途），AI 聊天、AI 嵌入、ai-components 全在閉源 enterprise 模組。可自行接 Claude：用自動化的 Webhook 動作呼叫 Claude API，或寫外部程式透過 Fusion API 讀資料→呼叫 Claude→寫回；也適合包成 MCP server。",
+  "claude_support": "可接",
+  "maintenance_zh": "低度維護：2026 年只有 5 個 commit（最後 2026-09-06，v1.14.0），多為從內部閉源 repo（vikadata）同步，社群開發不活躍。",
+  "risks_zh": [
+    "AGPL-3.0：修改後對外提供服務或抄程式碼進自己產品需開源",
+    "程式碼寫死每表最多 5 萬筆（add_records.ts MAX_RECORD_NUM），與 README 宣稱 100k+ 矛盾",
+    "部署重：10 個容器、建議 8GB RAM、只有 amd64 映像",
+    "不是真正的 Excel：無 A1 儲存格公式、合併儲存格、條件格式、樞紐分析、自訂函數",
+    "匯入一律變文字欄位；匯出 xlsx 只有字串，無公式／格式",
+    "前端 165 處 import 指向不存在的 enterprise 程式；DataBus Rust 原始碼不在 repo",
+    "貼上 HTML 時未 sanitize 直接 innerHTML（未實測是否可利用）",
+    ".env 預設密碼 apitable@com",
+    "繁中為 zh-HK 用語，台灣使用者會覺得不自然"
+  ],
+  "fit_for_user": 3,
+  "verdict_zh": "想要一套免費自架的 Airtable 來管庫存很合適；想做「真的 Excel」或拆表格 UI 則不適合，最值得參考的是公式引擎、貼上解析與 OT 設計。",
+  "keywords": [
+    "APITable",
+    "AITable",
+    "Airtable 開源替代",
+    "網頁版 Excel",
+    "多維表格",
+    "視覺化資料庫",
+    "Canvas 表格",
+    "Konva",
+    "虛擬捲動",
+    "公式引擎",
+    "formula parser",
+    "LookUp",
+    "OT",
+    "json0",
+    "即時協作",
+    "復原重做",
+    "拖拉填滿",
+    "Excel 貼上",
+    "exceljs",
+    "EasyExcel",
+    "REST API",
+    "Widget SDK",
+    "AGPL-3.0",
+    "自架",
+    "庫存管理"
+  ],
+  "pack_path": "_oss-research/01-web-excel/apitable__apitable.md"
+}

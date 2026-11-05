@@ -1,0 +1,59 @@
+{
+  "repo": "remotion-dev/remotion",
+  "category": "03-video-script",
+  "commit": "682cad29c569d7c36c2445e27ec07cb433f06b32",
+  "scanned_at": "2026-11-04",
+  "stars": 70673,
+  "license": "自訂授權：Remotion License（個人／員工 3 人以下營利公司／非營利免費，其餘需購買 Company License；禁止轉售衍生版）",
+  "license_personal_zh": "個人使用：免費，可商用製作影片與圖片，也可修改原始碼自用。",
+  "license_commercial_zh": "公司商用：員工 3 人以下免費；4 人以上需向 remotion.pro 購買 Company License（價格未確認）；任何人都不可把 Remotion 衍生版拿去販售、出租或再授權（不能包成影片產生器賣給別人）。v5 授權條款將變更（細節未確認）。",
+  "one_liner_zh": "用 React 程式碼寫影片並渲染成 MP4，官方附 Claude 外掛",
+  "use_cases_zh": [
+    "從 Firebase 商品資料批次產生 9:16／1:1 電商廣告影片",
+    "在 Claude Code 安裝官方 Remotion Skills，用對話讓 Claude 寫影片",
+    "用 renderStill 批次產生商品主圖、價格標籤圖",
+    "價格／成本數據做成動態圖表影片",
+    "配音＋Whisper 轉字幕做抖音風解說影片",
+    "當 MoneyPrinter 類腳本生成專案的最後合成引擎"
+  ],
+  "stack": ["TypeScript", "React", "Node.js", "Chrome Headless Shell（自帶 Puppeteer 分支）", "ffmpeg（compositor 套件內建）", "webpack bundler", "zod", "AWS Lambda / Cloud Run / Vercel（選配）", "Next.js＋Vercel AI SDK（motion-graphics 範本）"],
+  "run_requirements_zh": "需 Node.js 20.19+/22.13+/24+；npx create-video 建專案，npx remotion studio 預覽、npx remotion render 輸出。首次渲染自動下載 Chrome Headless Shell，ffmpeg 已內建。純 CPU 可跑，預設並行 min(8, 核心數/2)；只有 whisper-webgpu 需 GPU。核心不需 API Key；AI 範本需 OPENAI_API_KEY、ELEVENLABS_API_KEY（費用未確認）。本機渲染免費。",
+  "key_features_zh": [
+    "Composition／Sequence／useCurrentFrame／interpolate／spring 以 frame 驅動動畫",
+    "renderMedia：Chrome 逐格截圖＋ffmpeg 平行編碼，支援 h264/h265/vp8/vp9/av1/prores/gif",
+    "zod schema＋inputProps 參數化，資料驅動批次產片",
+    "calculateMetadata 依配音長度動態決定影片長度",
+    "@remotion/player 在網頁即時預覽",
+    "captions：SRT/VTT 解析、TikTok 式字幕；ElevenLabs／OpenAI Whisper／whisper.cpp 轉字幕",
+    "官方 Claude Code 外掛＋13 個 Agent Skills",
+    "prompt-to-video 範本：主題→腳本→生圖→配音→時間軸",
+    "prompt-to-motion-graphics 範本：一句話→LLM 寫動畫程式→即時預覽"
+  ],
+  "reusable_parts": [
+    {"name": "renderMedia 伺服器端渲染", "path": "packages/renderer/src/render-media.ts", "difficulty": "低", "note_zh": "直接用 npm 套件，Node 腳本讀 Firebase → bundle → selectComposition → renderMedia(inputProps) 批次出片"},
+    {"name": "Player 網頁預覽", "path": "packages/player/src/Player.tsx", "difficulty": "中", "note_zh": "純 JS App 需另用 Vite 打包一個 React 小 bundle 掛到 div"},
+    {"name": "TikTok 式字幕分頁", "path": "packages/captions/src/create-tiktok-style-captions.ts", "difficulty": "低", "note_zh": "純函式可直接複製；中文無空白需自行加 pageBreakAfter 分頁"},
+    {"name": "SRT/VTT 解析與輸出", "path": "packages/captions/src/index.ts", "difficulty": "低", "note_zh": "parseSrt/parseVtt/serializeSrt，無依賴"},
+    {"name": "ElevenLabs／OpenAI Whisper 結果轉字幕", "path": "packages/elevenlabs/src/index.ts", "difficulty": "低", "note_zh": "把 TTS／STT 時間戳統一成 Caption[]；OpenAI 版在 packages/openai-whisper/src"},
+    {"name": "主題→腳本→圖→配音 CLI", "path": "packages/template-prompt-to-video/cli/service.ts", "difficulty": "低", "note_zh": "把 openaiStructuredCompletion 換成 Anthropic API；prompt 改繁中；timeline.json 可當分鏡中介格式"},
+    {"name": "LLM 產生動畫程式並即時編譯", "path": "packages/template-prompt-to-motion-graphics/src/remotion/compiler.ts", "difficulty": "中", "note_zh": "@babel/standalone＋new Function 執行 AI 程式碼，只適合自用；generate/route.ts 換 @ai-sdk/anthropic"},
+    {"name": "官方 Agent Skills", "path": "packages/skills/skills", "difficulty": "低", "note_zh": "npx skills add remotion-dev/skills 裝進 Claude Code，或當自訂影片 skill 範本"}
+  ],
+  "ai_integration_zh": "核心不呼叫 AI。官方維護 Claude Code 外掛（packages/claude-code-plugin，MIT）與 13 個 Agent Skills（packages/skills，74 個 md）。prompt-to-video 範本用 OpenAI gpt-4.1 寫腳本與分鏡、dall-e-3 生圖、ElevenLabs 配音（含逐字時間戳）；prompt-to-motion-graphics 範本用 Vercel AI SDK＋OpenAI（預設 gpt-5.2）生成 React 動畫程式碼。腳本步驟可輕易換成 Claude；生圖需保留其他服務。未見 MCP 伺服器（讀取範圍內）。",
+  "claude_support": "原生",
+  "maintenance_zh": "非常活躍：2026-11-04 仍有推送，版本 4.0.540，monorepo 131 個套件、1,101 個測試檔（依檔案清單計數），文件 1,200+ 頁。",
+  "risks_zh": [
+    "自訂授權：員工 4 人以上需付費，且禁止轉售衍生工具",
+    "傳入 licenseKey（含 free-license）時渲染會向 remotion.pro 回報用量",
+    "不能用 CSS 動畫／transition，所有動畫須由 frame 計算",
+    "非同步資料須 delayRender，否則截到空白",
+    "TikTok 字幕分頁依賴空白，中文需自行處理",
+    "prompt-to-video 範本 prompt 強制英文、ElevenLabs 聲音寫死",
+    "motion-graphics 範本執行 LLM 產生的任意 JS，不宜公開部署",
+    "本身不含 AI 生圖／生影片，短劇需搭配其他專案"
+  ],
+  "fit_for_user": 4,
+  "verdict_zh": "電商批次廣告影片與讓 Claude 寫影片的首選合成引擎；個人或 3 人以下公司免費，短劇需另接 AI 生成專案。",
+  "keywords": ["Remotion", "React 影片", "programmatic video", "程式化影片", "renderMedia", "Composition", "interpolate", "Remotion Player", "ffmpeg", "Chrome Headless", "批次產生影片", "電商廣告影片", "商品影片", "動態字幕", "TikTok 字幕", "Whisper", "ElevenLabs", "TTS 配音", "prompt-to-video", "Claude Code plugin", "Agent Skills", "自訂授權", "Company License", "影片・腳本"],
+  "pack_path": "_oss-research/03-video-script/remotion-dev__remotion.md"
+}
